@@ -4,6 +4,7 @@ import Foundation
 class MyLibraryViewModel: ObservableObject {
     @Published var borrowedBooks: [BookRequest] = []
     @Published var lentBooks: [BookRequest] = []
+    @Published var myListedBooks: [Book] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showError = false
@@ -51,6 +52,44 @@ class MyLibraryViewModel: ObservableObject {
                 lentRequest.status = .pending
                 
                 self.lentBooks = [lentRequest]
+                
+                // Books I've listed/added to the system
+                self.myListedBooks = [
+                    Book(
+                        title: "To Kill a Mockingbird",
+                        author: "Harper Lee",
+                        genre: "Fiction",
+                        description: "A classic American novel about racial injustice and childhood innocence.",
+                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
+                        isAvailable: true,
+                        ownerId: currentUserId,
+                        ownerName: User.mockUser.name,
+                        ownerFlatNumber: User.mockUser.flatNumber
+                    ),
+                    Book(
+                        title: "The Catcher in the Rye",
+                        author: "J.D. Salinger",
+                        genre: "Fiction",
+                        description: "A coming-of-age story about teenage rebellion and angst.",
+                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
+                        isAvailable: false, // Currently lent out
+                        ownerId: currentUserId,
+                        ownerName: User.mockUser.name,
+                        ownerFlatNumber: User.mockUser.flatNumber
+                    ),
+                    Book(
+                        title: "Educated",
+                        author: "Tara Westover",
+                        genre: "Biography",
+                        description: "A memoir about education, family, and the struggle for self-invention.",
+                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
+                        isAvailable: true,
+                        ownerId: currentUserId,
+                        ownerName: User.mockUser.name,
+                        ownerFlatNumber: User.mockUser.flatNumber
+                    )
+                ]
+                
                 self.isLoading = false
             }
         }
@@ -73,6 +112,30 @@ class MyLibraryViewModel: ObservableObject {
                     if newStatus == .approved {
                         lentBooks[index].dueDate = Calendar.current.date(byAdding: .day, value: 14, to: Date())
                     }
+                }
+            }
+        }
+    }
+    
+    func deleteBook(_ book: Book) {
+        // Simulate API call
+        Task {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            
+            await MainActor.run {
+                myListedBooks.removeAll { $0.id == book.id }
+            }
+        }
+    }
+    
+    func toggleBookAvailability(_ book: Book) {
+        // Simulate API call
+        Task {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            
+            await MainActor.run {
+                if let index = myListedBooks.firstIndex(where: { $0.id == book.id }) {
+                    myListedBooks[index].isAvailable.toggle()
                 }
             }
         }

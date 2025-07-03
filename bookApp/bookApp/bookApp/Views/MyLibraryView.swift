@@ -12,6 +12,7 @@ struct MyLibraryView: View {
                 Picker("Library Section", selection: $selectedSegment) {
                     Text("Borrowed").tag(0)
                     Text("Lent").tag(1)
+                    Text("My Books").tag(2)
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
@@ -27,8 +28,10 @@ struct MyLibraryView: View {
                 } else {
                     if selectedSegment == 0 {
                         BorrowedBooksView(requests: viewModel.borrowedBooks, isDarkMode: themeManager.isDarkMode)
-                    } else {
+                    } else if selectedSegment == 1 {
                         LentBooksView(requests: viewModel.lentBooks, viewModel: viewModel, isDarkMode: themeManager.isDarkMode)
+                    } else {
+                        MyListedBooksView(books: viewModel.myListedBooks, viewModel: viewModel, isDarkMode: themeManager.isDarkMode)
                     }
                 }
             }
@@ -107,6 +110,181 @@ struct LentBooksView: View {
         case .markReturned:
             viewModel.updateRequestStatus(request, newStatus: .returned)
         }
+    }
+}
+
+struct MyListedBooksView: View {
+    let books: [Book]
+    let viewModel: MyLibraryViewModel
+    let isDarkMode: Bool
+    
+    var body: some View {
+        if books.isEmpty {
+            EmptyStateView(
+                icon: "books.vertical.fill",
+                title: "No Listed Books",
+                message: "Books you add will appear here.\nUse the Add Book tab to list your first book!",
+                isDarkMode: isDarkMode
+            )
+        } else {
+            List(books) { book in
+                MyBookRowView(book: book, viewModel: viewModel, isDarkMode: isDarkMode)
+                    .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
+            }
+            .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
+        }
+    }
+}
+
+struct MyBookRowView: View {
+    let book: Book
+    let viewModel: MyLibraryViewModel
+    let isDarkMode: Bool
+    @State private var showDeleteAlert = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                AsyncImage(url: URL(string: book.imageURL)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(AppTheme.dynamicSecondaryBackground(isDarkMode))
+                        .overlay(
+                            Image(systemName: "book.closed")
+                                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                        )
+                }
+                .frame(width: 50, height: 70)
+                .cornerRadius(8)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(book.title)
+                        .font(.headline)
+                        .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                        .lineLimit(2)
+                    
+                    Text("by \(book.author)")
+                        .font(.subheadline)
+                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                    
+                    Text(book.genre)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.primaryGreen.opacity(0.2))
+                        .cornerRadius(4)
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 4) {
+                    Image(systemName: book.isAvailable ? "checkmark.circle.fill" : "clock.circle.fill")
+                        .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                        .font(.title3)
+                    
+                    Text(book.isAvailable ? "Available" : "Lent Out")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                }
+            }
+            
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Added: \(Date().formatted(date: .abbreviated, time: .omitted))")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                    
+                    Spacer()
+                }
+                
+                VStack(spacing: 8) {
+                    // Toggle Availability Button
+                    ToggleAvailabilityButton(
+                        book: book,
+                        viewModel: viewModel,
+                        isDarkMode: isDarkMode
+                    )
+                    
+                    // Delete Button
+                    DeleteBookButton(
+                        book: book,
+                        showDeleteAlert: $showDeleteAlert,
+                        isDarkMode: isDarkMode
+                    )
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(AppTheme.dynamicCardBackground(isDarkMode))
+        .cornerRadius(10)
+        .alert("Delete Book", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteBook(book)
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(book.title)'? This action cannot be undone.")
+        }
+    }
+}
+
+struct ToggleAvailabilityButton: View {
+    let book: Book
+    let viewModel: MyLibraryViewModel
+    let isDarkMode: Bool
+    
+    var body: some View {
+        Button {
+            print("Toggle button tapped for book: \(book.title)")
+            viewModel.toggleBookAvailability(book)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: book.isAvailable ? "pause.circle" : "play.circle")
+                Text(book.isAvailable ? "Mark Unavailable" : "Mark Available")
+            }
+            .font(.caption)
+            .foregroundColor(AppTheme.primaryGreen)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(AppTheme.primaryGreen.opacity(0.15))
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct DeleteBookButton: View {
+    let book: Book
+    @Binding var showDeleteAlert: Bool
+    let isDarkMode: Bool
+    
+    var body: some View {
+        Button {
+            print("Delete button tapped for book: \(book.title)")
+            showDeleteAlert = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "trash")
+                Text("Delete")
+            }
+            .font(.caption)
+            .foregroundColor(AppTheme.errorColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(AppTheme.errorColor.opacity(0.15))
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

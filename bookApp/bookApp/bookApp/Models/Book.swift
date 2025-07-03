@@ -7,7 +7,7 @@ struct Book: Identifiable, Codable {
     let genre: String
     let description: String
     let imageURL: String
-    let isAvailable: Bool
+    var isAvailable: Bool
     let ownerId: String
     let ownerName: String
     let ownerFlatNumber: String
