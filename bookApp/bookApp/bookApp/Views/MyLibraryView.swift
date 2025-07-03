@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MyLibraryView: View {
     @EnvironmentObject var viewModel: MyLibraryViewModel
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedSegment = 0
     
     var body: some View {
@@ -14,21 +15,26 @@ struct MyLibraryView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
+                .accentColor(AppTheme.primaryGreen)
                 
                 // Content
                 if viewModel.isLoading {
                     Spacer()
                     ProgressView("Loading library...")
+                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .accentColor(AppTheme.primaryGreen)
                     Spacer()
                 } else {
                     if selectedSegment == 0 {
-                        BorrowedBooksView(requests: viewModel.borrowedBooks)
+                        BorrowedBooksView(requests: viewModel.borrowedBooks, isDarkMode: themeManager.isDarkMode)
                     } else {
-                        LentBooksView(requests: viewModel.lentBooks, viewModel: viewModel)
+                        LentBooksView(requests: viewModel.lentBooks, viewModel: viewModel, isDarkMode: themeManager.isDarkMode)
                     }
                 }
             }
+            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("My Library")
+            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
             .refreshable {
                 viewModel.refreshLibraryData()
             }
@@ -38,24 +44,30 @@ struct MyLibraryView: View {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
         }
+        .accentColor(AppTheme.primaryGreen)
     }
 }
 
 struct BorrowedBooksView: View {
     let requests: [BookRequest]
+    let isDarkMode: Bool
     
     var body: some View {
         if requests.isEmpty {
             EmptyStateView(
                 icon: "books.vertical",
                 title: "No Borrowed Books",
-                message: "Books you borrow will appear here"
+                message: "Books you borrow will appear here",
+                isDarkMode: isDarkMode
             )
         } else {
             List(requests) { request in
-                RequestRowView(request: request, showActions: false)
+                RequestRowView(request: request, showActions: false, isDarkMode: isDarkMode)
+                    .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
             }
             .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
         }
     }
 }
@@ -63,21 +75,26 @@ struct BorrowedBooksView: View {
 struct LentBooksView: View {
     let requests: [BookRequest]
     let viewModel: MyLibraryViewModel
+    let isDarkMode: Bool
     
     var body: some View {
         if requests.isEmpty {
             EmptyStateView(
                 icon: "person.2",
                 title: "No Lent Books",
-                message: "Books you lend will appear here"
+                message: "Books you lend will appear here",
+                isDarkMode: isDarkMode
             )
         } else {
             List(requests) { request in
-                RequestRowView(request: request, showActions: true) { action in
+                RequestRowView(request: request, showActions: true, isDarkMode: isDarkMode) { action in
                     handleRequestAction(request: request, action: action)
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
             }
             .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
         }
     }
     
@@ -100,11 +117,13 @@ enum RequestAction {
 struct RequestRowView: View {
     let request: BookRequest
     let showActions: Bool
+    let isDarkMode: Bool
     let onAction: ((RequestAction) -> Void)?
     
-    init(request: BookRequest, showActions: Bool, onAction: ((RequestAction) -> Void)? = nil) {
+    init(request: BookRequest, showActions: Bool, isDarkMode: Bool, onAction: ((RequestAction) -> Void)? = nil) {
         self.request = request
         self.showActions = showActions
+        self.isDarkMode = isDarkMode
         self.onAction = onAction
     }
     
@@ -114,14 +133,15 @@ struct RequestRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("The Great Gatsby") // Mock book title
                         .font(.headline)
+                        .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
                     
                     Text(showActions ? "Requested by: \(request.borrowerName)" : "Lent by: John Smith")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
                     
                     Text("Flat: \(request.borrowerFlatNumber)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
                 }
                 
                 Spacer()
@@ -132,7 +152,7 @@ struct RequestRowView: View {
             HStack {
                 Text("Requested: \(request.requestDate.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
                 
                 Spacer()
                 
@@ -141,7 +161,7 @@ struct RequestRowView: View {
                         // Navigate to book details
                     }
                     .font(.caption)
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppTheme.primaryGreen)
                 }
             }
             
@@ -150,13 +170,14 @@ struct RequestRowView: View {
                     Button("Approve") {
                         onAction?(.approve)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .frame(maxWidth: .infinity)
                     
                     Button("Reject") {
                         onAction?(.reject)
                     }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.red)
+                    .buttonStyle(SecondaryButtonStyle())
+                    .frame(maxWidth: .infinity)
                 }
                 .padding(.top, 4)
             }
@@ -165,11 +186,14 @@ struct RequestRowView: View {
                 Button("Mark as Returned") {
                     onAction?(.markReturned)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SecondaryButtonStyle())
                 .padding(.top, 4)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(AppTheme.dynamicCardBackground(isDarkMode))
+        .cornerRadius(10)
     }
 }
 
@@ -189,11 +213,11 @@ struct StatusBadge: View {
     
     private func colorForStatus(_ status: BookRequest.RequestStatus) -> Color {
         switch status {
-        case .pending: return .orange
-        case .approved: return .green
-        case .rejected: return .red
-        case .returned: return .blue
-        case .overdue: return .red
+        case .pending: return AppTheme.warningColor
+        case .approved: return AppTheme.successColor
+        case .rejected: return AppTheme.errorColor
+        case .returned: return AppTheme.primaryGreen
+        case .overdue: return AppTheme.errorColor
         }
     }
 }
@@ -202,21 +226,22 @@ struct EmptyStateView: View {
     let icon: String
     let title: String
     let message: String
+    let isDarkMode: Bool
     
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 50))
-                .foregroundColor(.gray)
+                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
             
             Text(title)
                 .font(.title2)
                 .fontWeight(.medium)
-                .foregroundColor(.gray)
+                .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
             
             Text(message)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
                 .multilineTextAlignment(.center)
         }
         .padding()
@@ -228,6 +253,7 @@ struct MyLibraryView_Previews: PreviewProvider {
         NavigationView {
             MyLibraryView()
                 .environmentObject(MyLibraryViewModel())
+                .environmentObject(ThemeManager())
         }
     }
 } 

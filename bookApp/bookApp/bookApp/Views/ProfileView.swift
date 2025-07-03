@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @State private var showSignOutAlert = false
+    @State private var notificationsEnabled = true
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         NavigationView {
@@ -10,127 +12,181 @@ struct ProfileView: View {
                     HStack {
                         Image(systemName: "person.circle.fill")
                             .font(.system(size: 50))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppTheme.primaryGreen)
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(User.mockUser.name)
                                 .font(.title2)
                                 .fontWeight(.semibold)
+                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                             
                             Text("Flat: \(User.mockUser.flatNumber)")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                             
                             Text(User.mockUser.phoneNumber)
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                         }
                         
                         Spacer()
                     }
                     .padding(.vertical, 8)
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 
-                Section("Library Stats") {
-                    HStack {
-                        Image(systemName: "books.vertical.fill")
-                            .foregroundColor(.blue)
-                            .frame(width: 24)
-                        Text("Books Added")
-                        Spacer()
-                        Text("2")
-                            .foregroundColor(.secondary)
-                    }
+                Section(header: Text("Library Stats").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
+                    ProfileStatRow(
+                        icon: "books.vertical.fill",
+                        iconColor: AppTheme.primaryGreen,
+                        title: "Books Added",
+                        value: "2",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
-                    HStack {
-                        Image(systemName: "book.fill")
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-                        Text("Books Borrowed")
-                        Spacer()
-                        Text("2")
-                            .foregroundColor(.secondary)
-                    }
+                    ProfileStatRow(
+                        icon: "book.fill",
+                        iconColor: AppTheme.successColor,
+                        title: "Books Borrowed",
+                        value: "2",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
-                    HStack {
-                        Image(systemName: "person.2.fill")
-                            .foregroundColor(.orange)
-                            .frame(width: 24)
-                        Text("Books Lent")
-                        Spacer()
-                        Text("1")
-                            .foregroundColor(.secondary)
-                    }
+                    ProfileStatRow(
+                        icon: "person.2.fill",
+                        iconColor: AppTheme.warningColor,
+                        title: "Books Lent",
+                        value: "1",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
-                    HStack {
-                        Image(systemName: "hand.raised.fill")
-                            .foregroundColor(.purple)
-                            .frame(width: 24)
-                        Text("Pending Requests")
-                        Spacer()
-                        Text("1")
-                            .foregroundColor(.secondary)
-                    }
+                    ProfileStatRow(
+                        icon: "hand.raised.fill",
+                        iconColor: .purple,
+                        title: "Pending Requests",
+                        value: "1",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 
-                Section("Settings") {
+                Section(header: Text("Settings").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
                     HStack {
                         Image(systemName: "bell.fill")
-                            .foregroundColor(.red)
+                            .foregroundColor(AppTheme.errorColor)
                             .frame(width: 24)
                         Text("Notifications")
+                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                         Spacer()
-                        Toggle("", isOn: .constant(true))
+                        Toggle("", isOn: $notificationsEnabled)
+                            .accentColor(AppTheme.primaryGreen)
                     }
                     
                     HStack {
-                        Image(systemName: "moon.fill")
-                            .foregroundColor(.purple)
+                        Image(systemName: themeManager.isDarkMode ? "moon.fill" : "sun.max.fill")
+                            .foregroundColor(themeManager.isDarkMode ? .purple : .orange)
                             .frame(width: 24)
                         Text("Dark Mode")
+                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                         Spacer()
-                        Toggle("", isOn: .constant(false))
+                        Toggle("", isOn: $themeManager.isDarkMode)
+                            .accentColor(AppTheme.primaryGreen)
                     }
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 
-                Section("Support") {
-                    HStack {
-                        Image(systemName: "questionmark.circle.fill")
-                            .foregroundColor(.blue)
-                            .frame(width: 24)
-                        Text("Help & Support")
-                    }
+                Section(header: Text("Support").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
+                    ProfileMenuRow(
+                        icon: "questionmark.circle.fill",
+                        iconColor: AppTheme.primaryGreen,
+                        title: "Help & Support",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
-                    HStack {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                            .frame(width: 24)
-                        Text("Rate App")
-                    }
+                    ProfileMenuRow(
+                        icon: "star.fill",
+                        iconColor: .yellow,
+                        title: "Rate App",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
-                    HStack {
-                        Image(systemName: "envelope.fill")
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-                        Text("Contact Us")
-                    }
+                    ProfileMenuRow(
+                        icon: "envelope.fill",
+                        iconColor: AppTheme.primaryGreen,
+                        title: "Contact Us",
+                        isDarkMode: themeManager.isDarkMode
+                    )
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 
                 Section {
                     Button(action: {
-                        // Sign out functionality removed
+                        // About app functionality
                     }) {
                         HStack {
                             Image(systemName: "info.circle.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppTheme.primaryGreen)
                                 .frame(width: 24)
                             Text("About App")
+                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                                .font(.caption)
                         }
                     }
                 }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
             }
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
+            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+        }
+        .accentColor(AppTheme.primaryGreen)
+    }
+}
+
+struct ProfileStatRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String
+    let isDarkMode: Bool
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(iconColor)
+                .frame(width: 24)
+            Text(title)
+                .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+            Spacer()
+            Text(value)
+                .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                .fontWeight(.medium)
+        }
+    }
+}
+
+struct ProfileMenuRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let isDarkMode: Bool
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(iconColor)
+                .frame(width: 24)
+            Text(title)
+                .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                .font(.caption)
         }
     }
 }
@@ -139,6 +195,7 @@ struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             ProfileView()
+                .environmentObject(ThemeManager())
         }
     }
 } 
