@@ -376,7 +376,7 @@ struct RequestRowView: View {
 }
 
 struct StatusBadge: View {
-    let status: BookRequest.RequestStatus
+    let status: RequestStatus
     
     var body: some View {
         Text(status.displayName)
@@ -389,7 +389,7 @@ struct StatusBadge: View {
             .cornerRadius(8)
     }
     
-    private func colorForStatus(_ status: BookRequest.RequestStatus) -> Color {
+    private func colorForStatus(_ status: RequestStatus) -> Color {
         switch status {
         case .pending: return AppTheme.warningColor
         case .approved: return AppTheme.successColor

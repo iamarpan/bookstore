@@ -30,14 +30,16 @@ class MyLibraryViewModel: ObservableObject {
                         borrowerId: currentUserId,
                         borrowerName: User.mockUser.name,
                         borrowerFlatNumber: User.mockUser.flatNumber,
-                        ownerId: "owner1"
+                        ownerId: "owner1",
+                        societyId: User.mockUser.societyId
                     ),
                     BookRequest(
                         bookId: "2", 
                         borrowerId: currentUserId,
                         borrowerName: User.mockUser.name,
                         borrowerFlatNumber: User.mockUser.flatNumber,
-                        ownerId: "owner2"
+                        ownerId: "owner2",
+                        societyId: User.mockUser.societyId
                     )
                 ]
                 
@@ -47,7 +49,8 @@ class MyLibraryViewModel: ObservableObject {
                     borrowerId: "borrower1",
                     borrowerName: "Jane Smith",
                     borrowerFlatNumber: "B-102",
-                    ownerId: currentUserId
+                    ownerId: currentUserId,
+                    societyId: User.mockUser.societyId
                 )
                 lentRequest.status = .pending
                 
@@ -64,7 +67,8 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: true,
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber
+                        ownerFlatNumber: User.mockUser.flatNumber,
+                        societyId: User.mockUser.societyId
                     ),
                     Book(
                         title: "The Catcher in the Rye",
@@ -75,7 +79,8 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: false, // Currently lent out
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber
+                        ownerFlatNumber: User.mockUser.flatNumber,
+                        societyId: User.mockUser.societyId
                     ),
                     Book(
                         title: "Educated",
@@ -86,7 +91,8 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: true,
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber
+                        ownerFlatNumber: User.mockUser.flatNumber,
+                        societyId: User.mockUser.societyId
                     )
                 ]
                 
@@ -99,7 +105,7 @@ class MyLibraryViewModel: ObservableObject {
         loadLibraryData()
     }
     
-    func updateRequestStatus(_ request: BookRequest, newStatus: BookRequest.RequestStatus) {
+    func updateRequestStatus(_ request: BookRequest, newStatus: RequestStatus) {
         // Simulate API call
         Task {
             try await Task.sleep(nanoseconds: 500_000_000)

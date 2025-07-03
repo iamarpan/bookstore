@@ -9,54 +9,57 @@ struct BookDetailView: View {
     }
     
     var body: some View {
+        mainContent
+            .navigationBarTitleDisplayMode(.inline)
+            .alert("Request Sent!", isPresented: $viewModel.showSuccessAlert) {
+                Button("OK") { }
+            } message: {
+                Text("Your request has been sent to \(viewModel.book.ownerName). They will be notified about your request.")
+            }
+            .alert("Error", isPresented: $viewModel.showError) {
+                Button("OK") { }
+            } message: {
+                Text(viewModel.errorMessage ?? "An unknown error occurred")
+            }
+    }
+    
+    private var mainContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header with book cover and basic info
                 BookHeaderView(book: viewModel.book)
-                
-                // Book description
                 BookDescriptionView(book: viewModel.book)
-                
-                // Owner information
                 OwnerInfoView(book: viewModel.book)
-                
-                // Request status (if any)
-                if let status = viewModel.requestStatus {
-                    RequestStatusView(status: status, requestStatus: viewModel.existingRequest?.status)
-                }
-                
-                // Request button
-                RequestButtonView(
-                    title: viewModel.requestButtonTitle,
-                    canRequest: viewModel.canRequestBook,
-                    isLoading: viewModel.isLoading,
-                    hasRequested: viewModel.hasRequestedBook
-                ) {
-                    if viewModel.hasRequestedBook {
-                        Task {
-                            await viewModel.cancelRequest()
-                        }
-                    } else {
-                        Task {
-                            await viewModel.requestBook()
-                        }
-                    }
-                }
-                
+                requestStatusSection
+                requestButtonSection
                 Spacer(minLength: 100)
             }
             .padding()
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Request Sent!", isPresented: $viewModel.showSuccessAlert) {
-            Button("OK") { }
-        } message: {
-            Text("Your request has been sent to \(viewModel.book.ownerName). They will be notified about your request.")
+    }
+    
+    @ViewBuilder
+    private var requestStatusSection: some View {
+        if let status = viewModel.requestStatus {
+            RequestStatusView(status: status, requestStatus: viewModel.existingRequest?.status)
         }
-        .alert("Error", isPresented: $viewModel.showError) {
-            Button("OK") { }
-        } message: {
-            Text(viewModel.errorMessage ?? "An unknown error occurred")
+    }
+    
+    private var requestButtonSection: some View {
+        RequestButtonView(
+            title: viewModel.requestButtonTitle,
+            canRequest: viewModel.canRequestBook,
+            isLoading: viewModel.isLoading,
+            hasRequested: viewModel.hasRequestedBook
+        ) {
+            if viewModel.hasRequestedBook {
+                Task {
+                    await viewModel.cancelRequest()
+                }
+            } else {
+                Task {
+                    await viewModel.requestBook()
+                }
+            }
         }
     }
 }
@@ -200,7 +203,7 @@ struct OwnerInfoView: View {
 
 struct RequestStatusView: View {
     let status: String
-    let requestStatus: BookRequest.RequestStatus?
+    let requestStatus: RequestStatus?
     
     var body: some View {
         HStack {

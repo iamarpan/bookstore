@@ -1,58 +1,27 @@
+// ViewModels/HomeViewModel.swift
 import Foundation
 import Combine
+import FirebaseFirestore
 
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var books: [Book] = []
-    @Published var filteredBooks: [Book] = []
-    @Published var searchText = ""
-    @Published var selectedGenre = "All"
-    @Published var selectedAvailability = "All"
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
+    @Published var searchText: String = ""
+    @Published var selectedGenre: String? = nil
+    @Published var selectedAvailability: String? = nil
+    @Published var isLoading: Bool = false
+    @Published var showError: Bool = false
+    @Published var errorMessage: String? = nil
     
-    let genres = ["All", "Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery"]
-    let availabilityOptions = ["All", "Available", "Borrowed"]
+    private var booksListener: ListenerRegistration?
+    private let firestoreService = FirestoreService()
     
-    private var cancellables = Set<AnyCancellable>()
+    // MARK: - Computed Properties
     
-    init() {
-        setupSearchAndFilter()
-        loadBooks()
-    }
-    
-    private func setupSearchAndFilter() {
-        Publishers.CombineLatest4($books, $searchText, $selectedGenre, $selectedAvailability)
-            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .map { books, searchText, selectedGenre, selectedAvailability in
-                self.filterBooks(books: books, searchText: searchText, genre: selectedGenre, availability: selectedAvailability)
-            }
-            .assign(to: \.filteredBooks, on: self)
-            .store(in: &cancellables)
-    }
-    
-    private func filterBooks(books: [Book], searchText: String, genre: String, availability: String) -> [Book] {
+    var filteredBooks: [Book] {
         var filtered = books
         
-        // Filter by genre
-        if genre != "All" {
-            filtered = filtered.filter { $0.genre == genre }
-        }
-        
-        // Filter by availability
-        if availability != "All" {
-            filtered = filtered.filter { book in
-                if availability == "Available" {
-                    return book.isAvailable
-                } else if availability == "Borrowed" {
-                    return !book.isAvailable
-                }
-                return true
-            }
-        }
-        
-        // Filter by search text
+        // Apply search filter
         if !searchText.isEmpty {
             filtered = filtered.filter { book in
                 book.title.localizedCaseInsensitiveContains(searchText) ||
@@ -61,33 +30,61 @@ class HomeViewModel: ObservableObject {
             }
         }
         
+        // Apply genre filter
+        if let selectedGenre = selectedGenre, !selectedGenre.isEmpty {
+            filtered = filtered.filter { $0.genre == selectedGenre }
+        }
+        
+        // Apply availability filter
+        if let selectedAvailability = selectedAvailability, !selectedAvailability.isEmpty {
+            if selectedAvailability == "Available" {
+                filtered = filtered.filter { $0.isAvailable }
+            } else if selectedAvailability == "Not Available" {
+                filtered = filtered.filter { !$0.isAvailable }
+            }
+        }
+        
         return filtered
     }
     
-    func loadBooks() {
+    var hasActiveFilters: Bool {
+        return selectedGenre != nil || selectedAvailability != nil
+    }
+    
+    var genres: [String] {
+        let allGenres = Set(books.map { $0.genre })
+        return Array(allGenres).sorted()
+    }
+    
+    let availabilityOptions = ["Available", "Not Available"]
+    
+    // MARK: - Methods
+    
+    func startListening(for societyId: String) {
         isLoading = true
-        
-        // Simulate API call
-        Task {
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-            
-            await MainActor.run {
-                self.books = Book.mockBooks
-                self.isLoading = false
+        booksListener = firestoreService.listenToBooks(for: societyId) { [weak self] books in
+            Task { @MainActor in
+                self?.books = books
+                self?.isLoading = false
             }
         }
     }
     
+    func stopListening() {
+        booksListener?.remove()
+    }
+    
     func refreshBooks() {
-        loadBooks()
+        isLoading = true
+        // In a real implementation, you might refresh the listener or trigger a new fetch
+        // For now, we'll just toggle loading state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.isLoading = false
+        }
     }
     
     func clearFilters() {
-        selectedGenre = "All"
-        selectedAvailability = "All"
+        selectedGenre = nil
+        selectedAvailability = nil
     }
-    
-    var hasActiveFilters: Bool {
-        selectedGenre != "All" || selectedAvailability != "All"
-    }
-} 
+}

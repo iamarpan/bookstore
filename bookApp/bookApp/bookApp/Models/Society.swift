@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseFirestore
 
 struct Society: Identifiable, Codable {
     let id: String
@@ -21,6 +22,64 @@ struct Society: Identifiable, Codable {
         self.totalBlocks = totalBlocks
         self.amenities = amenities
         self.createdAt = Date()
+    }
+    
+    // Firebase initializer
+    init(id: String, name: String, address: String, city: String, state: String, pincode: String, totalBlocks: [String], amenities: [String], createdAt: Date) {
+        self.id = id
+        self.name = name
+        self.address = address
+        self.city = city
+        self.state = state
+        self.pincode = pincode
+        self.totalBlocks = totalBlocks
+        self.amenities = amenities
+        self.createdAt = createdAt
+    }
+    
+    // MARK: - Firebase Serialization
+    func toDictionary() -> [String: Any] {
+        return [
+            "name": name,
+            "address": address,
+            "city": city,
+            "state": state,
+            "pincode": pincode,
+            "totalBlocks": totalBlocks,
+            "amenities": amenities,
+            "createdAt": Timestamp(date: createdAt)
+        ]
+    }
+    
+    static func fromDictionary(_ data: [String: Any], id: String) -> Society? {
+        guard let name = data["name"] as? String,
+              let address = data["address"] as? String,
+              let city = data["city"] as? String,
+              let state = data["state"] as? String,
+              let pincode = data["pincode"] as? String,
+              let totalBlocks = data["totalBlocks"] as? [String],
+              let amenities = data["amenities"] as? [String] else {
+            return nil
+        }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else {
+            createdAt = Date()
+        }
+        
+        return Society(
+            id: id,
+            name: name,
+            address: address,
+            city: city,
+            state: state,
+            pincode: pincode,
+            totalBlocks: totalBlocks,
+            amenities: amenities,
+            createdAt: createdAt
+        )
     }
 }
 

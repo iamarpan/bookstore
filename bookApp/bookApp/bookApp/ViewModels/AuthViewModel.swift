@@ -2,132 +2,78 @@ import Foundation
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var currentUser: User?
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
-    @Published var isAuthenticated = false
-    
-    // OTP verification states
+    @Published var authService = FirebaseAuthService()
     @Published var showOTPVerification = false
-    @Published var otpSent = false
+    @Published var verificationID: String?
     @Published var pendingPhoneNumber = ""
-    @Published var generatedOTP = "" // In real app, this would be on backend
     @Published var otpTimeRemaining = 0
     @Published var canResendOTP = false
+    @Published var otpSent = false
+    @Published var showError = false
     
     // Available societies for selection
     @Published var availableSocieties: [Society] = Society.mockSocieties
     
+    // Computed properties that delegate to authService
+    var currentUser: User? { authService.currentUser }
+    var isAuthenticated: Bool { authService.isAuthenticated }
+    var isLoading: Bool { authService.isLoading }
+    var errorMessage: String? { 
+        get { authService.errorMessage }
+        set { authService.errorMessage = newValue }
+    }
+    
     init() {
-        // Check for existing user session
+        // Check for existing authentication session
         checkAuthenticationStatus()
     }
     
     func checkAuthenticationStatus() {
-        // In a real app, this would check UserDefaults or Keychain
-        // For now, we'll start with no user to show the authentication flow
-        isAuthenticated = false
-        currentUser = nil
+        // Firebase Auth automatically handles auth state persistence
+        // The authService will automatically update isAuthenticated when the state changes
     }
     
-    func signUp(name: String, email: String?, phoneNumber: String, society: Society, blockName: String, flatNumber: String) async {
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            // First verify OTP if not already verified
-            if !otpSent || pendingPhoneNumber != phoneNumber {
-                await sendOTP(phoneNumber: phoneNumber)
-                return // Wait for OTP verification
-            }
-            
-            // OTP verified, proceed with signup
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            
-            // Create new user
-            let newUser = User(
-                name: name,
-                email: email,
-                phoneNumber: phoneNumber,
-                societyId: society.id,
-                societyName: society.name,
-                blockName: blockName,
-                flatNumber: flatNumber
-            )
-            
-            // Simulate successful signup
-            currentUser = newUser
-            isAuthenticated = true
-            
-            // In a real app, save to UserDefaults/Keychain
-            saveUserSession(user: newUser)
-            resetOTPState()
-            
-        } catch {
-            errorMessage = "Signup failed. Please try again."
-            showError = true
-        }
-        
-        isLoading = false
-    }
-    
-    func completeSignUpAfterOTP(name: String, email: String?, society: Society, blockName: String, flatNumber: String) async {
-        await signUp(name: name, email: email, phoneNumber: pendingPhoneNumber, society: society, blockName: blockName, flatNumber: flatNumber)
-    }
-    
+    // MARK: - Phone Authentication Flow
     func sendOTP(phoneNumber: String) async {
-        isLoading = true
-        errorMessage = nil
-        
         do {
-            // Simulate API call to send OTP
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            
-            // Generate a mock OTP (in real app, this would be done on backend)
-            let otp = String(format: "%06d", Int.random(in: 100000...999999))
-            generatedOTP = otp
-            pendingPhoneNumber = phoneNumber
-            
-            // Show OTP verification screen
-            showOTPVerification = true
-            otpSent = true
+            let verificationID = try await authService.sendOTP(phoneNumber: phoneNumber)
+            self.verificationID = verificationID
+            self.pendingPhoneNumber = phoneNumber
+            self.showOTPVerification = true
+            self.otpSent = true
             
             // Start countdown timer
             startOTPTimer()
-            
-            print("DEBUG: Generated OTP for \(phoneNumber): \(otp)") // For demo purposes
             
         } catch {
             errorMessage = "Failed to send OTP. Please try again."
             showError = true
         }
-        
-        isLoading = false
     }
     
     func verifyOTP(_ enteredOTP: String) async {
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            // Simulate API call
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            
-            if enteredOTP == generatedOTP {
-                // OTP is correct, proceed with authentication
-                await completeAuthentication(phoneNumber: pendingPhoneNumber)
-            } else {
-                errorMessage = "Invalid OTP. Please try again."
-                showError = true
-            }
-            
-        } catch {
-            errorMessage = "OTP verification failed. Please try again."
+        guard let verificationID = verificationID else { 
+            errorMessage = "No verification ID available. Please request OTP again."
             showError = true
+            return 
         }
         
-        isLoading = false
+        do {
+            try await authService.verifyOTP(verificationID: verificationID, 
+                                          verificationCode: enteredOTP)
+            // User signed in successfully, reset OTP state
+            resetOTPState()
+            
+        } catch AuthError.userNotFound {
+            // User doesn't exist, they need to sign up
+            // Keep OTP verification open but show signup form
+            errorMessage = "User not found. Please complete your profile."
+            showError = true
+            
+        } catch {
+            errorMessage = "Invalid OTP. Please try again."
+            showError = true
+        }
     }
     
     func resendOTP() async {
@@ -135,21 +81,79 @@ class AuthViewModel: ObservableObject {
         await sendOTP(phoneNumber: pendingPhoneNumber)
     }
     
-    private func completeAuthentication(phoneNumber: String) async {
-        // Check if user exists (for sign in) or proceed with signup
-        if phoneNumber == User.mockUser.phoneNumber {
-            currentUser = User.mockUser
-            isAuthenticated = true
-            saveUserSession(user: User.mockUser)
+    // MARK: - User Registration
+    func signUp(name: String, email: String?, phoneNumber: String, society: Society, blockName: String, flatNumber: String) async {
+        // First verify OTP if not already verified
+        if !otpSent || pendingPhoneNumber != phoneNumber {
+            await sendOTP(phoneNumber: phoneNumber)
+            return // Wait for OTP verification
+        }
+        
+        // OTP verified, proceed with signup
+        let userData = UserData(
+            name: name,
+            email: email,
+            phoneNumber: phoneNumber,
+            societyId: society.id,
+            societyName: society.name,
+            blockName: blockName,
+            flatNumber: flatNumber
+        )
+        
+        do {
+            try await authService.createUser(userData)
             resetOTPState()
-        } else {
-            // User doesn't exist, they need to sign up
-            // Keep OTP verification open and show signup form
-            errorMessage = "User not found. Please complete your profile."
+            
+        } catch {
+            errorMessage = "Signup failed. Please try again."
             showError = true
         }
     }
     
+    func completeSignUpAfterOTP(name: String, email: String?, society: Society, blockName: String, flatNumber: String) async {
+        let userData = UserData(
+            name: name,
+            email: email,
+            phoneNumber: pendingPhoneNumber,
+            societyId: society.id,
+            societyName: society.name,
+            blockName: blockName,
+            flatNumber: flatNumber
+        )
+        
+        do {
+            try await authService.createUser(userData)
+            resetOTPState()
+            
+        } catch {
+            errorMessage = "Signup failed. Please try again."
+            showError = true
+        }
+    }
+    
+    // MARK: - Sign Out
+    func signOut() async {
+        do {
+            try await authService.signOut()
+            resetOTPState()
+            clearAllAppData()
+            
+        } catch {
+            errorMessage = "Failed to sign out. Please try again."
+            showError = true
+        }
+    }
+    
+    func quickSignOut() {
+        // For emergency logout - attempt to sign out without waiting
+        Task {
+            try? await authService.signOut()
+            resetOTPState()
+            clearAllAppData()
+        }
+    }
+    
+    // MARK: - OTP Timer Management
     private func startOTPTimer() {
         otpTimeRemaining = 60 // 60 seconds
         canResendOTP = false
@@ -170,76 +174,22 @@ class AuthViewModel: ObservableObject {
         showOTPVerification = false
         otpSent = false
         pendingPhoneNumber = ""
-        generatedOTP = ""
+        verificationID = nil
         otpTimeRemaining = 0
         canResendOTP = false
     }
     
-    func signOut() async {
-        isLoading = true
-        
-        do {
-            // Simulate logout API call
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            
-            // Clear all user data
-            currentUser = nil
-            isAuthenticated = false
-            
-            // Reset OTP state
-            resetOTPState()
-            
-            // Clear user session
-            clearUserSession()
-            
-            // Clear any cached data (in real app, this would clear more data)
-            clearAllAppData()
-            
-        } catch {
-            errorMessage = "Failed to sign out. Please try again."
-            showError = true
-        }
-        
-        isLoading = false
-    }
-    
-    func quickSignOut() {
-        // Immediate logout without loading states (for emergency situations)
-        currentUser = nil
-        isAuthenticated = false
-        resetOTPState()
-        clearUserSession()
-        clearAllAppData()
-    }
-    
+    // MARK: - Data Management
     private func clearAllAppData() {
-        // In a real app, this would clear:
-        // - UserDefaults
-        // - Keychain data
-        // - Cached images
-        // - Downloaded books data
-        // - Notification tokens
-        // - Any temporary files
-        
-        // For now, just reset basic state
+        // Clear any cached data
         errorMessage = nil
         showError = false
+        resetOTPState()
     }
     
-    private func saveUserSession(user: User) {
-        // In a real app, save to UserDefaults or Keychain
-        // For now, just set the authenticated state
-        isAuthenticated = true
-    }
-    
-    private func clearUserSession() {
-        // In a real app, clear UserDefaults or Keychain
-        // For now, just set the authenticated state to false
-        isAuthenticated = false
-    }
-    
+    // MARK: - Validation Methods
     func validatePhoneNumber(_ phoneNumber: String) -> Bool {
-        // Basic phone number validation
+        // Basic phone number validation for Indian numbers
         let phoneRegex = "^[+]?[0-9]{10,15}$"
         let phonePredicate = NSPredicate(format: "SELF MATCHES %@", phoneRegex)
         return phonePredicate.evaluate(with: phoneNumber)
