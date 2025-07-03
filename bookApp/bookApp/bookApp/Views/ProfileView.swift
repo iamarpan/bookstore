@@ -4,34 +4,43 @@ struct ProfileView: View {
     @State private var showSignOutAlert = false
     @State private var notificationsEnabled = true
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(AppTheme.primaryGreen)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(User.mockUser.name)
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    if let currentUser = authViewModel.currentUser {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(AppTheme.primaryGreen)
                             
-                            Text("Flat: \(User.mockUser.flatNumber)")
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(currentUser.name)
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                                
+                                Text(currentUser.fullAddress)
+                                    .font(.subheadline)
+                                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                
+                                Text(currentUser.phoneNumber)
+                                    .font(.subheadline)
+                                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                
+                                if let email = currentUser.email {
+                                    Text(email)
+                                        .font(.subheadline)
+                                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                }
+                            }
                             
-                            Text(User.mockUser.phoneNumber)
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                            Spacer()
                         }
-                        
-                        Spacer()
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
                 .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 
@@ -137,6 +146,30 @@ struct ProfileView: View {
                     }
                 }
                 .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                
+                Section {
+                    Button(action: {
+                        showSignOutAlert = true
+                    }) {
+                        HStack {
+                            if authViewModel.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.errorColor))
+                                    .scaleEffect(0.8)
+                                    .frame(width: 24)
+                            } else {
+                                Image(systemName: "arrow.right.square.fill")
+                                    .foregroundColor(AppTheme.errorColor)
+                                    .frame(width: 24)
+                            }
+                            Text("Sign Out")
+                                .foregroundColor(AppTheme.errorColor)
+                            Spacer()
+                        }
+                    }
+                    .disabled(authViewModel.isLoading)
+                }
+                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
             }
             .scrollContentBackground(.hidden)
             .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
@@ -145,6 +178,16 @@ struct ProfileView: View {
             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
         }
         .accentColor(AppTheme.primaryGreen)
+        .alert("Sign Out", isPresented: $showSignOutAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Sign Out", role: .destructive) {
+                Task {
+                    await authViewModel.signOut()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to sign out? This will clear all your local data.")
+        }
     }
 }
 

@@ -4,12 +4,15 @@ struct MainTabView: View {
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var myLibraryViewModel = MyLibraryViewModel()
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @State private var showEmergencyLogoutAlert = false
     
     var body: some View {
         TabView {
             HomeView()
                 .environmentObject(homeViewModel)
                 .environmentObject(themeManager)
+                .environmentObject(authViewModel)
                 .tabItem {
                     Image(systemName: "house")
                     Text("Home")
@@ -17,6 +20,7 @@ struct MainTabView: View {
             
             AddBookView()
                 .environmentObject(themeManager)
+                .environmentObject(authViewModel)
                 .tabItem {
                     Image(systemName: "plus.square")
                     Text("Add Book")
@@ -32,6 +36,7 @@ struct MainTabView: View {
             
             ProfileView()
                 .environmentObject(themeManager)
+                .environmentObject(authViewModel)
                 .tabItem {
                     Image(systemName: "person.circle")
                     Text("Profile")
@@ -44,6 +49,18 @@ struct MainTabView: View {
         }
         .onChange(of: themeManager.isDarkMode) { _ in
             setupTabBarAppearance()
+        }
+        .onShake {
+            // Emergency logout on shake gesture
+            showEmergencyLogoutAlert = true
+        }
+        .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Logout Now", role: .destructive) {
+                authViewModel.quickSignOut()
+            }
+        } message: {
+            Text("Detected shake gesture. Do you want to logout immediately for security?")
         }
     }
     
@@ -73,9 +90,40 @@ struct MainTabView: View {
     }
 }
 
+// MARK: - Shake Gesture Extension
+extension View {
+    func onShake(perform action: @escaping () -> Void) -> some View {
+        self.modifier(ShakeGestureModifier(action: action))
+    }
+}
+
+struct ShakeGestureModifier: ViewModifier {
+    let action: () -> Void
+    
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) { _ in
+                action()
+            }
+    }
+}
+
+extension UIDevice {
+    static let deviceDidShakeNotification = Notification.Name(rawValue: "deviceDidShakeNotification")
+}
+
+extension UIWindow {
+    override open func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake {
+            NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
+        }
+    }
+}
+
 struct MainTabView_Previews: PreviewProvider {
     static var previews: some View {
         MainTabView()
             .environmentObject(ThemeManager())
+            .environmentObject(AuthViewModel())
     }
 } 

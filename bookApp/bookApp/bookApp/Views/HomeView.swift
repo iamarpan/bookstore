@@ -3,7 +3,9 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingFilterSheet = false
+    @State private var showQuickLogoutAlert = false
     
     var body: some View {
         NavigationView {
@@ -79,6 +81,32 @@ struct HomeView: View {
             .navigationTitle("BookStore")
             .navigationBarTitleDisplayMode(.large)
             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Quick Logout", role: .destructive) {
+                            showQuickLogoutAlert = true
+                        }
+                        Button("Profile") {
+                            // Switch to profile tab - this would need tab coordination
+                        }
+                    } label: {
+                        Image(systemName: "person.circle")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.primaryGreen)
+                    }
+                }
+            }
+            .alert("Quick Logout", isPresented: $showQuickLogoutAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Logout", role: .destructive) {
+                    Task {
+                        await authViewModel.signOut()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to logout?")
+            }
             .alert("Error", isPresented: $homeViewModel.showError) {
                 Button("OK") { }
             } message: {
@@ -289,6 +317,7 @@ struct HomeView_Previews: PreviewProvider {
             HomeView()
                 .environmentObject(HomeViewModel())
                 .environmentObject(ThemeManager())
+                .environmentObject(AuthViewModel())
         }
     }
 } 
