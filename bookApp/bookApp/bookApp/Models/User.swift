@@ -129,6 +129,81 @@ struct User: Identifiable, Codable {
             lastTokenUpdate: lastTokenUpdate
         )
     }
+    
+    // MARK: - UserDefaults Serialization (JSON-safe)
+    func toUserDefaultsDictionary() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        
+        return [
+            "id": id ?? "",
+            "name": name,
+            "email": email ?? "",
+            "phoneNumber": phoneNumber,
+            "societyId": societyId,
+            "societyName": societyName,
+            "blockName": blockName,
+            "flatNumber": flatNumber,
+            "profileImageURL": profileImageURL ?? "",
+            "isActive": isActive,
+            "createdAt": dateFormatter.string(from: createdAt),
+            "lastLoginAt": lastLoginAt != nil ? dateFormatter.string(from: lastLoginAt!) : "",
+            "fcmToken": fcmToken ?? "",
+            "lastTokenUpdate": lastTokenUpdate != nil ? dateFormatter.string(from: lastTokenUpdate!) : ""
+        ]
+    }
+    
+    static func fromUserDefaultsDictionary(_ data: [String: Any]) -> User? {
+        guard let id = data["id"] as? String,
+              let name = data["name"] as? String,
+              let phoneNumber = data["phoneNumber"] as? String,
+              let societyId = data["societyId"] as? String,
+              let societyName = data["societyName"] as? String,
+              let blockName = data["blockName"] as? String,
+              let flatNumber = data["flatNumber"] as? String,
+              let isActive = data["isActive"] as? Bool,
+              let createdAtString = data["createdAt"] as? String else {
+            return nil
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        let email = (data["email"] as? String)?.isEmpty == false ? data["email"] as? String : nil
+        let profileImageURL = (data["profileImageURL"] as? String)?.isEmpty == false ? data["profileImageURL"] as? String : nil
+        let fcmToken = (data["fcmToken"] as? String)?.isEmpty == false ? data["fcmToken"] as? String : nil
+        
+        let createdAt = dateFormatter.date(from: createdAtString) ?? Date()
+        
+        let lastLoginAt: Date?
+        if let lastLoginAtString = data["lastLoginAt"] as? String, !lastLoginAtString.isEmpty {
+            lastLoginAt = dateFormatter.date(from: lastLoginAtString)
+        } else {
+            lastLoginAt = nil
+        }
+        
+        let lastTokenUpdate: Date?
+        if let lastTokenUpdateString = data["lastTokenUpdate"] as? String, !lastTokenUpdateString.isEmpty {
+            lastTokenUpdate = dateFormatter.date(from: lastTokenUpdateString)
+        } else {
+            lastTokenUpdate = nil
+        }
+        
+        return User(
+            id: id,
+            name: name,
+            email: email,
+            phoneNumber: phoneNumber,
+            societyId: societyId,
+            societyName: societyName,
+            blockName: blockName,
+            flatNumber: flatNumber,
+            profileImageURL: profileImageURL,
+            isActive: isActive,
+            createdAt: createdAt,
+            lastLoginAt: lastLoginAt,
+            fcmToken: fcmToken,
+            lastTokenUpdate: lastTokenUpdate
+        )
+    }
 }
 
 // MARK: - Mock Data

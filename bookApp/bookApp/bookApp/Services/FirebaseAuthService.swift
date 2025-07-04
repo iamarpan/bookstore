@@ -12,7 +12,26 @@ class FirebaseAuthService: ObservableObject {
     private let auth = Auth.auth()
     private let db = Firestore.firestore()
     
+    // Development mode flag
+    private var isDevelopmentMode: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
+    
+    // Store the OTP code for consistent mock user IDs
+    private var mockOTPCode: String = "123456"
+    
     init() {
+        // In development mode, restore any saved mock authentication state
+        if isDevelopmentMode {
+            // Clear any potentially corrupted authentication state first
+            clearCorruptedAuthState()
+            restoreMockAuthState()
+        }
+        
         // Listen for auth state changes
         auth.addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
@@ -34,6 +53,14 @@ class FirebaseAuthService: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
         
+        // Development mode: use mock verification
+        if isDevelopmentMode {
+            print("🧪 Development mode: Using mock OTP verification")
+            // Simulate network delay
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            return "mock-verification-id"
+        }
+        
         do {
             let verificationID = try await PhoneAuthProvider.provider()
                 .verifyPhoneNumber(phoneNumber, uiDelegate: nil)
@@ -50,6 +77,53 @@ class FirebaseAuthService: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
         
+        // Development mode: use mock verification
+        if isDevelopmentMode {
+            print("🧪 Development mode: Using mock OTP verification")
+            print("🔓 Accepting any OTP code: \(verificationCode)")
+            
+            // Store the OTP code for consistent user ID
+            mockOTPCode = verificationCode
+            
+            // Simulate network delay
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            // Mock user ID for development
+            let mockUserId = "mock-user-" + verificationCode
+            
+            // In development mode, check if user exists but don't fail
+            let userExists = try await checkUserExists(uid: mockUserId)
+            
+            if userExists {
+                // User exists - sign them in directly
+                print("🧪 Existing mock user found, signing in...")
+                do {
+                    let userData = try await loadExistingUserData(uid: mockUserId)
+                    if let user = userData {
+                        self.currentUser = user
+                        self.isAuthenticated = true
+                        
+                        // Save mock auth state for persistence
+                        saveMockAuthState(user)
+                        
+                        print("🎉 User signed in successfully: \(user.name)")
+                        return
+                    } else {
+                        print("⚠️ User document exists but data is invalid")
+                        throw AuthError.userNotFound
+                    }
+                } catch {
+                    print("❌ Error loading existing user data: \(error)")
+                    throw AuthError.userNotFound
+                }
+            }
+            
+            // User doesn't exist - this is expected for signup flow
+            // Throw userNotFound so the app knows to show signup
+            print("🧪 New user - OTP verified, needs to sign up...")
+            throw AuthError.userNotFound
+        }
+        
         do {
             let credential = PhoneAuthProvider.provider()
                 .credential(withVerificationID: verificationID,
@@ -62,6 +136,10 @@ class FirebaseAuthService: ObservableObject {
             if !userExists {
                 throw AuthError.userNotFound
             }
+            
+            // User exists, load their data
+            await loadUserData(uid: result.user.uid)
+            
         } catch {
             if let authError = error as? AuthError {
                 throw authError
@@ -74,13 +152,48 @@ class FirebaseAuthService: ObservableObject {
     
     // MARK: - User Management
     func createUser(_ userData: UserData) async throws {
-        guard let currentAuthUser = auth.currentUser else {
-            throw AuthError.notAuthenticated
-        }
-        
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        
+        // Development mode: use mock user creation
+        if isDevelopmentMode {
+            print("🧪 Development mode: Creating mock user")
+            // Simulate network delay
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            // Use the same ID as verifyOTP for consistency
+            let mockUserId = "mock-user-" + mockOTPCode
+            let user = User(
+                id: mockUserId,
+                name: userData.name,
+                email: userData.email,
+                phoneNumber: userData.phoneNumber,
+                societyId: userData.societyId,
+                societyName: userData.societyName,
+                blockName: userData.blockName,
+                flatNumber: userData.flatNumber,
+                fcmToken: nil,
+                lastTokenUpdate: nil
+            )
+            
+            // Save to Firestore for consistency
+            try await db.collection("users")
+                .document(mockUserId)
+                .setData(user.toDictionary())
+            
+            self.currentUser = user
+            self.isAuthenticated = true
+            
+            // Save mock auth state for persistence
+            saveMockAuthState(user)
+            
+            return
+        }
+        
+        guard let currentAuthUser = auth.currentUser else {
+            throw AuthError.notAuthenticated
+        }
         
         do {
             // Get current FCM token
@@ -114,6 +227,19 @@ class FirebaseAuthService: ObservableObject {
     func signOut() async throws {
         isLoading = true
         defer { isLoading = false }
+        
+        // Development mode: simple mock sign out
+        if isDevelopmentMode {
+            print("🧪 Development mode: Mock sign out")
+            currentUser = nil
+            isAuthenticated = false
+            errorMessage = nil
+            
+            // Clear saved mock auth state
+            clearMockAuthState()
+            
+            return
+        }
         
         do {
             // Clear FCM token from user profile before signing out
@@ -192,9 +318,81 @@ class FirebaseAuthService: ObservableObject {
         }
     }
     
+    private func loadExistingUserData(uid: String) async throws -> User? {
+        let document = try await db.collection("users").document(uid).getDocument()
+        if let data = document.data() {
+            return User.fromDictionary(data, id: uid)
+        }
+        return nil
+    }
+    
     private func checkUserExists(uid: String) async throws -> Bool {
         let document = try await db.collection("users").document(uid).getDocument()
         return document.exists
+    }
+    
+    private func restoreMockAuthState() {
+        // Check if there's a saved mock user in UserDefaults
+        do {
+            guard let userData = UserDefaults.standard.data(forKey: "MockAuthUser") else {
+                print("🧪 No saved mock authentication state found")
+                return
+            }
+            
+            guard let userDict = try JSONSerialization.jsonObject(with: userData, options: []) as? [String: Any] else {
+                print("⚠️ Invalid saved authentication data, clearing...")
+                clearMockAuthState()
+                return
+            }
+            
+            guard let user = User.fromUserDefaultsDictionary(userDict) else {
+                print("⚠️ Could not restore user from saved data, clearing...")
+                clearMockAuthState()
+                return
+            }
+            
+            print("🧪 Restoring mock authentication state for user: \(user.name)")
+            self.currentUser = user
+            self.isAuthenticated = true
+            
+        } catch {
+            print("❌ Error restoring mock authentication state: \(error)")
+            print("🧪 Clearing corrupted authentication data...")
+            clearMockAuthState()
+        }
+    }
+    
+    private func saveMockAuthState(_ user: User) {
+        // Save the user data to UserDefaults for persistence using JSON-safe dictionary
+        do {
+            let jsonSafeDict = user.toUserDefaultsDictionary()
+            let userData = try JSONSerialization.data(withJSONObject: jsonSafeDict, options: [])
+            UserDefaults.standard.set(userData, forKey: "MockAuthUser")
+            print("🧪 Mock authentication state saved for user: \(user.name)")
+        } catch {
+            print("❌ Failed to save mock authentication state: \(error)")
+        }
+    }
+    
+    private func clearMockAuthState() {
+        // Clear the saved mock authentication state
+        UserDefaults.standard.removeObject(forKey: "MockAuthUser")
+        print("🧪 Mock authentication state cleared")
+    }
+    
+    private func clearCorruptedAuthState() {
+        // Check if there's any corrupted authentication data
+        if let userData = UserDefaults.standard.data(forKey: "MockAuthUser") {
+            do {
+                let _ = try JSONSerialization.jsonObject(with: userData, options: [])
+                // If we can parse it as JSON, it's probably fine
+                print("🧪 Existing authentication data appears valid")
+            } catch {
+                // If we can't parse it, clear the corrupted data
+                print("⚠️ Found corrupted authentication data, clearing...")
+                clearMockAuthState()
+            }
+        }
     }
 }
 

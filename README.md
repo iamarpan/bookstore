@@ -68,7 +68,7 @@ bookstore/
 │   ├── bookApp.xcodeproj/         # Xcode project file
 │   ├── Info.plist                 # App configuration
 │   └── bookApp/                   # Source code
-│       ├── BookstoreApp.swift     # Main app entry point
+│       ├── BookClubApp.swift      # Main app entry point
 │       ├── ContentView.swift      # Root view
 │       ├── Models/                # Data models
 │       │   ├── Book.swift

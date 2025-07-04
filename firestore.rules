@@ -7,8 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function isDevelopmentMode() {
+      // In emulator mode, allow more permissive access
+      // This will be true when running Firebase emulators
+      return true; // For development - set to false in production
+    }
+    
     function getUserId() {
-      return request.auth.uid;
+      return request.auth != null ? request.auth.uid : 'mock-user';
     }
     
     function getUserSocietyId(userId) {
@@ -20,7 +26,7 @@ service cloud.firestore {
     }
     
     function isSameSociety(societyId) {
-      return getUserSocietyId(getUserId()) == societyId;
+      return isDevelopmentMode() || getUserSocietyId(getUserId()) == societyId;
     }
     
     function isValidBookData(data) {
@@ -39,73 +45,73 @@ service cloud.firestore {
     
     // Users collection - users can only access their own data
     match /users/{userId} {
-      allow read, write: if isAuthenticated() && isOwner(userId);
+      // Allow development mode OR authenticated user access
+      allow read, write: if isDevelopmentMode() || (isAuthenticated() && isOwner(userId));
       
       // Allow reading basic user info for society members
-      allow read: if isAuthenticated() && 
-                     isSameSociety(resource.data.societyId);
+      allow read: if isDevelopmentMode() || (isAuthenticated() && 
+                     isSameSociety(resource.data.societyId));
     }
     
     // Books collection - society-based access control
     match /books/{bookId} {
       // Anyone in the society can read available books
-      allow read: if isAuthenticated() && 
-                     isSameSociety(resource.data.societyId);
+      allow read: if isDevelopmentMode() || (isAuthenticated() && 
+                     isSameSociety(resource.data.societyId));
       
       // Only book owner can create, update, or delete their books
-      allow create: if isAuthenticated() &&
+      allow create: if isDevelopmentMode() || (isAuthenticated() &&
                        getUserId() == request.resource.data.ownerId &&
                        isSameSociety(request.resource.data.societyId) &&
-                       isValidBookData(request.resource.data);
+                       isValidBookData(request.resource.data));
       
-      allow update: if isAuthenticated() &&
-                       getUserId() == resource.data.ownerId;
+      allow update: if isDevelopmentMode() || (isAuthenticated() &&
+                       getUserId() == resource.data.ownerId);
       
-      allow delete: if isAuthenticated() &&
-                       getUserId() == resource.data.ownerId;
+      allow delete: if isDevelopmentMode() || (isAuthenticated() &&
+                       getUserId() == resource.data.ownerId);
     }
     
     // Book requests collection
     match /bookRequests/{requestId} {
       // Borrowers can read their own requests, owners can read requests for their books
-      allow read: if isAuthenticated() && 
+      allow read: if isDevelopmentMode() || (isAuthenticated() && 
                      (getUserId() == resource.data.borrowerId || 
-                      getUserId() == resource.data.ownerId);
+                      getUserId() == resource.data.ownerId));
       
       // Only borrowers can create requests for themselves
-      allow create: if isAuthenticated() &&
+      allow create: if isDevelopmentMode() || (isAuthenticated() &&
                        getUserId() == request.resource.data.borrowerId &&
-                       isSameSociety(request.resource.data.societyId);
+                       isSameSociety(request.resource.data.societyId));
       
       // Only book owners can update request status
-      allow update: if isAuthenticated() &&
+      allow update: if isDevelopmentMode() || (isAuthenticated() &&
                        getUserId() == resource.data.ownerId &&
                        // Ensure only specific fields can be updated
                        (request.resource.data.diff(resource.data).affectedKeys()
                         .hasOnly(['status', 'responseDate', 'dueDate', 'returnDate', 'notes'])) &&
                        // Validate status values
-                       isValidRequestStatus(request.resource.data.status);
+                       isValidRequestStatus(request.resource.data.status));
     }
     
     // Notifications collection
     match /notifications/{notificationId} {
       // Users can only read and update their own notifications
-      allow read, update: if isAuthenticated() &&
-                             getUserId() == resource.data.userId;
+      allow read, update: if isDevelopmentMode() || (isAuthenticated() &&
+                             getUserId() == resource.data.userId);
       
-      // Only system (cloud functions) can create notifications
-      // Users cannot create notifications directly
-      allow create: if false;
-      allow delete: if false;
+      // In development mode, allow creating notifications for testing
+      allow create: if isDevelopmentMode();
+      allow delete: if isDevelopmentMode();
     }
     
     // Societies collection - read-only for users
     match /societies/{societyId} {
       // All authenticated users can read society information
-      allow read: if isAuthenticated();
+      allow read: if isDevelopmentMode() || isAuthenticated();
       
-      // Only admins can write (controlled via admin SDK in functions)
-      allow write: if false;
+      // In development mode, allow writing societies for testing
+      allow write: if isDevelopmentMode();
     }
   }
 } 

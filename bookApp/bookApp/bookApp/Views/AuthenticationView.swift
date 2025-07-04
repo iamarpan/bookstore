@@ -5,43 +5,63 @@ struct AuthenticationView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @State private var isSignUp = false
     
+    // Development mode flag
+    private var isDevelopmentMode: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
+    
     var body: some View {
         ZStack {
             AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode)
                 .ignoresSafeArea()
             
-            if authViewModel.showOTPVerification {
-                // OTP Verification View
-                OTPVerificationView(isSignUp: isSignUp)
-                    .environmentObject(authViewModel)
-                    .environmentObject(themeManager)
-            } else if isSignUp {
-                // Full-screen SignUp with toggle at bottom
-                VStack(spacing: 0) {
-                    SignUpView()
-                        .environmentObject(authViewModel)
-                        .environmentObject(themeManager)
-                    
-                    // Toggle at bottom
-                    AuthToggleView(isSignUp: $isSignUp, isDarkMode: themeManager.isDarkMode)
-                        .padding(.bottom, 40)
-                        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+            VStack(spacing: 0) {
+                // Development mode banner
+                if isDevelopmentMode {
+                    DevelopmentBanner()
                 }
-            } else {
-                // Original layout for SignIn
-                VStack(spacing: 0) {
-                    // Header
-                    AuthHeaderView(isDarkMode: themeManager.isDarkMode)
-                    
-                    // SignIn Form
-                    SignInView()
+                
+                // Main content
+                if authViewModel.showOTPVerification {
+                    // OTP Verification View
+                    OTPVerificationView(isSignUp: isSignUp)
                         .environmentObject(authViewModel)
                         .environmentObject(themeManager)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    // Toggle at bottom
-                    AuthToggleView(isSignUp: $isSignUp, isDarkMode: themeManager.isDarkMode)
-                        .padding(.bottom, 40)
+                } else if isSignUp || authViewModel.otpVerifiedNeedSignup {
+                    // Full-screen SignUp with toggle at bottom
+                    // Show signup if manually selected OR if OTP verified but user needs signup
+                    VStack(spacing: 0) {
+                        SignUpView()
+                            .environmentObject(authViewModel)
+                            .environmentObject(themeManager)
+                        
+                        // Only show toggle if not coming from OTP verification
+                        if !authViewModel.otpVerifiedNeedSignup {
+                            AuthToggleView(isSignUp: $isSignUp, isDarkMode: themeManager.isDarkMode)
+                                .padding(.bottom, 40)
+                                .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+                        }
+                    }
+                } else {
+                    // Original layout for SignIn
+                    VStack(spacing: 0) {
+                        // Header
+                        AuthHeaderView(isDarkMode: themeManager.isDarkMode)
+                        
+                        // SignIn Form
+                        SignInView()
+                            .environmentObject(authViewModel)
+                            .environmentObject(themeManager)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        
+                        // Toggle at bottom
+                        AuthToggleView(isSignUp: $isSignUp, isDarkMode: themeManager.isDarkMode)
+                            .padding(.bottom, 40)
+                    }
                 }
             }
         }
@@ -52,6 +72,31 @@ struct AuthenticationView: View {
         } message: {
             Text(authViewModel.errorMessage ?? "An unknown error occurred")
         }
+    }
+}
+
+struct DevelopmentBanner: View {
+    var body: some View {
+        HStack {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+                .font(.caption)
+            
+            Text("Development Mode - Mock Authentication")
+                .font(.caption)
+                .foregroundColor(.primary)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.1))
+        .overlay(
+            Rectangle()
+                .fill(Color.orange)
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 }
 
@@ -66,7 +111,7 @@ struct AuthHeaderView: View {
                     .font(.system(size: 40))
                     .foregroundColor(AppTheme.primaryGreen)
                 
-                Text("BookstoreApp")
+                Text("Book Club")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
@@ -194,17 +239,17 @@ struct SignUpView: View {
     
     var isFormValid: Bool {
         !name.isEmpty &&
-        !phoneNumber.isEmpty &&
         selectedSociety != nil &&
         !selectedBlock.isEmpty &&
         !flatNumber.isEmpty &&
         (email.isEmpty || authViewModel.validateEmail(email)) &&
-        authViewModel.validatePhoneNumber(countryCode + phoneNumber)
+        (authViewModel.otpVerifiedNeedSignup || 
+         (!phoneNumber.isEmpty && authViewModel.validatePhoneNumber(countryCode + phoneNumber)))
     }
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 24) {
+            VStack(spacing: 24) {
                 // App Header Section
                 VStack(spacing: 12) {
                     VStack(spacing: 8) {
@@ -212,7 +257,7 @@ struct SignUpView: View {
                             .font(.system(size: 40))
                             .foregroundColor(AppTheme.primaryGreen)
                         
-                        Text("BookstoreApp")
+                        Text("Book Club")
                             .font(.title)
                             .fontWeight(.bold)
                             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
@@ -258,48 +303,82 @@ struct SignUpView: View {
                         isDarkMode: themeManager.isDarkMode
                     )
                     
-                    // Phone Number Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Phone Number")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                        
-                        HStack(spacing: 12) {
-                            // Country Code Picker
-                            Menu {
-                                Button("+91 India") { countryCode = "+91" }
-                                Button("+1 USA") { countryCode = "+1" }
-                                Button("+44 UK") { countryCode = "+44" }
-                                Button("+61 Australia") { countryCode = "+61" }
-                                Button("+81 Japan") { countryCode = "+81" }
-                                Button("+49 Germany") { countryCode = "+49" }
-                                Button("+33 France") { countryCode = "+33" }
-                                Button("+86 China") { countryCode = "+86" }
-                                Button("+7 Russia") { countryCode = "+7" }
-                                Button("+55 Brazil") { countryCode = "+55" }
-                            } label: {
-                                HStack {
-                                    Text(countryCode)
-                                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                                    Image(systemName: "chevron.down")
-                                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
-                                        .font(.caption)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 16)
-                                .background(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
-                                .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(AppTheme.dynamicTertiaryText(themeManager.isDarkMode).opacity(0.3), lineWidth: 1)
-                                )
-                            }
+                    // Phone Number Field (only show if not coming from OTP verification)
+                    if !authViewModel.otpVerifiedNeedSignup {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Phone Number")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                             
-                            // Phone Number Input
-                            TextField("Enter your phone number", text: $phoneNumber)
-                                .keyboardType(.phonePad)
-                                .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                            HStack(spacing: 12) {
+                                // Country Code Picker
+                                Menu {
+                                    Button("+91 India") { countryCode = "+91" }
+                                    Button("+1 USA") { countryCode = "+1" }
+                                    Button("+44 UK") { countryCode = "+44" }
+                                    Button("+61 Australia") { countryCode = "+61" }
+                                    Button("+81 Japan") { countryCode = "+81" }
+                                    Button("+49 Germany") { countryCode = "+49" }
+                                    Button("+33 France") { countryCode = "+33" }
+                                    Button("+86 China") { countryCode = "+86" }
+                                    Button("+7 Russia") { countryCode = "+7" }
+                                    Button("+55 Brazil") { countryCode = "+55" }
+                                } label: {
+                                    HStack {
+                                        Text(countryCode)
+                                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                                        Image(systemName: "chevron.down")
+                                            .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                                            .font(.caption)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 16)
+                                    .background(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppTheme.dynamicTertiaryText(themeManager.isDarkMode).opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                
+                                // Phone Number Input
+                                TextField("Enter your phone number", text: $phoneNumber)
+                                    .keyboardType(.phonePad)
+                                    .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                            }
+                        }
+                    } else {
+                        // Show verified phone number message
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Phone Number")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.system(size: 16))
+                                
+                                Text(authViewModel.pendingPhoneNumber)
+                                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                                
+                                Spacer()
+                                
+                                Text("Verified")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                            )
                         }
                     }
                     
@@ -355,14 +434,26 @@ struct SignUpView: View {
                 VStack(spacing: 20) {
                     Button {
                         Task {
-                            await authViewModel.signUp(
-                                name: name,
-                                email: email.isEmpty ? nil : email,
-                                phoneNumber: countryCode + phoneNumber,
-                                society: selectedSociety!,
-                                blockName: selectedBlock,
-                                flatNumber: flatNumber
-                            )
+                            if authViewModel.otpVerifiedNeedSignup {
+                                // OTP already verified, complete signup
+                                await authViewModel.completeSignUpAfterOTP(
+                                    name: name,
+                                    email: email.isEmpty ? nil : email,
+                                    society: selectedSociety!,
+                                    blockName: selectedBlock,
+                                    flatNumber: flatNumber
+                                )
+                            } else {
+                                // Normal signup flow with phone verification
+                                await authViewModel.signUp(
+                                    name: name,
+                                    email: email.isEmpty ? nil : email,
+                                    phoneNumber: countryCode + phoneNumber,
+                                    society: selectedSociety!,
+                                    blockName: selectedBlock,
+                                    flatNumber: flatNumber
+                                )
+                            }
                         }
                     } label: {
                         HStack {
@@ -371,7 +462,7 @@ struct SignUpView: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .scaleEffect(0.8)
                             } else {
-                                Text("Create Account")
+                                Text(authViewModel.otpVerifiedNeedSignup ? "Complete Registration" : "Create Account")
                                     .fontWeight(.semibold)
                             }
                         }
@@ -382,12 +473,10 @@ struct SignUpView: View {
                         .cornerRadius(12)
                     }
                     .disabled(!isFormValid || authViewModel.isLoading)
+                    .padding(.bottom, 20)
                 }
-                .padding(.top, 20)
                 
-                // Bottom spacer to ensure button is always visible above toggle
-                Color.clear
-                    .frame(height: 120) // Space for toggle section + safe area
+                Spacer(minLength: 100)
             }
             .padding(.horizontal, 32)
         }
@@ -398,11 +487,6 @@ struct SignUpView: View {
                 selectedSociety: $selectedSociety,
                 isDarkMode: themeManager.isDarkMode
             )
-            .onDisappear {
-                if selectedSociety != nil {
-                    selectedBlock = "" // Reset block when society changes
-                }
-            }
         }
     }
 }
@@ -413,6 +497,7 @@ struct FormField: View {
     let placeholder: String
     let keyboardType: UIKeyboardType
     let isDarkMode: Bool
+    @FocusState private var isFocused: Bool
     
     init(title: String, text: Binding<String>, placeholder: String, keyboardType: UIKeyboardType = .default, isDarkMode: Bool) {
         self.title = title
@@ -432,6 +517,10 @@ struct FormField: View {
             TextField(placeholder, text: $text)
                 .keyboardType(keyboardType)
                 .textFieldStyle(CustomTextFieldStyle(isDarkMode: isDarkMode))
+                .focused($isFocused)
+                .onTapGesture {
+                    isFocused = true
+                }
         }
     }
 }
@@ -441,13 +530,15 @@ struct CustomTextFieldStyle: TextFieldStyle {
     
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(AppTheme.dynamicCardBackground(isDarkMode))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(AppTheme.dynamicTertiaryText(isDarkMode).opacity(0.3), lineWidth: 1)
             )
+            .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
     }
 }
 

@@ -1,13 +1,13 @@
 //
-//  bookAppUITestsLaunchTests.swift
-//  bookAppUITests
+//  bookClubUITestsLaunchTests.swift
+//  bookClubUITests
 //
 //  Created by arpan srivastava on 03/07/25.
 //
 
 import XCTest
 
-final class bookAppUITestsLaunchTests: XCTestCase {
+final class bookClubUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

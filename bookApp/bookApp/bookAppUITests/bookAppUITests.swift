@@ -1,13 +1,13 @@
 //
-//  bookAppUITests.swift
-//  bookAppUITests
+//  bookClubUITests.swift
+//  bookClubUITests
 //
 //  Created by arpan srivastava on 03/07/25.
 //
 
 import XCTest
 
-final class bookAppUITests: XCTestCase {
+final class bookClubUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

@@ -11,7 +11,7 @@ struct HomeView: View {
         NavigationView {
             mainContent
                 .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
-                .navigationTitle("BookStore")
+                .navigationTitle("Book Club")
                 .navigationBarTitleDisplayMode(.large)
                 .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                 .toolbar {

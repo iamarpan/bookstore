@@ -10,6 +10,7 @@ class AuthViewModel: ObservableObject {
     @Published var canResendOTP = false
     @Published var otpSent = false
     @Published var showError = false
+    @Published var otpVerifiedNeedSignup = false
     
     // Available societies for selection
     @Published var availableSocieties: [Society] = Society.mockSocieties
@@ -66,9 +67,16 @@ class AuthViewModel: ObservableObject {
             
         } catch AuthError.userNotFound {
             // User doesn't exist, they need to sign up
-            // Keep OTP verification open but show signup form
-            errorMessage = "User not found. Please complete your profile."
-            showError = true
+            // This is expected for new users - not an error
+            print("🧪 OTP verified successfully - new user needs to sign up")
+            
+            // Hide OTP screen and show signup form
+            showOTPVerification = false
+            otpVerifiedNeedSignup = true
+            
+            // Clear any error messages since this is expected behavior
+            errorMessage = nil
+            showError = false
             
         } catch {
             errorMessage = "Invalid OTP. Please try again."
@@ -102,7 +110,13 @@ class AuthViewModel: ObservableObject {
         
         do {
             try await authService.createUser(userData)
+            
+            // Clear all signup-related state
+            otpVerifiedNeedSignup = false
+            showOTPVerification = false
             resetOTPState()
+            
+            print("🎉 Signup completed successfully, navigating to home")
             
         } catch {
             errorMessage = "Signup failed. Please try again."
@@ -123,7 +137,13 @@ class AuthViewModel: ObservableObject {
         
         do {
             try await authService.createUser(userData)
+            
+            // Clear all signup-related state
+            otpVerifiedNeedSignup = false
+            showOTPVerification = false
             resetOTPState()
+            
+            print("🎉 Signup completed successfully, navigating to home")
             
         } catch {
             errorMessage = "Signup failed. Please try again."
@@ -177,6 +197,7 @@ class AuthViewModel: ObservableObject {
         verificationID = nil
         otpTimeRemaining = 0
         canResendOTP = false
+        otpVerifiedNeedSignup = false
     }
     
     // MARK: - Data Management
@@ -184,6 +205,7 @@ class AuthViewModel: ObservableObject {
         // Clear any cached data
         errorMessage = nil
         showError = false
+        otpVerifiedNeedSignup = false
         resetOTPState()
     }
     

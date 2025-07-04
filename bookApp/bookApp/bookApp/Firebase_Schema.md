@@ -1,7 +1,7 @@
-# Firebase Firestore Schema for BookstoreApp
+# Firebase Firestore Schema for Book Club
 
 ## Overview
-This document outlines the complete Firebase Firestore database schema for the apartment society BookstoreApp, including collections, document structures, relationships, and security considerations.
+This document outlines the complete Firebase Firestore database schema for the apartment society Book Club app, including collections, document structures, relationships, and security considerations.
 
 ## Collections Structure
 
@@ -314,7 +314,7 @@ exports.overdueReminders = functions.pubsub
 import Firebase
 
 @main
-struct BookstoreApp: App {
+struct BookClubApp: App {
     init() {
         FirebaseApp.configure()
     }
@@ -377,4 +377,4 @@ class BookService: ObservableObject {
 2. **Export Critical Data**: Regular exports of users and books data
 3. **Version Control**: Track schema changes and migrations
 
-This schema provides a robust foundation for your BookstoreApp with proper relationships, security, and scalability considerations. 
+This schema provides a robust foundation for your Book Club app with proper relationships, security, and scalability considerations. 
