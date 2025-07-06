@@ -67,12 +67,13 @@ struct BookClubApp: App {
         // Storage emulator configuration
         Storage.storage().useEmulator(withHost: "127.0.0.1", port: 9199)
         
-        // Auth emulator configuration
-        Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
+        // NOTE: Auth emulator is disabled because it doesn't support real phone authentication
+        // The app uses mock authentication in development mode instead
+        // If you need to test with Auth emulator, use test phone numbers like +1 650-555-3434
         
         print("✅ Firebase emulators configured")
         print("📋 Firestore: 127.0.0.1:8080")
         print("📋 Storage: 127.0.0.1:9199")
-        print("📋 Auth: 127.0.0.1:9099")
+        print("📋 Auth: Using production Firebase (with mock mode in FirebaseAuthService)")
     }
 } 
