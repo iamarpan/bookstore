@@ -1,12 +1,30 @@
 import UIKit
+import FirebaseCore
 import FirebaseMessaging
 import UserNotifications
 import FirebaseAuth
 import FirebaseFirestore
+import GoogleSignIn
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        
+        // Initialize Firebase first
+        FirebaseApp.configure()
+        print("🔥 Firebase configured successfully")
+        
+        // Configure Google Sign-In (optional during development)
+        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let clientId = plist["CLIENT_ID"] as? String {
+            
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
+            print("✅ Google Sign-In configured successfully")
+        } else {
+            print("⚠️ GoogleService-Info.plist not found or CLIENT_ID missing - Google Sign-In will not work")
+            print("📝 This is expected during development. Add proper GoogleService-Info.plist when ready.")
+        }
         
         // Set up notification center delegate
         UNUserNotificationCenter.current().delegate = self
@@ -19,13 +37,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
         
-        // Register for remote notifications
+        #if !targetEnvironment(simulator)
+        // Register for remote notifications only on real devices
         application.registerForRemoteNotifications()
+        #endif
         
         // Set FCM messaging delegate
         Messaging.messaging().delegate = self
         
         return true
+    }
+    
+    // MARK: - URL Scheme Handling for Google Sign-In
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
     
     // MARK: - FCM Token Management
@@ -39,6 +64,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func saveFCMToken(_ token: String) {
+        #if targetEnvironment(simulator)
+        print("📲 Simulator detected. Skipping FCM token save.")
+        return
+        #endif
+
         guard let userId = Auth.auth().currentUser?.uid else {
             print("No authenticated user to save FCM token")
             return

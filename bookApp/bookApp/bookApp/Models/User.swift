@@ -5,11 +5,11 @@ struct User: Identifiable, Codable {
     var id: String?
     let name: String
     let email: String?
-    let phoneNumber: String
+    let mobile: String
     let societyId: String
     let societyName: String
-    let blockName: String
-    let flatNumber: String
+    let floor: String
+    let flat: String
     let profileImageURL: String?
     let isActive: Bool
     let createdAt: Date
@@ -17,15 +17,15 @@ struct User: Identifiable, Codable {
     let fcmToken: String?
     let lastTokenUpdate: Date?
     
-    init(name: String, email: String? = nil, phoneNumber: String, societyId: String, societyName: String, blockName: String, flatNumber: String, profileImageURL: String? = nil, isActive: Bool = true) {
+    init(name: String, email: String? = nil, mobile: String, societyId: String, societyName: String, floor: String, flat: String, profileImageURL: String? = nil, isActive: Bool = true) {
         self.id = UUID().uuidString
         self.name = name
         self.email = email
-        self.phoneNumber = phoneNumber
+        self.mobile = mobile
         self.societyId = societyId
         self.societyName = societyName
-        self.blockName = blockName
-        self.flatNumber = flatNumber
+        self.floor = floor
+        self.flat = flat
         self.profileImageURL = profileImageURL
         self.isActive = isActive
         self.createdAt = Date()
@@ -35,15 +35,15 @@ struct User: Identifiable, Codable {
     }
     
     // Firebase initializer
-    init(id: String, name: String, email: String? = nil, phoneNumber: String, societyId: String, societyName: String, blockName: String, flatNumber: String, profileImageURL: String? = nil, isActive: Bool = true, createdAt: Date = Date(), lastLoginAt: Date? = nil, fcmToken: String? = nil, lastTokenUpdate: Date? = nil) {
+    init(id: String, name: String, email: String? = nil, mobile: String, societyId: String, societyName: String, floor: String, flat: String, profileImageURL: String? = nil, isActive: Bool = true, createdAt: Date = Date(), lastLoginAt: Date? = nil, fcmToken: String? = nil, lastTokenUpdate: Date? = nil) {
         self.id = id
         self.name = name
         self.email = email
-        self.phoneNumber = phoneNumber
+        self.mobile = mobile
         self.societyId = societyId
         self.societyName = societyName
-        self.blockName = blockName
-        self.flatNumber = flatNumber
+        self.floor = floor
+        self.flat = flat
         self.profileImageURL = profileImageURL
         self.isActive = isActive
         self.createdAt = createdAt
@@ -54,7 +54,7 @@ struct User: Identifiable, Codable {
     
     // Convenience computed property for display
     var fullAddress: String {
-        return "\(blockName)-\(flatNumber), \(societyName)"
+        return "\(floor)-\(flat), \(societyName)"
     }
     
     // MARK: - Firebase Serialization
@@ -62,11 +62,11 @@ struct User: Identifiable, Codable {
         return [
             "name": name,
             "email": email ?? "",
-            "phoneNumber": phoneNumber,
+            "mobile": mobile,
             "societyId": societyId,
             "societyName": societyName,
-            "blockName": blockName,
-            "flatNumber": flatNumber,
+            "floor": floor,
+            "flat": flat,
             "profileImageURL": profileImageURL ?? "",
             "isActive": isActive,
             "createdAt": Timestamp(date: createdAt),
@@ -78,11 +78,11 @@ struct User: Identifiable, Codable {
     
     static func fromDictionary(_ data: [String: Any], id: String) -> User? {
         guard let name = data["name"] as? String,
-              let phoneNumber = data["phoneNumber"] as? String,
+              let mobile = data["mobile"] as? String,
               let societyId = data["societyId"] as? String,
               let societyName = data["societyName"] as? String,
-              let blockName = data["blockName"] as? String,
-              let flatNumber = data["flatNumber"] as? String,
+              let floor = data["floor"] as? String,
+              let flat = data["flat"] as? String,
               let isActive = data["isActive"] as? Bool else {
             return nil
         }
@@ -116,11 +116,11 @@ struct User: Identifiable, Codable {
             id: id,
             name: name,
             email: email,
-            phoneNumber: phoneNumber,
+            mobile: mobile,
             societyId: societyId,
             societyName: societyName,
-            blockName: blockName,
-            flatNumber: flatNumber,
+            floor: floor,
+            flat: flat,
             profileImageURL: profileImageURL,
             isActive: isActive,
             createdAt: createdAt,
@@ -138,11 +138,11 @@ struct User: Identifiable, Codable {
             "id": id ?? "",
             "name": name,
             "email": email ?? "",
-            "phoneNumber": phoneNumber,
+            "mobile": mobile,
             "societyId": societyId,
             "societyName": societyName,
-            "blockName": blockName,
-            "flatNumber": flatNumber,
+            "floor": floor,
+            "flat": flat,
             "profileImageURL": profileImageURL ?? "",
             "isActive": isActive,
             "createdAt": dateFormatter.string(from: createdAt),
@@ -155,11 +155,11 @@ struct User: Identifiable, Codable {
     static func fromUserDefaultsDictionary(_ data: [String: Any]) -> User? {
         guard let id = data["id"] as? String,
               let name = data["name"] as? String,
-              let phoneNumber = data["phoneNumber"] as? String,
+              let mobile = data["mobile"] as? String,
               let societyId = data["societyId"] as? String,
               let societyName = data["societyName"] as? String,
-              let blockName = data["blockName"] as? String,
-              let flatNumber = data["flatNumber"] as? String,
+              let floor = data["floor"] as? String,
+              let flat = data["flat"] as? String,
               let isActive = data["isActive"] as? Bool,
               let createdAtString = data["createdAt"] as? String else {
             return nil
@@ -191,11 +191,11 @@ struct User: Identifiable, Codable {
             id: id,
             name: name,
             email: email,
-            phoneNumber: phoneNumber,
+            mobile: mobile,
             societyId: societyId,
             societyName: societyName,
-            blockName: blockName,
-            flatNumber: flatNumber,
+            floor: floor,
+            flat: flat,
             profileImageURL: profileImageURL,
             isActive: isActive,
             createdAt: createdAt,
@@ -211,10 +211,10 @@ extension User {
     static let mockUser = User(
         name: "Demo User",
         email: "demo@example.com",
-        phoneNumber: "+919876543210",
+        mobile: "+919876543210",
         societyId: Society.mockSocieties[0].id,
         societyName: Society.mockSocieties[0].name,
-        blockName: "A",
-        flatNumber: "101"
+        floor: "A",
+        flat: "101"
     )
 } 

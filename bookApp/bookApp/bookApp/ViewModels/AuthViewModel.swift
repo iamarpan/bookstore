@@ -3,14 +3,12 @@ import Foundation
 @MainActor
 class AuthViewModel: ObservableObject {
     @Published var authService = FirebaseAuthService()
-    @Published var showOTPVerification = false
-    @Published var verificationID: String?
-    @Published var pendingPhoneNumber = ""
-    @Published var otpTimeRemaining = 0
-    @Published var canResendOTP = false
-    @Published var otpSent = false
+    @Published var showRegistrationForm = false
     @Published var showError = false
-    @Published var otpVerifiedNeedSignup = false
+    @Published var needsRegistration = false
+    
+    // User profile data for registration
+    @Published var name: String = ""
     
     // Available societies for selection
     @Published var availableSocieties: [Society] = Society.mockSocieties
@@ -34,119 +32,59 @@ class AuthViewModel: ObservableObject {
         // The authService will automatically update isAuthenticated when the state changes
     }
     
-    // MARK: - Phone Authentication Flow
-    func sendOTP(phoneNumber: String) async {
+    // MARK: - Google Sign-In Flow
+    func signInWithGoogle() async {
         do {
-            let verificationID = try await authService.sendOTP(phoneNumber: phoneNumber)
-            self.verificationID = verificationID
-            self.pendingPhoneNumber = phoneNumber
-            self.showOTPVerification = true
-            self.otpSent = true
-            
-            // Start countdown timer
-            startOTPTimer()
-            
-        } catch {
-            errorMessage = "Failed to send OTP. Please try again."
-            showError = true
-        }
-    }
-    
-    func verifyOTP(_ enteredOTP: String) async {
-        guard let verificationID = verificationID else { 
-            errorMessage = "No verification ID available. Please request OTP again."
-            showError = true
-            return 
-        }
-        
-        do {
-            try await authService.verifyOTP(verificationID: verificationID, 
-                                          verificationCode: enteredOTP)
-            // User signed in successfully, reset OTP state
-            resetOTPState()
+            try await authService.signInWithGoogle()
+            // User signed in successfully
+            needsRegistration = false
+            showRegistrationForm = false
             
         } catch AuthError.userNotFound {
-            // User doesn't exist, they need to sign up
-            // This is expected for new users - not an error
-            print("🧪 OTP verified successfully - new user needs to sign up")
-            
-            // Hide OTP screen and show signup form
-            showOTPVerification = false
-            otpVerifiedNeedSignup = true
+            // User needs to complete registration
+            self.name = authService.googleUserName ?? ""
+            needsRegistration = true
+            showRegistrationForm = true
             
             // Clear any error messages since this is expected behavior
             errorMessage = nil
             showError = false
             
         } catch {
-            errorMessage = "Invalid OTP. Please try again."
+            errorMessage = "Google Sign-In failed. Please try again."
             showError = true
         }
-    }
-    
-    func resendOTP() async {
-        guard canResendOTP else { return }
-        await sendOTP(phoneNumber: pendingPhoneNumber)
     }
     
     // MARK: - User Registration
-    func signUp(name: String, email: String?, phoneNumber: String, society: Society, blockName: String, flatNumber: String) async {
-        // First verify OTP if not already verified
-        if !otpSent || pendingPhoneNumber != phoneNumber {
-            await sendOTP(phoneNumber: phoneNumber)
-            return // Wait for OTP verification
-        }
-        
-        // OTP verified, proceed with signup
-        let userData = UserData(
-            name: name,
-            email: email,
-            phoneNumber: phoneNumber,
-            societyId: society.id,
-            societyName: society.name,
-            blockName: blockName,
-            flatNumber: flatNumber
-        )
-        
-        do {
-            try await authService.createUser(userData)
-            
-            // Clear all signup-related state
-            otpVerifiedNeedSignup = false
-            showOTPVerification = false
-            resetOTPState()
-            
-            print("🎉 Signup completed successfully, navigating to home")
-            
-        } catch {
-            errorMessage = "Signup failed. Please try again."
+    func completeRegistration(mobile: String, society: Society?, floor: String, flat: String) async {
+        guard let society = society else {
+            errorMessage = "Please select a society."
             showError = true
+            return
         }
-    }
-    
-    func completeSignUpAfterOTP(name: String, email: String?, society: Society, blockName: String, flatNumber: String) async {
+
         let userData = UserData(
-            name: name,
-            email: email,
-            phoneNumber: pendingPhoneNumber,
+            name: self.name,
+            email: authService.googleUserEmail,
+            mobile: mobile,
             societyId: society.id,
             societyName: society.name,
-            blockName: blockName,
-            flatNumber: flatNumber
+            floor: floor,
+            flat: flat
         )
         
         do {
-            try await authService.createUser(userData)
+            try await authService.completeRegistration(userData: userData)
             
-            // Clear all signup-related state
-            otpVerifiedNeedSignup = false
-            showOTPVerification = false
-            resetOTPState()
+            // Clear all registration-related state
+            needsRegistration = false
+            showRegistrationForm = false
             
-            print("🎉 Signup completed successfully, navigating to home")
+            print("🎉 Registration completed successfully, navigating to home")
             
         } catch {
-            errorMessage = "Signup failed. Please try again."
+            errorMessage = "Registration failed. Please try again."
             showError = true
         }
     }
@@ -155,8 +93,7 @@ class AuthViewModel: ObservableObject {
     func signOut() async {
         do {
             try await authService.signOut()
-            resetOTPState()
-            clearAllAppData()
+            resetRegistrationState()
             
         } catch {
             errorMessage = "Failed to sign out. Please try again."
@@ -168,36 +105,17 @@ class AuthViewModel: ObservableObject {
         // For emergency logout - attempt to sign out without waiting
         Task {
             try? await authService.signOut()
-            resetOTPState()
-            clearAllAppData()
+            resetRegistrationState()
         }
     }
     
-    // MARK: - OTP Timer Management
-    private func startOTPTimer() {
-        otpTimeRemaining = 60 // 60 seconds
-        canResendOTP = false
-        
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            Task { @MainActor in
-                if self.otpTimeRemaining > 0 {
-                    self.otpTimeRemaining -= 1
-                } else {
-                    self.canResendOTP = true
-                    timer.invalidate()
-                }
-            }
-        }
-    }
-    
-    func resetOTPState() {
-        showOTPVerification = false
-        otpSent = false
-        pendingPhoneNumber = ""
-        verificationID = nil
-        otpTimeRemaining = 0
-        canResendOTP = false
-        otpVerifiedNeedSignup = false
+    // MARK: - State Management
+    func resetRegistrationState() {
+        showRegistrationForm = false
+        needsRegistration = false
+        errorMessage = nil
+        showError = false
+        name = ""
     }
     
     // MARK: - Data Management
@@ -205,8 +123,7 @@ class AuthViewModel: ObservableObject {
         // Clear any cached data
         errorMessage = nil
         showError = false
-        otpVerifiedNeedSignup = false
-        resetOTPState()
+        resetRegistrationState()
     }
     
     // MARK: - Validation Methods
@@ -222,4 +139,27 @@ class AuthViewModel: ObservableObject {
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         return emailPredicate.evaluate(with: email)
     }
+    
+    // MARK: - Development Helpers
+    #if DEBUG
+    /// Clear all authentication data (development only)
+    func clearAllAuthenticationData() {
+        resetRegistrationState()
+        clearAllAppData()
+        print("🧪 Development: All authentication data cleared")
+    }
+    
+    /// Get debug information about current state
+    func getDebugInfo() -> String {
+        return """
+        Auth Debug Info:
+        - Is Authenticated: \(isAuthenticated)
+        - Current User: \(currentUser?.name ?? "None")
+        - Needs Registration: \(needsRegistration)
+        - Show Registration Form: \(showRegistrationForm)
+        - Current Name: \(name)
+        - Error Message: \(errorMessage ?? "None")
+        """
+    }
+    #endif
 } 

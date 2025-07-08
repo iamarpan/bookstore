@@ -26,7 +26,7 @@ struct ProfileView: View {
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                                 
-                                Text(currentUser.phoneNumber)
+                                Text(currentUser.mobile)
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                                 

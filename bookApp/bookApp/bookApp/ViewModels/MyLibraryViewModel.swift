@@ -29,7 +29,7 @@ class MyLibraryViewModel: ObservableObject {
                         bookId: "1",
                         borrowerId: currentUserId,
                         borrowerName: User.mockUser.name,
-                        borrowerFlatNumber: User.mockUser.flatNumber,
+                        borrowerFlatNumber: User.mockUser.flat,
                         ownerId: "owner1",
                         societyId: User.mockUser.societyId
                     ),
@@ -37,7 +37,7 @@ class MyLibraryViewModel: ObservableObject {
                         bookId: "2", 
                         borrowerId: currentUserId,
                         borrowerName: User.mockUser.name,
-                        borrowerFlatNumber: User.mockUser.flatNumber,
+                        borrowerFlatNumber: User.mockUser.flat,
                         ownerId: "owner2",
                         societyId: User.mockUser.societyId
                     )
@@ -67,7 +67,7 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: true,
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber,
+                        ownerFlatNumber: User.mockUser.flat,
                         societyId: User.mockUser.societyId
                     ),
                     Book(
@@ -79,7 +79,7 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: false, // Currently lent out
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber,
+                        ownerFlatNumber: User.mockUser.flat,
                         societyId: User.mockUser.societyId
                     ),
                     Book(
@@ -91,7 +91,7 @@ class MyLibraryViewModel: ObservableObject {
                         isAvailable: true,
                         ownerId: currentUserId,
                         ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flatNumber,
+                        ownerFlatNumber: User.mockUser.flat,
                         societyId: User.mockUser.societyId
                     )
                 ]

@@ -8,7 +8,7 @@ class StorageService: ObservableObject {
     @Published var isUploading: Bool = false
     @Published var uploadError: String?
     
-    private let storage = Storage.storage()
+    private var storage: Storage { Storage.storage() }
     
     // MARK: - Book Cover Upload
     

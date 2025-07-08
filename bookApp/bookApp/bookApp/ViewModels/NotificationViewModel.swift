@@ -9,7 +9,7 @@ class NotificationViewModel: ObservableObject {
     @Published var unreadCount = 0
     
     private var notificationsListener: ListenerRegistration?
-    private let db = Firestore.firestore()
+    private var db: Firestore { Firestore.firestore() }
     
     func startListening(for userId: String) {
         notificationsListener = db.collection("notifications")

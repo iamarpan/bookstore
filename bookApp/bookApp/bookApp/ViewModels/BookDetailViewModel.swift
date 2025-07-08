@@ -25,7 +25,7 @@ class BookDetailViewModel: ObservableObject {
             bookId: book.id ?? "",
             borrowerId: User.mockUser.id ?? "",
             borrowerName: User.mockUser.name,
-            borrowerFlatNumber: User.mockUser.flatNumber,
+            borrowerFlatNumber: User.mockUser.flat,
             ownerId: book.ownerId,
             societyId: book.societyId
         )
@@ -78,7 +78,7 @@ class BookDetailViewModel: ObservableObject {
                 bookId: book.id ?? "",
                 borrowerId: User.mockUser.id ?? "",
                 borrowerName: User.mockUser.name,
-                borrowerFlatNumber: User.mockUser.flatNumber,
+                borrowerFlatNumber: User.mockUser.flat,
                 ownerId: book.ownerId,
                 societyId: book.societyId
             )

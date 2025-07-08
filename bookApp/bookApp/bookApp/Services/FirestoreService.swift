@@ -4,7 +4,7 @@ import FirebaseAuth
 import Foundation
 
 class FirestoreService: ObservableObject {
-    private let db = Firestore.firestore()
+    private var db: Firestore { Firestore.firestore() }
     
     // MARK: - Books
     func addBook(_ book: Book) async throws -> String {
