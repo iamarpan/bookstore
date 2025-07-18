@@ -243,8 +243,10 @@ class FirebaseAuthService: ObservableObject {
                 return
             }
             
-            // Update FCM token if needed
+            #if !targetEnvironment(simulator)
+            // Update FCM token only on real devices
             try await updateFCMToken(for: uid)
+            #endif
             
             self.currentUser = user
             self.isAuthenticated = true
