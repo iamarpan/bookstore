@@ -317,9 +317,7 @@ struct RequestRowView: View {
                         .font(.subheadline)
                         .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
                     
-                    Text("Flat: \(request.borrowerFlatNumber)")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+
                 }
                 
                 Spacer()

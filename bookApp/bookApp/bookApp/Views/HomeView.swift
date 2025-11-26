@@ -87,14 +87,25 @@ struct HomeView: View {
     }
     
     private var contentSection: some View {
-        Group {
-            if homeViewModel.isLoading {
-                loadingView
-            } else if homeViewModel.filteredBooks.isEmpty {
-                emptyStateView
-            } else {
-                booksGridView
+        ScrollView {
+            VStack(spacing: 20) {
+                if let club = homeViewModel.activeBookClub {
+                    BookClubHomeView(bookClub: club)
+                        .padding(.horizontal)
+                }
+                
+                if homeViewModel.isLoading {
+                    loadingView
+                } else if homeViewModel.filteredBooks.isEmpty {
+                    emptyStateView
+                } else {
+                    booksGrid
+                }
             }
+            .padding(.vertical, 8)
+        }
+        .refreshable {
+            homeViewModel.refreshBooks()
         }
     }
     
@@ -106,6 +117,7 @@ struct HomeView: View {
                 .accentColor(AppTheme.primaryGreen)
             Spacer()
         }
+        .frame(height: 200)
     }
     
     private var emptyStateView: some View {
@@ -124,27 +136,22 @@ struct HomeView: View {
             }
             Spacer()
         }
+        .frame(height: 300)
     }
     
-    private var booksGridView: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ], spacing: 20) {
-                ForEach(homeViewModel.filteredBooks) { book in
-                    NavigationLink(destination: BookDetailView(book: book)) {
-                        BookTileView(book: book, isDarkMode: themeManager.isDarkMode)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+    private var booksGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ], spacing: 20) {
+            ForEach(homeViewModel.filteredBooks) { book in
+                NavigationLink(destination: BookDetailView(book: book)) {
+                    BookTileView(book: book, isDarkMode: themeManager.isDarkMode)
                 }
+                .buttonStyle(PlainButtonStyle())
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
         }
-        .refreshable {
-            homeViewModel.refreshBooks()
-        }
+        .padding(.horizontal, 16)
     }
     
     private var toolbarContent: some ToolbarContent {

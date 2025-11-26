@@ -8,10 +8,26 @@ class AuthViewModel: ObservableObject {
     @Published var needsRegistration = false
     
     // User profile data for registration
+    // User profile data for registration
     @Published var name: String = ""
+    @Published var mobile: String = ""
     
-    // Available societies for selection
-    @Published var availableSocieties: [Society] = Society.mockSocieties
+    // Book Club Registration Data
+    @Published var isCreatingClub = true
+    @Published var clubName = ""
+    @Published var clubDescription = ""
+    @Published var inviteCode = ""
+    
+    // Validation
+    var isValid: Bool {
+        if name.isEmpty || mobile.isEmpty { return false }
+        
+        if isCreatingClub {
+            return !clubName.isEmpty
+        } else {
+            return inviteCode.count == 6
+        }
+    }
     
     // Computed properties that delegate to authService
     var currentUser: User? { authService.currentUser }
@@ -57,21 +73,17 @@ class AuthViewModel: ObservableObject {
     }
     
     // MARK: - User Registration
-    func completeRegistration(mobile: String, society: Society?, floor: String, flat: String) async {
-        guard let society = society else {
-            errorMessage = "Please select a society."
-            showError = true
-            return
-        }
-
+    func completeRegistration() async { // Modified method signature and logic
+        guard isValid else { return }
+        
         let userData = UserData(
-            name: self.name,
+            name: name,
             email: authService.googleUserEmail,
             mobile: mobile,
-            societyId: society.id,
-            societyName: society.name,
-            floor: floor,
-            flat: flat
+            isCreatingClub: isCreatingClub,
+            clubName: isCreatingClub ? clubName : nil,
+            clubDescription: isCreatingClub ? clubDescription : nil,
+            inviteCode: !isCreatingClub ? inviteCode : nil
         )
         
         do {

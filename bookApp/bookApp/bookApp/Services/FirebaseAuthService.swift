@@ -11,10 +11,11 @@ struct UserData {
     let name: String
     let email: String?
     let mobile: String
-    let societyId: String
-    let societyName: String
-    let floor: String
-    let flat: String
+    // Book Club Info
+    let isCreatingClub: Bool
+    let clubName: String?
+    let clubDescription: String?
+    let inviteCode: String?
 }
 
 // MARK: - Authentication Errors
@@ -24,6 +25,8 @@ enum AuthError: Error, LocalizedError {
     case invalidCredentials
     case networkError
     case unknown
+    case invalidInviteCode
+    case clubCreationError
     
     var errorDescription: String? {
         switch self {
@@ -37,6 +40,10 @@ enum AuthError: Error, LocalizedError {
             return "Network error. Please check your connection."
         case .unknown:
             return "An unknown error occurred."
+        case .invalidInviteCode:
+            return "Invalid invite code. Please check and try again."
+        case .clubCreationError:
+            return "Failed to create book club. Please try again."
         }
     }
 }
@@ -93,6 +100,7 @@ class FirebaseAuthService: ObservableObject {
         do {
             // Get the client ID from Firebase configuration
             guard let clientID = FirebaseApp.app()?.options.clientID else {
+                print("❌ Google Sign-In Error: Could not get Client ID from FirebaseApp")
                 throw AuthError.googleSignInFailed
             }
             
@@ -101,8 +109,11 @@ class FirebaseAuthService: ObservableObject {
             GIDSignIn.sharedInstance.configuration = config
             
             // Get the root view controller
-            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let presentingViewController = scene.windows.first?.rootViewController else {
+            // improved lookup for SwiftUI
+            guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene ?? UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first,
+                  let presentingViewController = window.rootViewController else {
+                print("❌ Google Sign-In Error: Could not find root view controller")
                 throw AuthError.googleSignInFailed
             }
             
@@ -114,6 +125,7 @@ class FirebaseAuthService: ObservableObject {
             self.googleUserEmail = result.user.profile?.email
             
             guard let idToken = result.user.idToken?.tokenString else {
+                print("❌ Google Sign-In Error: Could not get ID Token")
                 throw AuthError.googleSignInFailed
             }
             
@@ -131,12 +143,19 @@ class FirebaseAuthService: ObservableObject {
             if userExists {
                 // Load existing user data
                 await loadUserData(for: authResult.user.uid)
+                
+                // Check if user needs to complete Book Club onboarding
+                if currentUser?.activeBookClubId == nil {
+                    print("⚠️ User exists but needs to join/create a book club")
+                    throw AuthError.userNotFound // This will trigger the registration form
+                }
             } else {
                 // User needs to complete registration
                 throw AuthError.userNotFound
             }
             
         } catch {
+            print("❌ Google Sign-In Error: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             throw error
         }
@@ -155,6 +174,45 @@ class FirebaseAuthService: ObservableObject {
                 throw AuthError.invalidCredentials
             }
             
+            var bookClubId: String
+            
+            // Handle Book Club Logic
+            if userData.isCreatingClub {
+                // Create new club
+                let inviteCode = String(Int.random(in: 100000...999999))
+                let club = BookClub(
+                    name: userData.clubName ?? "My Book Club",
+                    description: userData.clubDescription ?? "",
+                    inviteCode: inviteCode,
+                    creatorId: firebaseUser.uid
+                )
+                
+                let docRef = try await db.collection("bookClubs").addDocument(data: club.toDictionary())
+                bookClubId = docRef.documentID
+                
+            } else {
+                // Join existing club
+                guard let code = userData.inviteCode else {
+                    throw AuthError.invalidInviteCode
+                }
+                
+                let snapshot = try await db.collection("bookClubs")
+                    .whereField("inviteCode", isEqualTo: code)
+                    .limit(to: 1)
+                    .getDocuments()
+                
+                guard let document = snapshot.documents.first else {
+                    throw AuthError.invalidInviteCode
+                }
+                
+                bookClubId = document.documentID
+                
+                // Add user to club members
+                try await db.collection("bookClubs").document(bookClubId).updateData([
+                    "memberIds": FieldValue.arrayUnion([firebaseUser.uid])
+                ])
+            }
+            
             #if targetEnvironment(simulator)
             let fcmToken: String? = nil
             print("📲 Simulator detected. Skipping FCM token fetch for registration.")
@@ -163,34 +221,56 @@ class FirebaseAuthService: ObservableObject {
             let fcmToken = try await getCurrentFCMToken()
             #endif
             
-            // Create user object
-            let user = User(
-                id: firebaseUser.uid,
-                name: userData.name,
-                email: userData.email ?? firebaseUser.email,
-                mobile: userData.mobile,
-                societyId: userData.societyId,
-                societyName: userData.societyName,
-                floor: userData.floor,
-                flat: userData.flat,
-                profileImageURL: firebaseUser.photoURL?.absoluteString,
-                fcmToken: fcmToken,
-                lastTokenUpdate: fcmToken != nil ? Date() : nil
-            )
+            // Check if user already exists
+            let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
             
-            // Save to Firestore
-            try await db.collection("users")
-                .document(firebaseUser.uid)
-                .setData(user.toDictionary())
+            if userDoc.exists {
+                // Update existing user with Book Club info
+                try await db.collection("users")
+                    .document(firebaseUser.uid)
+                    .updateData([
+                        "name": userData.name,
+                        "mobile": userData.mobile,
+                        "bookClubIds": FieldValue.arrayUnion([bookClubId]),
+                        "activeBookClubId": bookClubId,
+                        "lastLoginAt": FieldValue.serverTimestamp(),
+                        "fcmToken": fcmToken ?? "",
+                        "lastTokenUpdate": fcmToken != nil ? FieldValue.serverTimestamp() : NSNull()
+                    ])
+                
+                print("✅ Existing user updated with Book Club: \(userData.name)")
+            } else {
+                // Create new user object
+                let user = User(
+                    id: firebaseUser.uid,
+                    name: userData.name,
+                    email: userData.email ?? firebaseUser.email,
+                    mobile: userData.mobile,
+                    bookClubIds: [bookClubId],
+                    activeBookClubId: bookClubId,
+                    profileImageURL: firebaseUser.photoURL?.absoluteString,
+                    isActive: true,
+                    createdAt: Date(),
+                    lastLoginAt: Date(),
+                    fcmToken: fcmToken,
+                    lastTokenUpdate: fcmToken != nil ? Date() : nil
+                )
+                
+                // Save to Firestore
+                try await db.collection("users")
+                    .document(firebaseUser.uid)
+                    .setData(user.toDictionary())
+                
+                print("✅ New user registration completed: \(user.name)")
+            }
             
-            // Update current user
-            self.currentUser = user
-            self.isAuthenticated = true
+            // Reload user data
+            await loadUserData(for: firebaseUser.uid)
             
-            print("✅ User registration completed successfully: \(user.name)")
+            print("✅ User registration/update completed successfully")
             
         } catch {
-            errorMessage = "Failed to complete registration. Please try again."
+            errorMessage = "Failed to complete registration: \(error.localizedDescription)"
             throw error
         }
     }

@@ -1,3 +1,4 @@
+import FirebaseFirestore
 import Foundation
 
 @MainActor
@@ -9,94 +10,78 @@ class MyLibraryViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showError = false
     
+    private let firestoreService = FirestoreService()
+    private let authService = FirebaseAuthService()
+    private var requestsListener: ListenerRegistration?
+    
     init() {
         loadLibraryData()
     }
     
+    deinit {
+        requestsListener?.remove()
+    }
+    
     func loadLibraryData() {
+        guard let user = authService.currentUser else {
+            // If no user is logged in, we can't fetch data
+            // In a real app, you might want to clear the lists or show a login prompt
+            return
+        }
+        guard let userId = user.id else {
+            print("Error: User ID is missing")
+            return
+        }
+        
         isLoading = true
+        errorMessage = nil
         
         Task {
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-            
-            await MainActor.run {
-                // Create more realistic mock data
-                let currentUserId = User.mockUser.id ?? ""
+            do {
+                // 1. Fetch books I've listed
+                let myBooks = try await firestoreService.getUserBooks(userId: userId)
                 
-                // Books I've requested (borrowed books)
-                self.borrowedBooks = [
-                    BookRequest(
-                        bookId: "1",
-                        borrowerId: currentUserId,
-                        borrowerName: User.mockUser.name,
-                        borrowerFlatNumber: User.mockUser.flat,
-                        ownerId: "owner1",
-                        societyId: User.mockUser.societyId
-                    ),
-                    BookRequest(
-                        bookId: "2", 
-                        borrowerId: currentUserId,
-                        borrowerName: User.mockUser.name,
-                        borrowerFlatNumber: User.mockUser.flat,
-                        ownerId: "owner2",
-                        societyId: User.mockUser.societyId
-                    )
-                ]
+                // 2. Setup listener for requests (both borrowing and lending)
+                // Note: The current FirestoreService.listenToRequests only listens for requests *made by* the user (borrowing).
+                // We might need to enhance this or add a separate listener for requests *received* by the user (lending).
+                // For now, let's assume we fetch them once or implement a better listener structure.
                 
-                // Requests for my books (lent books)
-                var lentRequest = BookRequest(
-                    bookId: "3",
-                    borrowerId: "borrower1",
-                    borrowerName: "Jane Smith",
-                    borrowerFlatNumber: "B-102",
-                    ownerId: currentUserId,
-                    societyId: User.mockUser.societyId
-                )
-                lentRequest.status = .pending
+                // Fetch requests where I am the borrower
+                setupBorrowingListener(userId: userId)
                 
-                self.lentBooks = [lentRequest]
+                // Fetch requests where I am the owner (lending)
+                // Since we don't have a direct listener for this in FirestoreService yet, 
+                // we might need to query it. For now, let's add a method to FirestoreService or use a query here.
+                // Ideally, FirestoreService should handle this.
+                // Let's assume we will add `getRequestsForOwner` to FirestoreService.
                 
-                // Books I've listed/added to the system
-                self.myListedBooks = [
-                    Book(
-                        title: "To Kill a Mockingbird",
-                        author: "Harper Lee",
-                        genre: "Fiction",
-                        description: "A classic American novel about racial injustice and childhood innocence.",
-                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
-                        isAvailable: true,
-                        ownerId: currentUserId,
-                        ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flat,
-                        societyId: User.mockUser.societyId
-                    ),
-                    Book(
-                        title: "The Catcher in the Rye",
-                        author: "J.D. Salinger",
-                        genre: "Fiction",
-                        description: "A coming-of-age story about teenage rebellion and angst.",
-                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
-                        isAvailable: false, // Currently lent out
-                        ownerId: currentUserId,
-                        ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flat,
-                        societyId: User.mockUser.societyId
-                    ),
-                    Book(
-                        title: "Educated",
-                        author: "Tara Westover",
-                        genre: "Biography",
-                        description: "A memoir about education, family, and the struggle for self-invention.",
-                        imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
-                        isAvailable: true,
-                        ownerId: currentUserId,
-                        ownerName: User.mockUser.name,
-                        ownerFlatNumber: User.mockUser.flat,
-                        societyId: User.mockUser.societyId
-                    )
-                ]
+                await MainActor.run {
+                    self.myListedBooks = myBooks
+                    self.isLoading = false
+                }
                 
-                self.isLoading = false
+                // Fetch incoming requests (Lent Books / Requests to approve)
+                // We need to implement this in FirestoreService
+                let incomingRequests = try await firestoreService.getIncomingRequests(for: userId)
+                
+                await MainActor.run {
+                    self.lentBooks = incomingRequests
+                }
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to load library: \(error.localizedDescription)"
+                    self.showError = true
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func setupBorrowingListener(userId: String) {
+        requestsListener = firestoreService.listenToRequests(for: userId) { [weak self] requests in
+            Task { @MainActor in
+                self?.borrowedBooks = requests
             }
         }
     }
@@ -106,44 +91,79 @@ class MyLibraryViewModel: ObservableObject {
     }
     
     func updateRequestStatus(_ request: BookRequest, newStatus: RequestStatus) {
-        // Simulate API call
+        isLoading = true
+        
         Task {
-            try await Task.sleep(nanoseconds: 500_000_000)
-            
-            await MainActor.run {
-                if let index = lentBooks.firstIndex(where: { $0.id == request.id }) {
-                    lentBooks[index].status = newStatus
-                    lentBooks[index].responseDate = Date()
+            do {
+                var updatedRequest = request
+                updatedRequest.status = newStatus
+                updatedRequest.responseDate = Date()
+                
+                if newStatus == .approved {
+                    updatedRequest.dueDate = Calendar.current.date(byAdding: .day, value: 14, to: Date())
                     
-                    if newStatus == .approved {
-                        lentBooks[index].dueDate = Calendar.current.date(byAdding: .day, value: 14, to: Date())
-                    }
+                    // Also update book availability
+                    try await firestoreService.updateBookAvailability(bookId: request.bookId, isAvailable: false)
+                }
+                
+                try await firestoreService.updateBookRequest(updatedRequest)
+                
+                // Refresh data to reflect changes
+                loadLibraryData()
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to update request: \(error.localizedDescription)"
+                    self.showError = true
+                    self.isLoading = false
                 }
             }
         }
     }
     
     func deleteBook(_ book: Book) {
-        // Simulate API call
+        guard let bookId = book.id else { return }
+        isLoading = true
+        
         Task {
-            try await Task.sleep(nanoseconds: 300_000_000)
-            
-            await MainActor.run {
-                myListedBooks.removeAll { $0.id == book.id }
+            do {
+                try await firestoreService.deleteBook(with: bookId)
+                
+                await MainActor.run {
+                    self.myListedBooks.removeAll { $0.id == bookId }
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to delete book: \(error.localizedDescription)"
+                    self.showError = true
+                    self.isLoading = false
+                }
             }
         }
     }
     
     func toggleBookAvailability(_ book: Book) {
-        // Simulate API call
+        guard let bookId = book.id else { return }
+        // Optimistic update
+        if let index = myListedBooks.firstIndex(where: { $0.id == bookId }) {
+            myListedBooks[index].isAvailable.toggle()
+        }
+        
         Task {
-            try await Task.sleep(nanoseconds: 300_000_000)
-            
-            await MainActor.run {
-                if let index = myListedBooks.firstIndex(where: { $0.id == book.id }) {
-                    myListedBooks[index].isAvailable.toggle()
+            do {
+                try await firestoreService.updateBookAvailability(bookId: bookId, isAvailable: !book.isAvailable)
+            } catch {
+                // Revert on failure
+                await MainActor.run {
+                    if let index = self.myListedBooks.firstIndex(where: { $0.id == bookId }) {
+                        self.myListedBooks[index].isAvailable.toggle()
+                        self.errorMessage = "Failed to update availability: \(error.localizedDescription)"
+                        self.showError = true
+                    }
                 }
             }
         }
     }
-} 
+}
+ 

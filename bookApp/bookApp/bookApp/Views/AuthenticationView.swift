@@ -135,12 +135,6 @@ struct RegistrationView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var themeManager: ThemeManager
     
-    @State private var mobile = ""
-    @State private var selectedSociety: Society?
-    @State private var floor = ""
-    @State private var flat = ""
-    @State private var showSocietyPicker = false
-    
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -150,7 +144,7 @@ struct RegistrationView: View {
                     .fontWeight(.bold)
                     .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                 
-                Text("We need a few more details to set up your account")
+                Text("Set up your account and join a club")
                     .font(.subheadline)
                     .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                     .multilineTextAlignment(.center)
@@ -160,7 +154,7 @@ struct RegistrationView: View {
             
             // Registration Form
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 24) {
                     // Name Field
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Full Name")
@@ -179,61 +173,52 @@ struct RegistrationView: View {
                             .fontWeight(.medium)
                             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                         
-                        TextField("Enter your mobile number", text: $mobile)
+                        TextField("Enter your mobile number", text: $authViewModel.mobile)
                             .keyboardType(.phonePad)
                             .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     }
                     
-                    // Society Selection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Society")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                        
-                        Button {
-                            showSocietyPicker = true
-                        } label: {
-                            HStack {
-                                Text(selectedSociety?.name ?? "Select your society")
-                                    .foregroundColor(selectedSociety != nil ? AppTheme.dynamicPrimaryText(themeManager.isDarkMode) : AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.down")
-                                    .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
-                                    .font(.caption)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
-                            .background(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(AppTheme.dynamicTertiaryText(themeManager.isDarkMode).opacity(0.3), lineWidth: 1)
-                            )
-                        }
-                    }
+                    Divider()
+                        .padding(.vertical, 8)
                     
-                    // Floor and Flat Row
-                    HStack(spacing: 16) {
+                    // Club Selection Mode
+                    Picker("Mode", selection: $authViewModel.isCreatingClub) {
+                        Text("Create New Club").tag(true)
+                        Text("Join Existing Club").tag(false)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    if authViewModel.isCreatingClub {
+                        // Create Club Fields
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Floor")
+                            Text("Club Name")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                             
-                            TextField("Floor", text: $floor)
+                            TextField("e.g. The Sunday Readers", text: $authViewModel.clubName)
                                 .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Flat")
+                            Text("Description (Optional)")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                             
-                            TextField("Flat", text: $flat)
+                            TextField("What's this club about?", text: $authViewModel.clubDescription)
+                                .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        }
+                    } else {
+                        // Join Club Fields
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Invite Code")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            
+                            TextField("Enter 6-digit code", text: $authViewModel.inviteCode)
+                                .keyboardType(.numberPad)
                                 .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                         }
                     }
@@ -241,12 +226,7 @@ struct RegistrationView: View {
                     // Complete Registration Button
                     Button {
                         Task {
-                            await authViewModel.completeRegistration(
-                                mobile: mobile,
-                                society: selectedSociety,
-                                floor: floor,
-                                flat: flat
-                            )
+                            await authViewModel.completeRegistration()
                         }
                     } label: {
                         HStack {
@@ -256,7 +236,7 @@ struct RegistrationView: View {
                                     .scaleEffect(0.8)
                             }
                             
-                            Text("Complete Registration")
+                            Text(authViewModel.isCreatingClub ? "Create Club & Join" : "Join Club")
                                 .font(.body)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
@@ -267,72 +247,14 @@ struct RegistrationView: View {
                         .cornerRadius(12)
                         .shadow(color: AppTheme.primaryGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(!isFormValid || authViewModel.isLoading)
-                    .opacity(isFormValid && !authViewModel.isLoading ? 1.0 : 0.6)
+                    .disabled(!authViewModel.isValid || authViewModel.isLoading)
+                    .opacity(authViewModel.isValid && !authViewModel.isLoading ? 1.0 : 0.6)
                     .padding(.top, 8)
                     
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 32)
-            }
-        }
-        .sheet(isPresented: $showSocietyPicker) {
-            SocietyPickerView(selectedSociety: $selectedSociety, societies: authViewModel.availableSocieties)
-                .environmentObject(themeManager)
-        }
-    }
-    
-    private var isFormValid: Bool {
-        !authViewModel.name.isEmpty && !mobile.isEmpty && selectedSociety != nil && !floor.isEmpty && !flat.isEmpty
-    }
-}
-
-struct SocietyPickerView: View {
-    @Binding var selectedSociety: Society?
-    let societies: [Society]
-    @EnvironmentObject var themeManager: ThemeManager
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            List(societies) { society in
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(society.name)
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                        
-                        if !society.address.isEmpty {
-                            Text(society.address)
-                                .font(.caption)
-                                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    if selectedSociety?.id == society.id {
-                        Image(systemName: "checkmark")
-                            .foregroundColor(AppTheme.primaryGreen)
-                            .fontWeight(.semibold)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selectedSociety = society
-                    dismiss()
-                }
-            }
-            .navigationTitle("Select Society")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
             }
         }
     }
@@ -354,7 +276,7 @@ struct AuthHeaderView: View {
                     .fontWeight(.bold)
                     .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
                 
-                Text("Share books with your neighbors")
+                Text("Create or join clubs to share books")
                     .font(.subheadline)
                     .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
                     .multilineTextAlignment(.center)

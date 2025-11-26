@@ -1,0 +1,38 @@
+graph TD
+    Start([New User Opens App]) --> Welcome[Welcome Screen]
+    Welcome --> Register[Register Screen]
+    Register --> OTP[OTP Verification]
+    OTP --> Home[Home Screen]
+    
+    Home --> Browse{Browse Books}
+    Browse --> BookDetails[Book Details]
+    BookDetails --> Request[Request to Borrow]
+    Request --> Notification1[Owner Receives Notification]
+    Notification1 --> Approve{Owner Approves?}
+    
+    Approve -->|Yes| ContactShare[Contacts Shared]
+    Approve -->|No| Rejected[Request Rejected]
+    
+    ContactShare --> Coordinate[Users Coordinate Meetup]
+    Coordinate --> Handover[Physical Handover]
+    Handover --> GenerateOTP[Borrower Generates OTP]
+    GenerateOTP --> OwnerEntersOTP[Owner Enters OTP]
+    OwnerEntersOTP --> Confirmed[Handover Confirmed]
+    
+    Confirmed --> BookLent[Book Status: LENT]
+    BookLent --> BorrowPeriod[Borrow Period]
+    BorrowPeriod --> DueReminder[Due Date Reminder]
+    DueReminder --> ArrangeReturn[Arrange Return]
+    
+    ArrangeReturn --> ReturnHandover[Return Handover]
+    ReturnHandover --> GenerateReturnOTP[Owner Generates Return OTP]
+    GenerateReturnOTP --> BorrowerEntersOTP[Borrower Enters OTP]
+    BorrowerEntersOTP --> ReturnConfirmed[Return Confirmed]
+    
+    ReturnConfirmed --> Rating[Rate Transaction]
+    Rating --> Complete([Transaction Complete])
+    
+    style Start fill:#4A90E2,color:#fff
+    style Complete fill:#50C878,color:#fff
+    style Rejected fill:#FF6B6B,color:#fff
+    style BookLent fill:#FFA500,color:#fff

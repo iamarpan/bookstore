@@ -14,7 +14,7 @@ class NotificationViewModel: ObservableObject {
     func startListening(for userId: String) {
         notificationsListener = db.collection("notifications")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
+            .order(by: "timestamp", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else { return }
                 

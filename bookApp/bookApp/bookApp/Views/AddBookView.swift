@@ -151,6 +151,8 @@ class AddBookViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     
+    private let firestoreService = FirestoreService()
+    
     let genres = ["Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery", "Other"]
     
     var isFormValid: Bool {
@@ -166,13 +168,36 @@ class AddBookViewModel: ObservableObject {
             return
         }
         
+        // Get current user from UserDefaults
+        guard let userData = UserDefaults.standard.dictionary(forKey: "currentUser"),
+              let user = User.fromUserDefaultsDictionary(userData),
+              let userId = user.id,
+              let activeBookClubId = user.activeBookClubId else {
+            errorMessage = "Please sign in and join a book club first"
+            showError = true
+            return
+        }
+        
         isLoading = true
         
-        // Simulate API call
         do {
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            let newBook = Book(
+                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                author: author.trimmingCharacters(in: .whitespacesAndNewlines),
+                genre: selectedGenre,
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                imageURL: "https://via.placeholder.com/150", // Placeholder image
+                isAvailable: true,
+                ownerId: userId,
+                ownerName: user.name,
+                bookClubId: activeBookClubId
+            )
+            
+            let bookId = try await firestoreService.addBook(newBook)
+            print("✅ Book added successfully with ID: \(bookId)")
             showSuccessAlert = true
         } catch {
+            print("❌ Error adding book: \(error)")
             errorMessage = "Failed to add book: \(error.localizedDescription)"
             showError = true
         }

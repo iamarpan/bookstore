@@ -34,9 +34,8 @@ struct BookRequest: Identifiable, Codable {
     let bookId: String
     let borrowerId: String
     let borrowerName: String
-    let borrowerFlatNumber: String
     let ownerId: String
-    let societyId: String
+    let bookClubId: String
     let requestDate: Date
     var status: RequestStatus
     var responseDate: Date?
@@ -44,27 +43,26 @@ struct BookRequest: Identifiable, Codable {
     var dueDate: Date?
     var notes: String?
     
-    init(bookId: String, borrowerId: String, borrowerName: String, borrowerFlatNumber: String, ownerId: String, societyId: String) {
+    init(bookId: String, borrowerId: String, borrowerName: String, ownerId: String, bookClubId: String, notes: String? = nil) {
         self.id = UUID().uuidString
         self.bookId = bookId
         self.borrowerId = borrowerId
         self.borrowerName = borrowerName
-        self.borrowerFlatNumber = borrowerFlatNumber
         self.ownerId = ownerId
-        self.societyId = societyId
+        self.bookClubId = bookClubId
         self.requestDate = Date()
         self.status = .pending
+        self.notes = notes
     }
     
     // Firebase initializer
-    init(id: String, bookId: String, borrowerId: String, borrowerName: String, borrowerFlatNumber: String, ownerId: String, societyId: String, requestDate: Date, status: RequestStatus, responseDate: Date? = nil, returnDate: Date? = nil, dueDate: Date? = nil, notes: String? = nil) {
+    init(id: String, bookId: String, borrowerId: String, borrowerName: String, ownerId: String, bookClubId: String, requestDate: Date, status: RequestStatus, responseDate: Date? = nil, returnDate: Date? = nil, dueDate: Date? = nil, notes: String? = nil) {
         self.id = id
         self.bookId = bookId
         self.borrowerId = borrowerId
         self.borrowerName = borrowerName
-        self.borrowerFlatNumber = borrowerFlatNumber
         self.ownerId = ownerId
-        self.societyId = societyId
+        self.bookClubId = bookClubId
         self.requestDate = requestDate
         self.status = status
         self.responseDate = responseDate
@@ -75,43 +73,27 @@ struct BookRequest: Identifiable, Codable {
     
     // MARK: - Firebase Serialization
     func toDictionary() -> [String: Any] {
-        var dict: [String: Any] = [
+        return [
             "bookId": bookId,
             "borrowerId": borrowerId,
             "borrowerName": borrowerName,
-            "borrowerFlatNumber": borrowerFlatNumber,
             "ownerId": ownerId,
-            "societyId": societyId,
+            "bookClubId": bookClubId,
             "requestDate": Timestamp(date: requestDate),
-            "status": status.rawValue
+            "status": status.rawValue,
+            "responseDate": responseDate != nil ? Timestamp(date: responseDate!) : NSNull(),
+            "returnDate": returnDate != nil ? Timestamp(date: returnDate!) : NSNull(),
+            "dueDate": dueDate != nil ? Timestamp(date: dueDate!) : NSNull(),
+            "notes": notes ?? ""
         ]
-        
-        if let responseDate = responseDate {
-            dict["responseDate"] = Timestamp(date: responseDate)
-        }
-        
-        if let returnDate = returnDate {
-            dict["returnDate"] = Timestamp(date: returnDate)
-        }
-        
-        if let dueDate = dueDate {
-            dict["dueDate"] = Timestamp(date: dueDate)
-        }
-        
-        if let notes = notes {
-            dict["notes"] = notes
-        }
-        
-        return dict
     }
     
     static func fromDictionary(_ data: [String: Any], id: String) -> BookRequest? {
         guard let bookId = data["bookId"] as? String,
               let borrowerId = data["borrowerId"] as? String,
               let borrowerName = data["borrowerName"] as? String,
-              let borrowerFlatNumber = data["borrowerFlatNumber"] as? String,
               let ownerId = data["ownerId"] as? String,
-              let societyId = data["societyId"] as? String,
+              let bookClubId = data["bookClubId"] as? String,
               let statusString = data["status"] as? String,
               let status = RequestStatus(rawValue: statusString) else {
             return nil
@@ -125,21 +107,21 @@ struct BookRequest: Identifiable, Codable {
         }
         
         let responseDate: Date?
-        if let timestamp = data["responseDate"] as? Timestamp {
+        if let timestamp = data["responseDate"] as? Timestamp, !(timestamp.isEqual(NSNull())) {
             responseDate = timestamp.dateValue()
         } else {
             responseDate = nil
         }
         
         let returnDate: Date?
-        if let timestamp = data["returnDate"] as? Timestamp {
+        if let timestamp = data["returnDate"] as? Timestamp, !(timestamp.isEqual(NSNull())) {
             returnDate = timestamp.dateValue()
         } else {
             returnDate = nil
         }
         
         let dueDate: Date?
-        if let timestamp = data["dueDate"] as? Timestamp {
+        if let timestamp = data["dueDate"] as? Timestamp, !(timestamp.isEqual(NSNull())) {
             dueDate = timestamp.dateValue()
         } else {
             dueDate = nil
@@ -152,9 +134,8 @@ struct BookRequest: Identifiable, Codable {
             bookId: bookId,
             borrowerId: borrowerId,
             borrowerName: borrowerName,
-            borrowerFlatNumber: borrowerFlatNumber,
             ownerId: ownerId,
-            societyId: societyId,
+            bookClubId: bookClubId,
             requestDate: requestDate,
             status: status,
             responseDate: responseDate,
@@ -166,15 +147,15 @@ struct BookRequest: Identifiable, Codable {
 }
 
 // MARK: - Mock Data
+// MARK: - Mock Data
 extension BookRequest {
     static let mockRequests: [BookRequest] = [
         BookRequest(
             bookId: "1",
             borrowerId: "user1",
             borrowerName: "Demo User",
-            borrowerFlatNumber: "A-101",
             ownerId: "owner1",
-            societyId: "society1"
+            bookClubId: "club1"
         )
     ]
 } 

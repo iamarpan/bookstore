@@ -22,9 +22,11 @@ struct ProfileView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                                 
-                                Text(currentUser.fullAddress)
-                                    .font(.subheadline)
-                                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                if let clubId = currentUser.activeBookClubId {
+                                    Text("Active Book Club")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                                }
                                 
                                 Text(currentUser.mobile)
                                     .font(.subheadline)

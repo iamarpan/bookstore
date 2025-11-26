@@ -24,9 +24,9 @@ class FirestoreService: ObservableObject {
         try await db.collection("books").document(id).delete()
     }
     
-    func getBooks(for societyId: String) async throws -> [Book] {
+    func getBooks(for bookClubId: String) async throws -> [Book] {
         let snapshot = try await db.collection("books")
-            .whereField("societyId", isEqualTo: societyId)
+            .whereField("bookClubId", isEqualTo: bookClubId)
             .whereField("isAvailable", isEqualTo: true)
             .order(by: "createdAt", descending: true)
             .getDocuments()
@@ -85,6 +85,17 @@ class FirestoreService: ObservableObject {
         try await db.collection("bookRequests").document(id).updateData(request.toDictionary())
     }
     
+    func getIncomingRequests(for userId: String) async throws -> [BookRequest] {
+        let snapshot = try await db.collection("bookRequests")
+            .whereField("ownerId", isEqualTo: userId)
+            .order(by: "requestDate", descending: true)
+            .getDocuments()
+            
+        return snapshot.documents.compactMap { document in
+            BookRequest.fromDictionary(document.data(), id: document.documentID)
+        }
+    }
+    
     // MARK: - Notifications
     func addNotification(_ notification: BookNotification) async throws -> String {
         let docRef = try await db.collection("notifications").addDocument(data: notification.toDictionary())
@@ -116,24 +127,48 @@ class FirestoreService: ObservableObject {
         try await db.collection("users").document(id).updateData(user.toDictionary())
     }
     
-    // MARK: - Societies
-    func getSocieties() async throws -> [Society] {
-        let snapshot = try await db.collection("societies").getDocuments()
-        
-        return snapshot.documents.compactMap { document in
-            Society.fromDictionary(document.data(), id: document.documentID)
-        }
-    }
-    
-    func addSociety(_ society: Society) async throws -> String {
-        let docRef = try await db.collection("societies").addDocument(data: society.toDictionary())
+    // MARK: - Book Clubs
+    func createBookClub(_ club: BookClub) async throws -> String {
+        let docRef = try await db.collection("bookClubs").addDocument(data: club.toDictionary())
         return docRef.documentID
     }
     
+    func getBookClub(by code: String) async throws -> BookClub? {
+        let snapshot = try await db.collection("bookClubs")
+            .whereField("inviteCode", isEqualTo: code)
+            .limit(to: 1)
+            .getDocuments()
+        
+        guard let document = snapshot.documents.first else {
+            return nil
+        }
+        
+        return BookClub.fromDictionary(document.data(), id: document.documentID)
+    }
+    
+    func getBookClub(byId id: String) async throws -> BookClub? {
+        let document = try await db.collection("bookClubs").document(id).getDocument()
+        
+        guard let data = document.data() else {
+            return nil
+        }
+        
+        return BookClub.fromDictionary(data, id: document.documentID)
+    }
+    
+    func joinBookClub(clubId: String, userId: String) async throws {
+        let clubRef = db.collection("bookClubs").document(clubId)
+        
+        // Add user to memberIds array
+        try await clubRef.updateData([
+            "memberIds": FieldValue.arrayUnion([userId])
+        ])
+    }
+    
     // MARK: - Real-time Listeners
-    func listenToBooks(for societyId: String, completion: @escaping ([Book]) -> Void) -> ListenerRegistration {
+    func listenToBooks(for bookClubId: String, completion: @escaping ([Book]) -> Void) -> ListenerRegistration {
         return db.collection("books")
-            .whereField("societyId", isEqualTo: societyId)
+            .whereField("bookClubId", isEqualTo: bookClubId)
             .addSnapshotListener { snapshot, error in
                 guard let documents = snapshot?.documents else {
                     completion([])

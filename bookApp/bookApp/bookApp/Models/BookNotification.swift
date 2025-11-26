@@ -35,89 +35,77 @@ enum NotificationType: String, Codable, CaseIterable {
 struct BookNotification: Identifiable, Codable {
     var id: String?
     let userId: String
-    let type: NotificationType
     let title: String
     let message: String
-    let isRead: Bool
-    let relatedId: String? // bookId or requestId
-    let createdAt: Date
-    let societyId: String
+    let type: NotificationType
+    let relatedBookId: String?
+    let relatedRequestId: String?
+    let bookClubId: String
+    var timestamp: Date
+    var isRead: Bool
     
-    init(userId: String, type: NotificationType, title: String, message: String, relatedId: String? = nil, societyId: String, isRead: Bool = false) {
+    init(userId: String, title: String, message: String, type: NotificationType, relatedBookId: String? = nil, relatedRequestId: String? = nil, bookClubId: String) {
         self.id = UUID().uuidString
         self.userId = userId
-        self.type = type
         self.title = title
         self.message = message
-        self.isRead = isRead
-        self.relatedId = relatedId
-        self.createdAt = Date()
-        self.societyId = societyId
-    }
-    
-    // Firebase initializer
-    init(id: String, userId: String, type: NotificationType, title: String, message: String, isRead: Bool, relatedId: String?, createdAt: Date, societyId: String) {
-        self.id = id
-        self.userId = userId
         self.type = type
-        self.title = title
-        self.message = message
-        self.isRead = isRead
-        self.relatedId = relatedId
-        self.createdAt = createdAt
-        self.societyId = societyId
+        self.relatedBookId = relatedBookId
+        self.relatedRequestId = relatedRequestId
+        self.bookClubId = bookClubId
+        self.timestamp = Date()
+        self.isRead = false
     }
     
-    // MARK: - Firebase Serialization
     func toDictionary() -> [String: Any] {
-        var dict: [String: Any] = [
+        return [
             "userId": userId,
-            "type": type.rawValue,
             "title": title,
             "message": message,
-            "isRead": isRead,
-            "createdAt": Timestamp(date: createdAt),
-            "societyId": societyId
+            "type": type.rawValue,
+            "relatedBookId": relatedBookId ?? NSNull(),
+            "relatedRequestId": relatedRequestId ?? NSNull(),
+            "bookClubId": bookClubId,
+            "timestamp": Timestamp(date: timestamp),
+            "isRead": isRead
         ]
-        
-        if let relatedId = relatedId {
-            dict["relatedId"] = relatedId
-        }
-        
-        return dict
     }
     
     static func fromDictionary(_ data: [String: Any], id: String) -> BookNotification? {
         guard let userId = data["userId"] as? String,
-              let typeString = data["type"] as? String,
-              let type = NotificationType(rawValue: typeString),
               let title = data["title"] as? String,
               let message = data["message"] as? String,
-              let isRead = data["isRead"] as? Bool,
-              let societyId = data["societyId"] as? String else {
+              let typeString = data["type"] as? String,
+              let type = NotificationType(rawValue: typeString),
+              let bookClubId = data["bookClubId"] as? String else {
             return nil
         }
         
-        let createdAt: Date
-        if let timestamp = data["createdAt"] as? Timestamp {
-            createdAt = timestamp.dateValue()
+        let relatedBookId = data["relatedBookId"] as? String
+        let relatedRequestId = data["relatedRequestId"] as? String
+        let isRead = data["isRead"] as? Bool ?? false
+        
+        let timestamp: Date
+        if let ts = data["timestamp"] as? Timestamp {
+            timestamp = ts.dateValue()
         } else {
-            createdAt = Date()
+            timestamp = Date()
         }
         
-        let relatedId = data["relatedId"] as? String
-        
-        return BookNotification(
-            id: id,
+        var notification = BookNotification(
             userId: userId,
-            type: type,
             title: title,
             message: message,
-            isRead: isRead,
-            relatedId: relatedId,
-            createdAt: createdAt,
-            societyId: societyId
+            type: type,
+            relatedBookId: relatedBookId,
+            relatedRequestId: relatedRequestId,
+            bookClubId: bookClubId
         )
+        notification.id = id
+        notification.timestamp = timestamp // Override with actual timestamp
+        notification.isRead = isRead
+        
+        return notification
     }
 }
 
@@ -126,19 +114,20 @@ extension BookNotification {
     static let mockNotifications: [BookNotification] = [
         BookNotification(
             userId: "user1",
-            type: .bookRequest,
             title: "New Book Request",
             message: "Someone requested your book 'The Great Gatsby'",
-            relatedId: "book1",
-            societyId: "society1"
+            type: .bookRequest,
+            relatedBookId: "book1",
+            bookClubId: "club1"
         ),
         BookNotification(
             userId: "user1",
-            type: .requestApproved,
             title: "Request Approved",
             message: "Your request for 'Dune' has been approved",
-            relatedId: "request1",
-            societyId: "society1"
+            type: .requestApproved,
+            relatedBookId: "book2",
+            relatedRequestId: "request1",
+            bookClubId: "club1"
         )
     ]
 } 

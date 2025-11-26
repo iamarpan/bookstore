@@ -45,7 +45,7 @@ class NotificationService: ObservableObject {
     func startListening(for userId: String) {
         notificationListener = db.collection("notifications")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
+            .order(by: "timestamp", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else { return }
                 
@@ -116,40 +116,42 @@ class NotificationService: ObservableObject {
     
     // MARK: - Notification Creation Helpers
     
-    func createBookRequestNotification(for ownerId: String, book: Book, requester: User, societyId: String) {
+    // MARK: - Notification Creation Helpers
+    
+    func createBookRequestNotification(for ownerId: String, book: Book, requester: User, bookClubId: String) {
         let notification = BookNotification(
             userId: ownerId,
-            type: .bookRequest,
             title: "New Book Request",
             message: "\(requester.name) wants to borrow '\(book.title)'",
-            relatedId: book.id,
-            societyId: societyId
+            type: .bookRequest,
+            relatedBookId: book.id,
+            bookClubId: bookClubId
         )
         
         saveNotification(notification)
     }
     
-    func createRequestStatusNotification(for borrowerId: String, book: Book, status: RequestStatus, societyId: String) {
+    func createRequestStatusNotification(for borrowerId: String, book: Book, status: RequestStatus, bookClubId: String) {
         let notification = BookNotification(
             userId: borrowerId,
-            type: status == .approved ? .requestApproved : .requestRejected,
             title: "Request \(status.displayName)",
             message: "Your request for '\(book.title)' has been \(status.displayName.lowercased())",
-            relatedId: book.id,
-            societyId: societyId
+            type: status == .approved ? .requestApproved : .requestRejected,
+            relatedBookId: book.id,
+            bookClubId: bookClubId
         )
         
         saveNotification(notification)
     }
     
-    func createReturnReminderNotification(for borrowerId: String, book: Book, societyId: String) {
+    func createReturnReminderNotification(for borrowerId: String, book: Book, bookClubId: String) {
         let notification = BookNotification(
             userId: borrowerId,
-            type: .returnReminder,
             title: "Return Reminder",
             message: "Please return '\(book.title)' to \(book.ownerName)",
-            relatedId: book.id,
-            societyId: societyId
+            type: .returnReminder,
+            relatedBookId: book.id,
+            bookClubId: bookClubId
         )
         
         saveNotification(notification)

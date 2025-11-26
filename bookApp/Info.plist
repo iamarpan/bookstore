@@ -12,6 +12,14 @@
 				<string>com.googleusercontent.apps.592492481015-lc8tgqfk7a8eb3fvpl1b0a1ijpgk33t2</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.906496914254-jo5scapap86ie75cvoe7nno2vaepql7s</string>
+			</array>
+		</dict>
 	</array>
 	<key>FirebaseMessagingAutoInitEnabled</key>
 	<false/>

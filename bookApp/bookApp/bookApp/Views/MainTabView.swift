@@ -46,6 +46,7 @@ struct MainTabView: View {
         .accentColor(AppTheme.primaryGreen)
         .onAppear {
             setupTabBarAppearance()
+            startDataListening()
         }
         .onChange(of: themeManager.isDarkMode) { _ in
             setupTabBarAppearance()
@@ -61,6 +62,15 @@ struct MainTabView: View {
             }
         } message: {
             Text("Detected shake gesture. Do you want to logout immediately for security?")
+        }
+    }
+    
+    private func startDataListening() {
+        // Get current user and start listening for books
+        if let user = authViewModel.currentUser,
+           let activeBookClubId = user.activeBookClubId {
+            homeViewModel.startListening(for: activeBookClubId)
+            myLibraryViewModel.loadLibraryData()
         }
     }
     

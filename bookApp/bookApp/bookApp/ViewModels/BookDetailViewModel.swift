@@ -25,9 +25,8 @@ class BookDetailViewModel: ObservableObject {
             bookId: book.id ?? "",
             borrowerId: User.mockUser.id ?? "",
             borrowerName: User.mockUser.name,
-            borrowerFlatNumber: User.mockUser.flat,
             ownerId: book.ownerId,
-            societyId: book.societyId
+            bookClubId: book.bookClubId
         )
         
         // Simulate API call
@@ -78,9 +77,8 @@ class BookDetailViewModel: ObservableObject {
                 bookId: book.id ?? "",
                 borrowerId: User.mockUser.id ?? "",
                 borrowerName: User.mockUser.name,
-                borrowerFlatNumber: User.mockUser.flat,
                 ownerId: book.ownerId,
-                societyId: book.societyId
+                bookClubId: book.bookClubId
             )
             hasRequestedBook = true
         }

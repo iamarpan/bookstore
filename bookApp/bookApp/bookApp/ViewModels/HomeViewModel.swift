@@ -16,6 +16,8 @@ class HomeViewModel: ObservableObject {
     private var booksListener: ListenerRegistration?
     private let firestoreService = FirestoreService()
     
+    @Published var activeBookClub: BookClub?
+    
     // MARK: - Computed Properties
     
     var filteredBooks: [Book] {
@@ -60,9 +62,22 @@ class HomeViewModel: ObservableObject {
     
     // MARK: - Methods
     
-    func startListening(for societyId: String) {
+    func startListening(for bookClubId: String) {
         isLoading = true
-        booksListener = firestoreService.listenToBooks(for: societyId) { [weak self] books in
+        
+        // Fetch Book Club Details
+        Task {
+            do {
+                if let club = try await firestoreService.getBookClub(byId: bookClubId) {
+                    self.activeBookClub = club
+                }
+            } catch {
+                print("Error fetching book club: \(error)")
+            }
+        }
+        
+        // Listen for Books
+        booksListener = firestoreService.listenToBooks(for: bookClubId) { [weak self] books in
             Task { @MainActor in
                 self?.books = books
                 self?.isLoading = false
@@ -75,12 +90,20 @@ class HomeViewModel: ObservableObject {
     }
     
     func refreshBooks() {
-        isLoading = true
-        // In a real implementation, you might refresh the listener or trigger a new fetch
-        // For now, we'll just toggle loading state
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.isLoading = false
+        // Since we are using a real-time listener, we don't strictly need to "fetch" again.
+        // However, if we want to force a re-sync or if the listener failed, we could restart it.
+        // For this implementation, we will restart the listener to ensure fresh data.
+        
+        guard let bookClubId = books.first?.bookClubId else {
+            // If we don't have books yet, we can't easily know which club to refresh for 
+            // without storing bookClubId separately. 
+            // Let's assume the View will call startListening again if needed.
+            isLoading = false
+            return
         }
+        
+        stopListening()
+        startListening(for: bookClubId)
     }
     
     func clearFilters() {

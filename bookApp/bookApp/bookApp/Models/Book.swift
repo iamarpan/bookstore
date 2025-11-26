@@ -11,12 +11,11 @@ struct Book: Identifiable, Codable {
     var isAvailable: Bool
     let ownerId: String
     let ownerName: String
-    let ownerFlatNumber: String
-    let societyId: String
+    let bookClubId: String
     let createdAt: Date
     let updatedAt: Date?
     
-    init(title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, ownerFlatNumber: String, societyId: String) {
+    init(title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, bookClubId: String) {
         self.id = UUID().uuidString
         self.title = title
         self.author = author
@@ -26,14 +25,13 @@ struct Book: Identifiable, Codable {
         self.isAvailable = isAvailable
         self.ownerId = ownerId
         self.ownerName = ownerName
-        self.ownerFlatNumber = ownerFlatNumber
-        self.societyId = societyId
+        self.bookClubId = bookClubId
         self.createdAt = Date()
         self.updatedAt = nil
     }
     
     // Firebase initializer
-    init(id: String, title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, ownerFlatNumber: String, societyId: String, createdAt: Date, updatedAt: Date? = nil) {
+    init(id: String, title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, bookClubId: String, createdAt: Date, updatedAt: Date? = nil) {
         self.id = id
         self.title = title
         self.author = author
@@ -43,8 +41,7 @@ struct Book: Identifiable, Codable {
         self.isAvailable = isAvailable
         self.ownerId = ownerId
         self.ownerName = ownerName
-        self.ownerFlatNumber = ownerFlatNumber
-        self.societyId = societyId
+        self.bookClubId = bookClubId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -60,8 +57,7 @@ struct Book: Identifiable, Codable {
             "isAvailable": isAvailable,
             "ownerId": ownerId,
             "ownerName": ownerName,
-            "ownerFlatNumber": ownerFlatNumber,
-            "societyId": societyId,
+            "bookClubId": bookClubId,
             "createdAt": Timestamp(date: createdAt),
             "updatedAt": updatedAt != nil ? Timestamp(date: updatedAt!) : FieldValue.serverTimestamp()
         ]
@@ -75,8 +71,7 @@ struct Book: Identifiable, Codable {
               let isAvailable = data["isAvailable"] as? Bool,
               let ownerId = data["ownerId"] as? String,
               let ownerName = data["ownerName"] as? String,
-              let ownerFlatNumber = data["ownerFlatNumber"] as? String,
-              let societyId = data["societyId"] as? String else {
+              let bookClubId = data["bookClubId"] as? String else {
             return nil
         }
         
@@ -106,8 +101,7 @@ struct Book: Identifiable, Codable {
             isAvailable: isAvailable,
             ownerId: ownerId,
             ownerName: ownerName,
-            ownerFlatNumber: ownerFlatNumber,
-            societyId: societyId,
+            bookClubId: bookClubId,
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -125,20 +119,18 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
             ownerId: "1",
             ownerName: "John Smith",
-            ownerFlatNumber: "A-101",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Becoming",
             author: "Michelle Obama",
             genre: "Biography",
-            description: "A memoir by former First Lady Michelle Obama, chronicling her journey from childhood to the White House.",
-            imageURL: "https://covers.openlibrary.org/b/id/8508311-L.jpg",
+            description: "The memoir of former United States First Lady Michelle Obama.",
+            imageURL: "https://covers.openlibrary.org/b/id/8393955-L.jpg",
             isAvailable: false,
             ownerId: "2",
             ownerName: "Sarah Johnson",
-            ownerFlatNumber: "B-205",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Dune",
@@ -148,8 +140,7 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/8632264-L.jpg",
             ownerId: "3",
             ownerName: "Mike Wilson",
-            ownerFlatNumber: "C-302",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "The Midnight Library",
@@ -159,20 +150,18 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/10909258-L.jpg",
             ownerId: "4",
             ownerName: "Emma Davis",
-            ownerFlatNumber: "A-205",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Sapiens",
             author: "Yuval Noah Harari",
             genre: "History",
-            description: "A brief history of humankind, exploring how Homo sapiens came to rule the world.",
-            imageURL: "https://covers.openlibrary.org/b/id/8379786-L.jpg",
+            description: "A brief history of humankind, exploring how biology and history have defined us and enhanced our understanding of what it means to be human.",
+            imageURL: "https://covers.openlibrary.org/b/id/8192456-L.jpg",
             isAvailable: false,
             ownerId: "5",
             ownerName: "David Chen",
-            ownerFlatNumber: "D-101",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Clean Code",
@@ -182,8 +171,7 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/6999792-L.jpg",
             ownerId: "6",
             ownerName: "Alex Rodriguez",
-            ownerFlatNumber: "B-108",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Pride and Prejudice",
@@ -193,8 +181,7 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/8091016-L.jpg",
             ownerId: "7",
             ownerName: "Lisa Thompson",
-            ownerFlatNumber: "C-407",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "The Girl with the Dragon Tattoo",
@@ -205,8 +192,7 @@ extension Book {
             isAvailable: false,
             ownerId: "8",
             ownerName: "Kevin Park",
-            ownerFlatNumber: "A-309",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "The Alchemist",
@@ -216,19 +202,17 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/8308854-L.jpg",
             ownerId: "9",
             ownerName: "Maria Garcia",
-            ownerFlatNumber: "D-203",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Steve Jobs",
             author: "Walter Isaacson",
             genre: "Biography",
-            description: "The exclusive biography of Apple's co-founder, based on interviews with Jobs himself.",
-            imageURL: "https://covers.openlibrary.org/b/id/7225629-L.jpg",
+            description: "The exclusive biography of Steve Jobs, based on more than forty interviews with Jobs conducted over two years.",
+            imageURL: "https://covers.openlibrary.org/b/id/7326678-L.jpg",
             ownerId: "10",
             ownerName: "Rachel Kim",
-            ownerFlatNumber: "B-401",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "The Martian",
@@ -238,8 +222,7 @@ extension Book {
             imageURL: "https://covers.openlibrary.org/b/id/8091348-L.jpg",
             ownerId: "11",
             ownerName: "Tom Anderson",
-            ownerFlatNumber: "C-506",
-            societyId: "society1"
+            bookClubId: "club1"
         ),
         Book(
             title: "Atomic Habits",
@@ -250,8 +233,7 @@ extension Book {
             isAvailable: false,
             ownerId: "12",
             ownerName: "Jennifer Lee",
-            ownerFlatNumber: "A-502",
-            societyId: "society1"
+            bookClubId: "club1"
         )
     ]
-} 
+}

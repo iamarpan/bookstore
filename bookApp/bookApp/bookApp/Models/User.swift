@@ -6,10 +6,8 @@ struct User: Identifiable, Codable {
     let name: String
     let email: String?
     let mobile: String
-    let societyId: String
-    let societyName: String
-    let floor: String
-    let flat: String
+    let bookClubIds: [String]
+    var activeBookClubId: String?
     let profileImageURL: String?
     let isActive: Bool
     let createdAt: Date
@@ -17,15 +15,13 @@ struct User: Identifiable, Codable {
     let fcmToken: String?
     let lastTokenUpdate: Date?
     
-    init(name: String, email: String? = nil, mobile: String, societyId: String, societyName: String, floor: String, flat: String, profileImageURL: String? = nil, isActive: Bool = true) {
+    init(name: String, email: String? = nil, mobile: String, bookClubIds: [String] = [], activeBookClubId: String? = nil, profileImageURL: String? = nil, isActive: Bool = true) {
         self.id = UUID().uuidString
         self.name = name
         self.email = email
         self.mobile = mobile
-        self.societyId = societyId
-        self.societyName = societyName
-        self.floor = floor
-        self.flat = flat
+        self.bookClubIds = bookClubIds
+        self.activeBookClubId = activeBookClubId
         self.profileImageURL = profileImageURL
         self.isActive = isActive
         self.createdAt = Date()
@@ -35,15 +31,13 @@ struct User: Identifiable, Codable {
     }
     
     // Firebase initializer
-    init(id: String, name: String, email: String? = nil, mobile: String, societyId: String, societyName: String, floor: String, flat: String, profileImageURL: String? = nil, isActive: Bool = true, createdAt: Date = Date(), lastLoginAt: Date? = nil, fcmToken: String? = nil, lastTokenUpdate: Date? = nil) {
+    init(id: String, name: String, email: String? = nil, mobile: String, bookClubIds: [String], activeBookClubId: String?, profileImageURL: String? = nil, isActive: Bool = true, createdAt: Date = Date(), lastLoginAt: Date? = nil, fcmToken: String? = nil, lastTokenUpdate: Date? = nil) {
         self.id = id
         self.name = name
         self.email = email
         self.mobile = mobile
-        self.societyId = societyId
-        self.societyName = societyName
-        self.floor = floor
-        self.flat = flat
+        self.bookClubIds = bookClubIds
+        self.activeBookClubId = activeBookClubId
         self.profileImageURL = profileImageURL
         self.isActive = isActive
         self.createdAt = createdAt
@@ -52,21 +46,13 @@ struct User: Identifiable, Codable {
         self.lastTokenUpdate = lastTokenUpdate
     }
     
-    // Convenience computed property for display
-    var fullAddress: String {
-        return "\(floor)-\(flat), \(societyName)"
-    }
-    
     // MARK: - Firebase Serialization
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "name": name,
             "email": email ?? "",
             "mobile": mobile,
-            "societyId": societyId,
-            "societyName": societyName,
-            "floor": floor,
-            "flat": flat,
+            "bookClubIds": bookClubIds,
             "profileImageURL": profileImageURL ?? "",
             "isActive": isActive,
             "createdAt": Timestamp(date: createdAt),
@@ -74,15 +60,17 @@ struct User: Identifiable, Codable {
             "fcmToken": fcmToken ?? "",
             "lastTokenUpdate": lastTokenUpdate != nil ? Timestamp(date: lastTokenUpdate!) : NSNull()
         ]
+        
+        if let activeBookClubId = activeBookClubId {
+            dict["activeBookClubId"] = activeBookClubId
+        }
+        
+        return dict
     }
     
     static func fromDictionary(_ data: [String: Any], id: String) -> User? {
         guard let name = data["name"] as? String,
               let mobile = data["mobile"] as? String,
-              let societyId = data["societyId"] as? String,
-              let societyName = data["societyName"] as? String,
-              let floor = data["floor"] as? String,
-              let flat = data["flat"] as? String,
               let isActive = data["isActive"] as? Bool else {
             return nil
         }
@@ -90,6 +78,8 @@ struct User: Identifiable, Codable {
         let email = (data["email"] as? String)?.isEmpty == false ? data["email"] as? String : nil
         let profileImageURL = (data["profileImageURL"] as? String)?.isEmpty == false ? data["profileImageURL"] as? String : nil
         let fcmToken = (data["fcmToken"] as? String)?.isEmpty == false ? data["fcmToken"] as? String : nil
+        let bookClubIds = data["bookClubIds"] as? [String] ?? []
+        let activeBookClubId = data["activeBookClubId"] as? String
         
         let createdAt: Date
         if let timestamp = data["createdAt"] as? Timestamp {
@@ -117,10 +107,8 @@ struct User: Identifiable, Codable {
             name: name,
             email: email,
             mobile: mobile,
-            societyId: societyId,
-            societyName: societyName,
-            floor: floor,
-            flat: flat,
+            bookClubIds: bookClubIds,
+            activeBookClubId: activeBookClubId,
             profileImageURL: profileImageURL,
             isActive: isActive,
             createdAt: createdAt,
@@ -134,15 +122,12 @@ struct User: Identifiable, Codable {
     func toUserDefaultsDictionary() -> [String: Any] {
         let dateFormatter = ISO8601DateFormatter()
         
-        return [
+        var dict: [String: Any] = [
             "id": id ?? "",
             "name": name,
             "email": email ?? "",
             "mobile": mobile,
-            "societyId": societyId,
-            "societyName": societyName,
-            "floor": floor,
-            "flat": flat,
+            "bookClubIds": bookClubIds,
             "profileImageURL": profileImageURL ?? "",
             "isActive": isActive,
             "createdAt": dateFormatter.string(from: createdAt),
@@ -150,16 +135,18 @@ struct User: Identifiable, Codable {
             "fcmToken": fcmToken ?? "",
             "lastTokenUpdate": lastTokenUpdate != nil ? dateFormatter.string(from: lastTokenUpdate!) : ""
         ]
+        
+        if let activeBookClubId = activeBookClubId {
+            dict["activeBookClubId"] = activeBookClubId
+        }
+        
+        return dict
     }
     
     static func fromUserDefaultsDictionary(_ data: [String: Any]) -> User? {
         guard let id = data["id"] as? String,
               let name = data["name"] as? String,
               let mobile = data["mobile"] as? String,
-              let societyId = data["societyId"] as? String,
-              let societyName = data["societyName"] as? String,
-              let floor = data["floor"] as? String,
-              let flat = data["flat"] as? String,
               let isActive = data["isActive"] as? Bool,
               let createdAtString = data["createdAt"] as? String else {
             return nil
@@ -170,6 +157,8 @@ struct User: Identifiable, Codable {
         let email = (data["email"] as? String)?.isEmpty == false ? data["email"] as? String : nil
         let profileImageURL = (data["profileImageURL"] as? String)?.isEmpty == false ? data["profileImageURL"] as? String : nil
         let fcmToken = (data["fcmToken"] as? String)?.isEmpty == false ? data["fcmToken"] as? String : nil
+        let bookClubIds = data["bookClubIds"] as? [String] ?? []
+        let activeBookClubId = data["activeBookClubId"] as? String
         
         let createdAt = dateFormatter.date(from: createdAtString) ?? Date()
         
@@ -192,10 +181,8 @@ struct User: Identifiable, Codable {
             name: name,
             email: email,
             mobile: mobile,
-            societyId: societyId,
-            societyName: societyName,
-            floor: floor,
-            flat: flat,
+            bookClubIds: bookClubIds,
+            activeBookClubId: activeBookClubId,
             profileImageURL: profileImageURL,
             isActive: isActive,
             createdAt: createdAt,
@@ -212,9 +199,7 @@ extension User {
         name: "Demo User",
         email: "demo@example.com",
         mobile: "+919876543210",
-        societyId: Society.mockSocieties[0].id,
-        societyName: Society.mockSocieties[0].name,
-        floor: "A",
-        flat: "101"
+        bookClubIds: ["club1"],
+        activeBookClubId: "club1"
     )
 } 

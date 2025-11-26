@@ -10,9 +10,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
-        // Initialize Firebase first
-        FirebaseApp.configure()
-        print("🔥 Firebase configured successfully")
+        // Initialize Firebase
+        if !FirebaseConfiguration.shared.configure() {
+            print("⚠️ Firebase initialization failed. Some features may not work.")
+        }
         
         // Configure Google Sign-In (optional during development)
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),

@@ -178,9 +178,7 @@ struct OwnerInfoView: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
                     
-                    Text("Flat \(book.ownerFlatNumber)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+
                 }
                 
                 Spacer()

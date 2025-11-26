@@ -4,6 +4,7 @@ import FirebaseCore
 import FirebaseFirestore
 import FirebaseAuth
 import FirebaseStorage
+import FirebaseAppCheck
 
 @main
 struct BookClubApp: App {
@@ -12,6 +13,13 @@ struct BookClubApp: App {
     
     init() {
         print("🚀 Book Club app starting up...")
+        
+        // Configure App Check Debug Provider for Simulator
+        #if DEBUG
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+        print("🛡️ App Check Debug Provider configured")
+        #endif
         
         // Configure emulators for local testing
         #if DEBUG
