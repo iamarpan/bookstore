@@ -3,6 +3,8 @@ import SwiftUI
 struct BookDetailView: View {
     @StateObject private var viewModel: BookDetailViewModel
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @State private var showBorrowRequest = false
     
     init(book: Book) {
         self._viewModel = StateObject(wrappedValue: BookDetailViewModel(book: book))
@@ -51,14 +53,20 @@ struct BookDetailView: View {
             isLoading: viewModel.isLoading,
             hasRequested: viewModel.hasRequestedBook
         ) {
-            if viewModel.hasRequestedBook {
-                Task {
-                    await viewModel.cancelRequest()
+                if viewModel.canRequestBook {
+                    showBorrowRequest = true
+                } else if viewModel.hasRequestedBook {
+                    Task {
+                        await viewModel.cancelRequest()
+                    }
                 }
-            } else {
-                Task {
-                    await viewModel.requestBook()
-                }
+            }
+        .sheet(isPresented: $showBorrowRequest, onDismiss: {
+            // Refresh status when sheet is dismissed
+            // viewModel.checkExistingRequest() // Make this public if needed
+        }) {
+            NavigationView {
+                BorrowRequestView(book: viewModel.book)
             }
         }
     }
@@ -119,6 +127,24 @@ struct BookHeaderView: View {
                         .fontWeight(.medium)
                         .foregroundColor(book.isAvailable ? .green : .orange)
                 }
+                
+                // Condition & Price
+                HStack(spacing: 12) {
+                    Label(book.condition.rawValue.capitalized, systemImage: "star.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if book.lendingPricePerWeek > 0 {
+                        Label(String(format: "$%.2f/week", book.lendingPricePerWeek), systemImage: "tag.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Label("Free to Borrow", systemImage: "gift.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.top, 4)
                 
                 Spacer()
             }

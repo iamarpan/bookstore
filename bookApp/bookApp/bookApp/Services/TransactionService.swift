@@ -10,11 +10,11 @@ class TransactionService: ObservableObject {
     @Published var error: String?
     
     // MARK: - Private Properties
-    private nonisolated let apiClient: APIClient
+    private let apiClient: APIClient
     
     // MARK: - Initialization
     
-    nonisolated init(apiClient: APIClient = .shared) {
+    init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
     }
     

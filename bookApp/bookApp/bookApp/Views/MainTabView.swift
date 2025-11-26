@@ -26,6 +26,14 @@ struct MainTabView: View {
                     Text("Add Book")
                 }
             
+            MyGroupsView()
+                .environmentObject(themeManager)
+                .environmentObject(authViewModel)
+                .tabItem {
+                    Image(systemName: "person.3.fill")
+                    Text("My Groups")
+                }
+            
             MyLibraryView()
                 .environmentObject(myLibraryViewModel)
                 .environmentObject(themeManager)

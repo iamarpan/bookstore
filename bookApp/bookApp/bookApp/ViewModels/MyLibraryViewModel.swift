@@ -48,11 +48,11 @@ class MyLibraryViewModel: ObservableObject {
     // MARK: - Initialization
     
     init(
-        bookService: BookService = BookService(),
-        transactionService: TransactionService = TransactionService()
+        bookService: BookService? = nil,
+        transactionService: TransactionService? = nil
     ) {
-        self.bookService = bookService
-        self.transactionService = transactionService
+        self.bookService = bookService ?? BookService()
+        self.transactionService = transactionService ?? TransactionService()
     }
     
     // MARK: - View Actions

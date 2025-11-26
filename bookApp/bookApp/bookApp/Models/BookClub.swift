@@ -59,6 +59,9 @@ struct BookClub: Identifiable, Codable {
     var booksCount: Int
     var memberCount: Int
     
+    // Calculated fields (not persisted)
+    var distance: Double?
+    
     // Timestamps
     let createdAt: Date
     var updatedAt: Date?
@@ -68,6 +71,7 @@ struct BookClub: Identifiable, Codable {
         case id, name, description
         case coverImageUrl
         case category, privacy
+        case distance
         case creatorId, adminIds, moderatorIds, memberIds
         case inviteCode, inviteCodeExpiry
         case rules

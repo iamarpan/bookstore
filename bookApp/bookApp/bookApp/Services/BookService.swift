@@ -97,6 +97,22 @@ class BookService: ObservableObject {
         }
     }
     
+    /// Fetch current user's books
+    func fetchMyBooks() async throws -> [Book] {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        do {
+            let books: [Book] = try await apiClient.get("/users/me/books")
+            return books
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
     // MARK: - Create/Update Books
     
     /// Create a new book

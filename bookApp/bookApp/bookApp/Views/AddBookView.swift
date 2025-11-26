@@ -67,6 +67,62 @@ struct AddBookView: View {
                         .foregroundColor(AppTheme.primaryText)
                 }
                 
+                Section(header: Text("Lending Details").foregroundColor(AppTheme.primaryText)) {
+                    HStack {
+                        Text("Lending Price (per week)")
+                            .foregroundColor(AppTheme.primaryText)
+                        Spacer()
+                        TextField("0.00", text: $viewModel.price)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(AppTheme.primaryText)
+                            .frame(width: 100)
+                    }
+                    
+                    Picker("Condition", selection: $viewModel.selectedCondition) {
+                        ForEach(viewModel.conditions, id: \.self) { condition in
+                            Text(condition.rawValue.capitalized)
+                                .foregroundColor(AppTheme.primaryText)
+                                .tag(condition)
+                        }
+                    }
+                    .accentColor(AppTheme.primaryGreen)
+                    
+                    Toggle("Available for Lending", isOn: $viewModel.isAvailable)
+                        .toggleStyle(SwitchToggleStyle(tint: AppTheme.primaryGreen))
+                }
+                
+                Section(header: Text("Visible In Groups").foregroundColor(AppTheme.primaryText)) {
+                    if viewModel.userGroups.isEmpty {
+                        Text("No groups found. Join a group to share books.")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    } else {
+                        ForEach(viewModel.userGroups) { group in
+                            HStack {
+                                Text(group.name)
+                                    .foregroundColor(AppTheme.primaryText)
+                                Spacer()
+                                if viewModel.selectedGroupIds.contains(group.id) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(AppTheme.primaryGreen)
+                                } else {
+                                    Image(systemName: "circle")
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if viewModel.selectedGroupIds.contains(group.id) {
+                                    viewModel.selectedGroupIds.remove(group.id)
+                                } else {
+                                    viewModel.selectedGroupIds.insert(group.id)
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 Section {
                     Button(action: {
                         Task {
@@ -99,7 +155,12 @@ struct AddBookView: View {
             .scrollContentBackground(.hidden)
             .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Add Book")
-            .alert("Success", isPresented: $viewModel.showSuccessAlert) {
+            .onAppear {
+                Task {
+                    await viewModel.fetchUserGroups()
+                }
+            }
+            .alert(isPresented: $viewModel.showSuccessAlert) {
                 Button("OK") { 
                     viewModel.resetForm()
                 }
@@ -145,6 +206,12 @@ class AddBookViewModel: ObservableObject {
     @Published var author = ""
     @Published var selectedGenre = "Fiction"
     @Published var description = ""
+    @Published var price = ""
+    @Published var selectedCondition: BookCondition = .good
+    @Published var isAvailable = true
+    @Published var selectedGroupIds: Set<String> = []
+    @Published var userGroups: [BookClub] = []
+    
     @Published var isLoading = false
     @Published var isLoadingFromISBN = false
     @Published var showSuccessAlert = false
@@ -152,33 +219,42 @@ class AddBookViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let bookService = BookService()
-    private let authService = AuthService()
+    private let groupService = GroupService()
     
     let genres = ["Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery", "Other"]
+    let conditions: [BookCondition] = [.new, .likeNew, .good, .fair, .poor]
     
     var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !author.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !selectedGroupIds.isEmpty
+    }
+    
+    func fetchUserGroups() async {
+        guard let userId = User.loadFromUserDefaults()?.id else { return }
+        
+        do {
+            let groups = try await groupService.fetchMyGroups()
+            userGroups = groups
+            // Select first group by default if none selected
+            if selectedGroupIds.isEmpty, let firstGroup = groups.first {
+                selectedGroupIds.insert(firstGroup.id)
+            }
+        } catch {
+            print("Error fetching groups: \(error)")
+        }
     }
     
     func addBook() async {
         guard isFormValid else {
-            errorMessage = "Please fill in all required fields"
+            errorMessage = "Please fill in all required fields and select at least one group"
             showError = true
             return
         }
         
-        // Get current user
         guard let user = User.loadFromUserDefaults() else {
             errorMessage = "Please sign in first"
-            showError = true
-            return
-        }
-        
-        // Get user's first group (or use mock for now)
-        guard let firstGroupId = user.joinedGroupIds.first ?? user.createdGroupIds.first else {
-            errorMessage = "Please join a group first"
             showError = true
             return
         }
@@ -186,20 +262,26 @@ class AddBookViewModel: ObservableObject {
         isLoading = true
         
         do {
+            let priceValue = Double(price) ?? 0.0
+            
             let newBook = Book(
                 title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                 author: author.trimmingCharacters(in: .whitespacesAndNewlines),
                 genre: selectedGenre,
                 description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-                imageUrl: "https://via.placeholder.com/150", // Placeholder image
+                imageUrl: "https://via.placeholder.com/150", // Placeholder
+                condition: selectedCondition,
+                lendingPricePerWeek: priceValue,
+                isAvailable: isAvailable,
                 ownerId: user.id,
                 ownerName: user.name,
-                visibleInGroups: [firstGroupId]
+                visibleInGroups: Array(selectedGroupIds)
             )
             
             let addedBook = try await bookService.createBook(newBook)
             print("✅ Book added successfully with ID: \(addedBook.id)")
             showSuccessAlert = true
+            resetForm()
         } catch {
             print("❌ Error adding book: \(error)")
             errorMessage = "Failed to add book: \(error.localizedDescription)"
@@ -215,7 +297,6 @@ class AddBookViewModel: ObservableObject {
         do {
             let bookInfo = try await ISBNService.shared.fetchBookInfo(isbn: isbn)
             
-            // Update form fields with fetched data
             title = bookInfo.title
             author = bookInfo.authors
             selectedGenre = bookInfo.genre
@@ -234,6 +315,10 @@ class AddBookViewModel: ObservableObject {
         author = ""
         selectedGenre = "Fiction"
         description = ""
+        price = ""
+        selectedCondition = .good
+        isAvailable = true
+        // Keep selected groups
     }
 }
 

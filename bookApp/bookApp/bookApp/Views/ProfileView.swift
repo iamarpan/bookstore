@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @StateObject private var viewModel = ProfileViewModel()
     @State private var showSignOutAlert = false
     @State private var notificationsEnabled = true
     @EnvironmentObject var themeManager: ThemeManager
@@ -42,6 +43,11 @@ struct ProfileView: View {
                             Spacer()
                         }
                         .padding(.vertical, 8)
+                        
+                        NavigationLink(destination: EditProfileView()) {
+                            Text("Edit Profile")
+                                .foregroundColor(AppTheme.primaryGreen)
+                        }
                     }
                 }
                 .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
@@ -51,7 +57,7 @@ struct ProfileView: View {
                         icon: "books.vertical.fill",
                         iconColor: AppTheme.primaryGreen,
                         title: "Books Added",
-                        value: "2",
+                        value: "\(viewModel.booksAddedCount)",
                         isDarkMode: themeManager.isDarkMode
                     )
                     
@@ -59,7 +65,7 @@ struct ProfileView: View {
                         icon: "book.fill",
                         iconColor: AppTheme.successColor,
                         title: "Books Borrowed",
-                        value: "2",
+                        value: "\(viewModel.booksBorrowedCount)",
                         isDarkMode: themeManager.isDarkMode
                     )
                     
@@ -67,15 +73,15 @@ struct ProfileView: View {
                         icon: "person.2.fill",
                         iconColor: AppTheme.warningColor,
                         title: "Books Lent",
-                        value: "1",
+                        value: "\(viewModel.booksLentCount)",
                         isDarkMode: themeManager.isDarkMode
                     )
                     
                     ProfileStatRow(
-                        icon: "hand.raised.fill",
+                        icon: "star.fill",
                         iconColor: .purple,
-                        title: "Pending Requests",
-                        value: "1",
+                        title: "Reputation",
+                        value: String(format: "%.1f", viewModel.reputationScore),
                         isDarkMode: themeManager.isDarkMode
                     )
                 }
@@ -176,6 +182,11 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Profile")
+            .onAppear {
+                Task {
+                    await viewModel.fetchStats()
+                }
+            }
             .navigationBarTitleDisplayMode(.large)
             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
         }
