@@ -2,40 +2,37 @@ import Foundation
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var authService = FirebaseAuthService()
+    @Published var authService = AuthService()
     @Published var showRegistrationForm = false
     @Published var showError = false
     @Published var needsRegistration = false
     
-    // User profile data for registration
-    // User profile data for registration
+    // User profile data for OTP registration
+    @Published var phoneNumber: String = ""
+    @Published var otp: String = ""
     @Published var name: String = ""
-    @Published var mobile: String = ""
-    
-    // Book Club Registration Data
-    @Published var isCreatingClub = true
-    @Published var clubName = ""
-    @Published var clubDescription = ""
-    @Published var inviteCode = ""
+    @Published var bio: String = ""
     
     // Validation
-    var isValid: Bool {
-        if name.isEmpty || mobile.isEmpty { return false }
-        
-        if isCreatingClub {
-            return !clubName.isEmpty
-        } else {
-            return inviteCode.count == 6
-        }
+    var isPhoneValid: Bool {
+        phoneNumber.count >= 10
+    }
+    
+    var isOTPValid: Bool {
+        otp.count == 4 || otp.count == 6
+    }
+    
+    var isRegistrationValid: Bool {
+        !name.isEmpty && isPhoneValid
     }
     
     // Computed properties that delegate to authService
     var currentUser: User? { authService.currentUser }
     var isAuthenticated: Bool { authService.isAuthenticated }
     var isLoading: Bool { authService.isLoading }
-    var errorMessage: String? { 
-        get { authService.errorMessage }
-        set { authService.errorMessage = newValue }
+    var errorMessage: String? {
+        get { authService.error }
+        set { authService.error = newValue }
     }
     
     init() {
@@ -44,98 +41,68 @@ class AuthViewModel: ObservableObject {
     }
     
     func checkAuthenticationStatus() {
-        // Firebase Auth automatically handles auth state persistence
-        // The authService will automatically update isAuthenticated when the state changes
+        // Auth service automatically loads user from UserDefaults
     }
     
-    // MARK: - Google Sign-In Flow
-    func signInWithGoogle() async {
+    // MARK: - Phone OTP Flow
+    
+    func sendOTP() async {
+        guard isPhoneValid else {
+            errorMessage = "Please enter a valid phone number"
+            showError = true
+            return
+        }
+        
         do {
-            try await authService.signInWithGoogle()
-            // User signed in successfully
-            needsRegistration = false
-            showRegistrationForm = false
-            
-        } catch AuthError.userNotFound {
-            // User needs to complete registration
-            self.name = authService.googleUserName ?? ""
-            needsRegistration = true
-            showRegistrationForm = true
-            
-            // Clear any error messages since this is expected behavior
-            errorMessage = nil
-            showError = false
-            
+            try await authService.sendOTP(to: phoneNumber)
+            print("✅ OTP sent successfully")
         } catch {
-            errorMessage = "Google Sign-In failed. Please try again."
+            errorMessage = "Failed to send OTP: \(error.localizedDescription)"
             showError = true
         }
     }
     
-    // MARK: - User Registration
-    func completeRegistration() async { // Modified method signature and logic
-        guard isValid else { return }
-        
-        let userData = UserData(
-            name: name,
-            email: authService.googleUserEmail,
-            mobile: mobile,
-            isCreatingClub: isCreatingClub,
-            clubName: isCreatingClub ? clubName : nil,
-            clubDescription: isCreatingClub ? clubDescription : nil,
-            inviteCode: !isCreatingClub ? inviteCode : nil
-        )
+    func verifyOTP() async {
+        guard isOTPValid else {
+            errorMessage = "Please enter a valid OTP"
+            showError = true
+            return
+        }
         
         do {
-            try await authService.completeRegistration(userData: userData)
+            // Try verification (this will auto-register if new user)
+            try await authService.verifyOTP(
+                phoneNumber: phoneNumber,
+                otp: otp,
+                name: name.isEmpty ? nil : name,
+                bio: bio.isEmpty ? nil : bio
+            )
             
-            // Clear all registration-related state
+            // Success!
             needsRegistration = false
             showRegistrationForm = false
-            
-            print("🎉 Registration completed successfully, navigating to home")
+            resetForm()
             
         } catch {
-            errorMessage = "Registration failed. Please try again."
+            errorMessage = "Verification failed: \(error.localizedDescription)"
             showError = true
         }
     }
     
     // MARK: - Sign Out
-    func signOut() async {
-        do {
-            try await authService.signOut()
-            resetRegistrationState()
-            
-        } catch {
-            errorMessage = "Failed to sign out. Please try again."
-            showError = true
-        }
-    }
-    
-    func quickSignOut() {
-        // For emergency logout - attempt to sign out without waiting
-        Task {
-            try? await authService.signOut()
-            resetRegistrationState()
-        }
+    func signOut() {
+        authService.logout()
+        resetForm()
     }
     
     // MARK: - State Management
-    func resetRegistrationState() {
-        showRegistrationForm = false
-        needsRegistration = false
-        errorMessage = nil
-        showError = false
+    func resetForm() {
+        phoneNumber = ""
+        otp = ""
         name = ""
-    }
-    
-    // MARK: - Data Management
-    private func clearAllAppData() {
-        // Clear any cached data
+        bio = ""
         errorMessage = nil
         showError = false
-        resetRegistrationState()
     }
     
     // MARK: - Validation Methods
@@ -146,32 +113,10 @@ class AuthViewModel: ObservableObject {
         return phonePredicate.evaluate(with: phoneNumber)
     }
     
-    func validateEmail(_ email: String) -> Bool {
-        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        return emailPredicate.evaluate(with: email)
+    // MARK: - Mock Login (for development)
+    func mockLogin() {
+        authService.mockLogin()
+        needsRegistration = false
+        showRegistrationForm = false
     }
-    
-    // MARK: - Development Helpers
-    #if DEBUG
-    /// Clear all authentication data (development only)
-    func clearAllAuthenticationData() {
-        resetRegistrationState()
-        clearAllAppData()
-        print("🧪 Development: All authentication data cleared")
-    }
-    
-    /// Get debug information about current state
-    func getDebugInfo() -> String {
-        return """
-        Auth Debug Info:
-        - Is Authenticated: \(isAuthenticated)
-        - Current User: \(currentUser?.name ?? "None")
-        - Needs Registration: \(needsRegistration)
-        - Show Registration Form: \(showRegistrationForm)
-        - Current Name: \(name)
-        - Error Message: \(errorMessage ?? "None")
-        """
-    }
-    #endif
-} 
+}

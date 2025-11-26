@@ -20,9 +20,7 @@ struct HomeView: View {
                 .alert("Quick Logout", isPresented: $showQuickLogoutAlert) {
                     Button("Cancel", role: .cancel) { }
                     Button("Logout", role: .destructive) {
-                        Task {
-                            await authViewModel.signOut()
-                        }
+                        authViewModel.signOut()
                     }
                 } message: {
                     Text("Are you sure you want to logout?")
@@ -39,7 +37,7 @@ struct HomeView: View {
                 .onAppear {
                     setupNavigationBarAppearance()
                 }
-                .onChange(of: themeManager.isDarkMode) { _ in
+                .onChange(of: themeManager.isDarkMode) { _, _ in
                     setupNavigationBarAppearance()
                 }
         }
@@ -89,10 +87,7 @@ struct HomeView: View {
     private var contentSection: some View {
         ScrollView {
             VStack(spacing: 20) {
-                if let club = homeViewModel.activeBookClub {
-                    BookClubHomeView(bookClub: club)
-                        .padding(.horizontal)
-                }
+                // Removed activeBookClub section - will be implemented when groups are ready
                 
                 if homeViewModel.isLoading {
                     loadingView
@@ -105,7 +100,9 @@ struct HomeView: View {
             .padding(.vertical, 8)
         }
         .refreshable {
-            homeViewModel.refreshBooks()
+            Task {
+                await homeViewModel.refreshBooks()
+            }
         }
     }
     
@@ -306,7 +303,7 @@ struct BookTileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Book Cover
-            AsyncImage(url: URL(string: book.imageURL)) { image in
+            AsyncImage(url: URL(string: book.imageUrl)) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)

@@ -1,111 +1,133 @@
 import Foundation
-import FirebaseFirestore
 
-enum NotificationType: String, Codable, CaseIterable {
-    case bookRequest = "book_request"
-    case requestApproved = "request_approved"
-    case requestRejected = "request_rejected"
-    case returnReminder = "return_reminder"
-    case overdue = "overdue"
-    case bookReturned = "book_returned"
+// MARK: - Notification Type Enum (matching backend API contract)
+enum NotificationType: String, Codable {
+    case borrowRequest = "BORROW_REQUEST"
+    case requestApproved = "REQUEST_APPROVED"
+    case requestRejected = "REQUEST_REJECTED"
+    case dueSoon = "DUE_SOON"
+    case overdue = "OVERDUE"
+    case returnRequested = "RETURN_REQUESTED"
+    case newBookInGroup = "NEW_BOOK_IN_GROUP"
     
     var displayName: String {
         switch self {
-        case .bookRequest: return "Book Request"
+        case .borrowRequest: return "New Borrow Request"
         case .requestApproved: return "Request Approved"
         case .requestRejected: return "Request Rejected"
-        case .returnReminder: return "Return Reminder"
-        case .overdue: return "Overdue"
-        case .bookReturned: return "Book Returned"
+        case .dueSoon: return "Book Due Soon"
+        case .overdue: return "Book Overdue"
+        case .returnRequested: return "Return Requested"
+        case .newBookInGroup: return "New Book in Group"
         }
     }
     
     var icon: String {
         switch self {
-        case .bookRequest: return "book.circle"
+        case .borrowRequest: return "book.circle.fill"
         case .requestApproved: return "checkmark.circle.fill"
         case .requestRejected: return "xmark.circle.fill"
-        case .returnReminder: return "clock.circle"
+        case .dueSoon: return "clock.fill"
         case .overdue: return "exclamationmark.triangle.fill"
-        case .bookReturned: return "arrow.uturn.backward.circle.fill"
+        case .returnRequested: return "arrow.uturn.backward.circle.fill"
+        case .newBookInGroup: return "sparkles"
+        }
+    }
+    
+    var color: String {
+        switch self {
+        case .borrowRequest: return "blue"
+        case .requestApproved: return "green"
+        case .requestRejected: return "red"
+        case .dueSoon: return "orange"
+        case .overdue: return "red"
+        case .returnRequested: return "purple"
+        case .newBookInGroup: return "teal"
         }
     }
 }
 
+// MARK: - Notification Model
 struct BookNotification: Identifiable, Codable {
-    var id: String?
-    let userId: String
-    let title: String
-    let message: String
+    let id: String
     let type: NotificationType
-    let relatedBookId: String?
-    let relatedRequestId: String?
-    let bookClubId: String
-    var timestamp: Date
+    var title: String
+    var message: String
+    
+    // Notification data (backend payload)
+    var data: NotificationData?
+    
+    // Read status
     var isRead: Bool
     
-    init(userId: String, title: String, message: String, type: NotificationType, relatedBookId: String? = nil, relatedRequestId: String? = nil, bookClubId: String) {
-        self.id = UUID().uuidString
-        self.userId = userId
+    // Timestamp
+    let createdAt: Date
+    
+    // MARK: - CodingKeys
+    enum CodingKeys: String, CodingKey {
+        case id, type, title, message, data, isRead, createdAt
+    }
+    
+    // MARK: - Initializers
+    
+    init(
+        id: String = UUID().uuidString,
+        type: NotificationType,
+        title: String,
+        message: String,
+        data: NotificationData? = nil,
+        isRead: Bool = false,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.type = type
         self.title = title
         self.message = message
-        self.type = type
-        self.relatedBookId = relatedBookId
-        self.relatedRequestId = relatedRequestId
-        self.bookClubId = bookClubId
-        self.timestamp = Date()
-        self.isRead = false
+        self.data = data
+        self.isRead = isRead
+        self.createdAt = createdAt
+    }
+}
+
+// MARK: - Notification Data (backend payload)
+struct NotificationData: Codable {
+    var transactionId: String?
+    var bookId: String?
+    var groupId: String?
+    var userId: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case transactionId, bookId, groupId, userId
+    }
+}
+
+// MARK: - Helper Properties
+extension BookNotification {
+    /// Time ago string
+    var timeAgo: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: createdAt, relativeTo: Date())
     }
     
-    func toDictionary() -> [String: Any] {
-        return [
-            "userId": userId,
-            "title": title,
-            "message": message,
-            "type": type.rawValue,
-            "relatedBookId": relatedBookId ?? NSNull(),
-            "relatedRequestId": relatedRequestId ?? NSNull(),
-            "bookClubId": bookClubId,
-            "timestamp": Timestamp(date: timestamp),
-            "isRead": isRead
-        ]
+    /// Has associated action
+    var hasAction: Bool {
+        switch type {
+        case .borrowRequest, .dueSoon, .overdue, .returnRequested:
+            return true
+        default:
+            return false
+        }
     }
     
-    static func fromDictionary(_ data: [String: Any], id: String) -> BookNotification? {
-        guard let userId = data["userId"] as? String,
-              let title = data["title"] as? String,
-              let message = data["message"] as? String,
-              let typeString = data["type"] as? String,
-              let type = NotificationType(rawValue: typeString),
-              let bookClubId = data["bookClubId"] as? String else {
-            return nil
+    /// Action button text
+    var actionText: String? {
+        switch type {
+        case .borrowRequest: return "View Request"
+        case .dueSoon, .overdue: return "View Book"
+        case .returnRequested: return "Arrange Return"
+        default: return nil
         }
-        
-        let relatedBookId = data["relatedBookId"] as? String
-        let relatedRequestId = data["relatedRequestId"] as? String
-        let isRead = data["isRead"] as? Bool ?? false
-        
-        let timestamp: Date
-        if let ts = data["timestamp"] as? Timestamp {
-            timestamp = ts.dateValue()
-        } else {
-            timestamp = Date()
-        }
-        
-        var notification = BookNotification(
-            userId: userId,
-            title: title,
-            message: message,
-            type: type,
-            relatedBookId: relatedBookId,
-            relatedRequestId: relatedRequestId,
-            bookClubId: bookClubId
-        )
-        notification.id = id
-        notification.timestamp = timestamp // Override with actual timestamp
-        notification.isRead = isRead
-        
-        return notification
     }
 }
 
@@ -113,21 +135,49 @@ struct BookNotification: Identifiable, Codable {
 extension BookNotification {
     static let mockNotifications: [BookNotification] = [
         BookNotification(
-            userId: "user1",
-            title: "New Book Request",
-            message: "Someone requested your book 'The Great Gatsby'",
-            type: .bookRequest,
-            relatedBookId: "book1",
-            bookClubId: "club1"
+            id: "ntf_001",
+            type: .borrowRequest,
+            title: "New borrow request",
+            message: "Jane Smith wants to borrow Clean Code",
+            data: NotificationData(
+                transactionId: "txn_456",
+                bookId: "bk_123"
+            ),
+            createdAt: Date().addingTimeInterval(-3600 * 2)  // 2 hours ago
         ),
         BookNotification(
-            userId: "user1",
-            title: "Request Approved",
-            message: "Your request for 'Dune' has been approved",
+            id: "ntf_002",
             type: .requestApproved,
-            relatedBookId: "book2",
-            relatedRequestId: "request1",
-            bookClubId: "club1"
+            title: "Request approved",
+            message: "Your request for Sapiens has been approved",
+            data: NotificationData(
+                transactionId: "txn_457",
+                bookId: "bk_124"
+            ),
+            isRead: true,
+            createdAt: Date().addingTimeInterval(-86400)  // 1 day ago
+        ),
+        BookNotification(
+            id: "ntf_003",
+            type: .dueSoon,
+            title: "Book due in 24 hours",
+            message: "Clean Code is due tomorrow",
+            data: NotificationData(
+                transactionId: "txn_001",
+                bookId: "bk_123"
+            ),
+            createdAt: Date().addingTimeInterval(-1800)  // 30 mins ago
+        ),
+        BookNotification(
+            id: "ntf_004",
+            type: .newBookInGroup,
+            title: "New book in Office Book Club",
+            message: "Alex Rodriguez added The Pragmatic Programmer",
+            data: NotificationData(
+                bookId: "bk_125",
+                groupId: "club1"
+            ),
+            createdAt: Date().addingTimeInterval(-7200)  // 2 hours ago
         )
     ]
-} 
+}

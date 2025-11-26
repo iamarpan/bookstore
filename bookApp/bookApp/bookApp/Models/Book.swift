@@ -1,110 +1,177 @@
 import Foundation
-import FirebaseFirestore
 
+// MARK: - Book Condition Enum
+enum BookCondition: String, Codable {
+    case new = "NEW"
+    case likeNew = "LIKE_NEW"
+    case good = "GOOD"
+    case fair = "FAIR"
+    case poor = "POOR"
+}
+
+// MARK: - Book Model
 struct Book: Identifiable, Codable {
-    var id: String?
+    let id: String
     let title: String
     let author: String
     let genre: String
     let description: String
-    let imageURL: String
+    var personalNotes: String?
+    let imageUrl: String  // Changed from imageURL to match API contract
+    
+    // ISBN and metadata
+    var isbn: String?
+    var publisher: String?
+    var year: Int?
+    var pages: Int?
+    var language: String?
+    
+    // Condition and pricing
+    var condition: BookCondition
+    var lendingPricePerWeek: Double
+    
+    // Availability and ownership
     var isAvailable: Bool
     let ownerId: String
     let ownerName: String
-    let bookClubId: String
-    let createdAt: Date
-    let updatedAt: Date?
+    var ownerRating: Double?
+    var ownerBooksCount: Int?
+    var ownerProfileImageUrl: String?
     
-    init(title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, bookClubId: String) {
-        self.id = UUID().uuidString
-        self.title = title
-        self.author = author
-        self.genre = genre
-        self.description = description
-        self.imageURL = imageURL
-        self.isAvailable = isAvailable
-        self.ownerId = ownerId
-        self.ownerName = ownerName
-        self.bookClubId = bookClubId
-        self.createdAt = Date()
-        self.updatedAt = nil
+    // Multi-group visibility
+    var visibleInGroups: [String]  // Array of group IDs
+    
+    // Transaction tracking
+    var currentTransactionId: String?
+    
+    // Timestamps
+    let createdAt: Date
+    var updatedAt: Date?
+    
+    // MARK: - CodingKeys
+    enum CodingKeys: String, CodingKey {
+        case id, title, author, genre, description, personalNotes
+        case imageUrl
+        case isbn, publisher, year, pages, language
+        case condition
+        case lendingPricePerWeek
+        case isAvailable
+        case ownerId, ownerName, ownerRating, ownerBooksCount, ownerProfileImageUrl
+        case visibleInGroups
+        case currentTransactionId
+        case createdAt, updatedAt
     }
     
-    // Firebase initializer
-    init(id: String, title: String, author: String, genre: String, description: String, imageURL: String = "", isAvailable: Bool = true, ownerId: String, ownerName: String, bookClubId: String, createdAt: Date, updatedAt: Date? = nil) {
+    // MARK: - Initializers
+    
+    /// Main initializer for creating a new book
+    init(
+        id: String = UUID().uuidString,
+        title: String,
+        author: String,
+        genre: String,
+        description: String,
+        personalNotes: String? = nil,
+        imageUrl: String = "",
+        isbn: String? = nil,
+        publisher: String? = nil,
+        year: Int? = nil,
+        pages: Int? = nil,
+        language: String? = "English",
+        condition: BookCondition = .good,
+        lendingPricePerWeek: Double = 0,
+        isAvailable: Bool = true,
+        ownerId: String,
+        ownerName: String,
+        ownerRating: Double? = nil,
+        ownerBooksCount: Int? = nil,
+        ownerProfileImageUrl: String? = nil,
+        visibleInGroups: [String],
+        currentTransactionId: String? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date? = nil
+    ) {
         self.id = id
         self.title = title
         self.author = author
         self.genre = genre
         self.description = description
-        self.imageURL = imageURL
+        self.personalNotes = personalNotes
+        self.imageUrl = imageUrl
+        self.isbn = isbn
+        self.publisher = publisher
+        self.year = year
+        self.pages = pages
+        self.language = language
+        self.condition = condition
+        self.lendingPricePerWeek = lendingPricePerWeek
         self.isAvailable = isAvailable
         self.ownerId = ownerId
         self.ownerName = ownerName
-        self.bookClubId = bookClubId
+        self.ownerRating = ownerRating
+        self.ownerBooksCount = ownerBooksCount
+        self.ownerProfileImageUrl = ownerProfileImageUrl
+        self.visibleInGroups = visibleInGroups
+        self.currentTransactionId = currentTransactionId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
     
-    // MARK: - Firebase Serialization
-    func toDictionary() -> [String: Any] {
-        return [
-            "title": title,
-            "author": author,
-            "genre": genre,
-            "description": description,
-            "imageURL": imageURL,
-            "isAvailable": isAvailable,
-            "ownerId": ownerId,
-            "ownerName": ownerName,
-            "bookClubId": bookClubId,
-            "createdAt": Timestamp(date: createdAt),
-            "updatedAt": updatedAt != nil ? Timestamp(date: updatedAt!) : FieldValue.serverTimestamp()
-        ]
-    }
-    
-    static func fromDictionary(_ data: [String: Any], id: String) -> Book? {
-        guard let title = data["title"] as? String,
-              let author = data["author"] as? String,
-              let genre = data["genre"] as? String,
-              let description = data["description"] as? String,
-              let isAvailable = data["isAvailable"] as? Bool,
-              let ownerId = data["ownerId"] as? String,
-              let ownerName = data["ownerName"] as? String,
-              let bookClubId = data["bookClubId"] as? String else {
-            return nil
-        }
-        
-        let imageURL = data["imageURL"] as? String ?? ""
-        
-        let createdAt: Date
-        if let timestamp = data["createdAt"] as? Timestamp {
-            createdAt = timestamp.dateValue()
-        } else {
-            createdAt = Date()
-        }
-        
-        let updatedAt: Date?
-        if let timestamp = data["updatedAt"] as? Timestamp {
-            updatedAt = timestamp.dateValue()
-        } else {
-            updatedAt = nil
-        }
-        
-        return Book(
-            id: id,
+    /// Convenience initializer for backward compatibility during migration
+    @available(*, deprecated, message: "Use init with visibleInGroups instead")
+    init(
+        title: String,
+        author: String,
+        genre: String,
+        description: String,
+        imageURL: String = "",
+        isAvailable: Bool = true,
+        ownerId: String,
+        ownerName: String,
+        bookClubId: String  // Single group ID for backward compat
+    ) {
+        self.init(
             title: title,
             author: author,
             genre: genre,
             description: description,
-            imageURL: imageURL,
-            isAvailable: isAvailable,
+            imageUrl: imageURL,
             ownerId: ownerId,
             ownerName: ownerName,
-            bookClubId: bookClubId,
-            createdAt: createdAt,
-            updatedAt: updatedAt
+            visibleInGroups: [bookClubId]
         )
+    }
+}
+
+// MARK: - Helper Properties
+extension Book {
+    /// Primary group ID for backward compatibility
+    var primaryGroupId: String? {
+        visibleInGroups.first
+    }
+    
+    /// Check if book is visible in a specific group
+    func isVisibleIn(groupId: String) -> Bool {
+        visibleInGroups.contains(groupId)
+    }
+    
+    /// Formatted price string
+    var formattedPrice: String {
+        if lendingPricePerWeek == 0 {
+            return "Free"
+        }
+        return "₹\(Int(lendingPricePerWeek))/week"
+    }
+    
+    /// Status text for UI
+    var statusText: String {
+        if !isAvailable && currentTransactionId != nil {
+            return "Currently Lent"
+        } else if !isAvailable {
+            return "Not Available"
+        } else {
+            return "Available"
+        }
     }
 }
 
@@ -116,124 +183,78 @@ extension Book {
             author: "F. Scott Fitzgerald",
             genre: "Fiction",
             description: "A classic American novel about the American Dream and the decadence of the 1920s.",
-            imageURL: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
+            imageUrl: "https://covers.openlibrary.org/b/id/8225261-L.jpg",
+            isbn: "9780743273565",
+            publisher: "Scribner",
+            year: 1925,
+            pages: 180,
+            condition: .good,
+            lendingPricePerWeek: 30,
             ownerId: "1",
             ownerName: "John Smith",
-            bookClubId: "club1"
+            visibleInGroups: ["club1"]
         ),
         Book(
             title: "Becoming",
             author: "Michelle Obama",
             genre: "Biography",
             description: "The memoir of former United States First Lady Michelle Obama.",
-            imageURL: "https://covers.openlibrary.org/b/id/8393955-L.jpg",
+            imageUrl: "https://covers.openlibrary.org/b/id/8393955-L.jpg",
+            isbn: "9781524763138",
+            year: 2018,
+            condition: .likeNew,
+            lendingPricePerWeek: 50,
             isAvailable: false,
             ownerId: "2",
             ownerName: "Sarah Johnson",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "Dune",
-            author: "Frank Herbert",
-            genre: "Science",
-            description: "A science fiction masterpiece set on the desert planet Arrakis, exploring politics, religion, and ecology.",
-            imageURL: "https://covers.openlibrary.org/b/id/8632264-L.jpg",
-            ownerId: "3",
-            ownerName: "Mike Wilson",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "The Midnight Library",
-            author: "Matt Haig",
-            genre: "Fiction",
-            description: "Between life and death there is a library, and within that library, the shelves go on forever.",
-            imageURL: "https://covers.openlibrary.org/b/id/10909258-L.jpg",
-            ownerId: "4",
-            ownerName: "Emma Davis",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "Sapiens",
-            author: "Yuval Noah Harari",
-            genre: "History",
-            description: "A brief history of humankind, exploring how biology and history have defined us and enhanced our understanding of what it means to be human.",
-            imageURL: "https://covers.openlibrary.org/b/id/8192456-L.jpg",
-            isAvailable: false,
-            ownerId: "5",
-            ownerName: "David Chen",
-            bookClubId: "club1"
+            visibleInGroups: ["club1", "club2"],
+            currentTransactionId: "txn_001"
         ),
         Book(
             title: "Clean Code",
             author: "Robert C. Martin",
             genre: "Technology",
             description: "A handbook of agile software craftsmanship for writing clean, maintainable code.",
-            imageURL: "https://covers.openlibrary.org/b/id/6999792-L.jpg",
-            ownerId: "6",
+            imageUrl: "https://covers.openlibrary.org/b/id/6999792-L.jpg",
+            isbn: "9780132350884",
+            publisher: "Prentice Hall",
+            year: 2008,
+            pages: 464,
+            condition: .good,
+            lendingPricePerWeek: 40,
+            ownerId: "3",
             ownerName: "Alex Rodriguez",
-            bookClubId: "club1"
+            visibleInGroups: ["club1"]
         ),
         Book(
-            title: "Pride and Prejudice",
-            author: "Jane Austen",
-            genre: "Romance",
-            description: "A romantic novel about Elizabeth Bennet and Mr. Darcy, exploring themes of love, reputation, and class.",
-            imageURL: "https://covers.openlibrary.org/b/id/8091016-L.jpg",
-            ownerId: "7",
-            ownerName: "Lisa Thompson",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "The Girl with the Dragon Tattoo",
-            author: "Stieg Larsson",
-            genre: "Mystery",
-            description: "A gripping thriller about a journalist and a hacker investigating a wealthy family's dark secrets.",
-            imageURL: "https://covers.openlibrary.org/b/id/6279134-L.jpg",
-            isAvailable: false,
-            ownerId: "8",
-            ownerName: "Kevin Park",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "The Alchemist",
-            author: "Paulo Coelho",
+            title: "The Midnight Library",
+            author: "Matt Haig",
             genre: "Fiction",
-            description: "A philosophical novel about a young shepherd's journey to find treasure and discover his destiny.",
-            imageURL: "https://covers.openlibrary.org/b/id/8308854-L.jpg",
-            ownerId: "9",
-            ownerName: "Maria Garcia",
-            bookClubId: "club1"
+            description: "Between life and death there is a library, and within that library, the shelves go on forever.",
+            imageUrl: "https://covers.openlibrary.org/b/id/10909258-L.jpg",
+            year: 2020,
+            condition: .new,
+            lendingPricePerWeek: 0,  // Free
+            ownerId: "4",
+            ownerName: "Emma Davis",
+            visibleInGroups: ["club1"]
         ),
         Book(
-            title: "Steve Jobs",
-            author: "Walter Isaacson",
-            genre: "Biography",
-            description: "The exclusive biography of Steve Jobs, based on more than forty interviews with Jobs conducted over two years.",
-            imageURL: "https://covers.openlibrary.org/b/id/7326678-L.jpg",
-            ownerId: "10",
-            ownerName: "Rachel Kim",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "The Martian",
-            author: "Andy Weir",
-            genre: "Science",
-            description: "A thrilling tale of survival as an astronaut is stranded on Mars and must find a way home.",
-            imageURL: "https://covers.openlibrary.org/b/id/8091348-L.jpg",
-            ownerId: "11",
-            ownerName: "Tom Anderson",
-            bookClubId: "club1"
-        ),
-        Book(
-            title: "Atomic Habits",
-            author: "James Clear",
-            genre: "Technology",
-            description: "An easy and proven way to build good habits and break bad ones through small changes.",
-            imageURL: "https://covers.openlibrary.org/b/id/8091540-L.jpg",
+            title: "Sapiens",
+            author: "Yuval Noah Harari",
+            genre: "History",
+            description: "A brief history of humankind, exploring how biology and history have defined us and enhanced our understanding of what it means to be human.",
+            imageUrl: "https://covers.openlibrary.org/b/id/8192456-L.jpg",
+            isbn: "9780062316097",
+            year: 2015,
+            pages: 443,
+            condition: .good,
+            lendingPricePerWeek: 45,
             isAvailable: false,
-            ownerId: "12",
-            ownerName: "Jennifer Lee",
-            bookClubId: "club1"
+            ownerId: "5",
+            ownerName: "David Chen",
+            visibleInGroups: ["club1", "club3"],
+            currentTransactionId: "txn_002"
         )
     ]
 }

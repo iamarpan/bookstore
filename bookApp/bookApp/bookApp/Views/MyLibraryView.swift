@@ -52,7 +52,7 @@ struct MyLibraryView: View {
 }
 
 struct BorrowedBooksView: View {
-    let requests: [BookRequest]
+    let requests: [Transaction]
     let isDarkMode: Bool
     
     var body: some View {
@@ -76,7 +76,7 @@ struct BorrowedBooksView: View {
 }
 
 struct LentBooksView: View {
-    let requests: [BookRequest]
+    let requests: [Transaction]
     let viewModel: MyLibraryViewModel
     let isDarkMode: Bool
     
@@ -101,7 +101,7 @@ struct LentBooksView: View {
         }
     }
     
-    private func handleRequestAction(request: BookRequest, action: RequestAction) {
+    private func handleRequestAction(request: Transaction, action: RequestAction) {
         switch action {
         case .approve:
             viewModel.updateRequestStatus(request, newStatus: .approved)
@@ -147,7 +147,7 @@ struct MyBookRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                AsyncImage(url: URL(string: book.imageURL)) { image in
+                AsyncImage(url: URL(string: book.imageUrl)) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -228,7 +228,9 @@ struct MyBookRowView: View {
         .alert("Delete Book", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
-                viewModel.deleteBook(book)
+                Task {
+                    await viewModel.deleteBook(book)
+                }
             }
         } message: {
             Text("Are you sure you want to delete '\(book.title)'? This action cannot be undone.")
@@ -293,12 +295,12 @@ enum RequestAction {
 }
 
 struct RequestRowView: View {
-    let request: BookRequest
+    let request: Transaction
     let showActions: Bool
     let isDarkMode: Bool
     let onAction: ((RequestAction) -> Void)?
     
-    init(request: BookRequest, showActions: Bool, isDarkMode: Bool, onAction: ((RequestAction) -> Void)? = nil) {
+    init(request: Transaction, showActions: Bool, isDarkMode: Bool, onAction: ((RequestAction) -> Void)? = nil) {
         self.request = request
         self.showActions = showActions
         self.isDarkMode = isDarkMode
@@ -326,7 +328,7 @@ struct RequestRowView: View {
             }
             
             HStack {
-                Text("Requested: \(request.requestDate.formatted(date: .abbreviated, time: .omitted))")
+                Text("Requested: \(request.requestedAt.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption)
                     .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
                 
@@ -374,10 +376,10 @@ struct RequestRowView: View {
 }
 
 struct StatusBadge: View {
-    let status: RequestStatus
+    let status: TransactionStatus
     
     var body: some View {
-        Text(status.displayName)
+        Text(status.rawValue.capitalized)
             .font(.caption)
             .fontWeight(.medium)
             .foregroundColor(.white)
@@ -387,13 +389,14 @@ struct StatusBadge: View {
             .cornerRadius(8)
     }
     
-    private func colorForStatus(_ status: RequestStatus) -> Color {
+    private func colorForStatus(_ status: TransactionStatus) -> Color {
         switch status {
         case .pending: return AppTheme.warningColor
         case .approved: return AppTheme.successColor
         case .rejected: return AppTheme.errorColor
-        case .returned: return AppTheme.primaryGreen
-        case .overdue: return AppTheme.errorColor
+        case .active: return AppTheme.primaryGreen
+        case .returned: return AppTheme.successColor
+        case .cancelled: return AppTheme.errorColor
         }
     }
 }

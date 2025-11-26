@@ -1,7 +1,6 @@
 // ViewModels/HomeViewModel.swift
 import Foundation
 import Combine
-import FirebaseFirestore
 
 @MainActor
 class HomeViewModel: ObservableObject {
@@ -13,10 +12,8 @@ class HomeViewModel: ObservableObject {
     @Published var showError: Bool = false
     @Published var errorMessage: String? = nil
     
-    private var booksListener: ListenerRegistration?
-    private let firestoreService = FirestoreService()
-    
-    @Published var activeBookClub: BookClub?
+    private let bookService: BookService
+    private var selectedGroupIds: [String] = []
     
     // MARK: - Computed Properties
     
@@ -60,54 +57,55 @@ class HomeViewModel: ObservableObject {
     
     let availabilityOptions = ["Available", "Not Available"]
     
+    // MARK: - Initialization
+    
+    init(bookService: BookService = BookService()) {
+        self.bookService = bookService
+    }
+    
     // MARK: - Methods
     
-    func startListening(for bookClubId: String) {
+    /// Fetch books for selected groups
+    func fetchBooks(for groupIds: [String]) async {
         isLoading = true
+        errorMessage = nil
+        selectedGroupIds = groupIds
         
-        // Fetch Book Club Details
-        Task {
-            do {
-                if let club = try await firestoreService.getBookClub(byId: bookClubId) {
-                    self.activeBookClub = club
-                }
-            } catch {
-                print("Error fetching book club: \(error)")
-            }
-        }
-        
-        // Listen for Books
-        booksListener = firestoreService.listenToBooks(for: bookClubId) { [weak self] books in
-            Task { @MainActor in
-                self?.books = books
-                self?.isLoading = false
-            }
-        }
-    }
-    
-    func stopListening() {
-        booksListener?.remove()
-    }
-    
-    func refreshBooks() {
-        // Since we are using a real-time listener, we don't strictly need to "fetch" again.
-        // However, if we want to force a re-sync or if the listener failed, we could restart it.
-        // For this implementation, we will restart the listener to ensure fresh data.
-        
-        guard let bookClubId = books.first?.bookClubId else {
-            // If we don't have books yet, we can't easily know which club to refresh for 
-            // without storing bookClubId separately. 
-            // Let's assume the View will call startListening again if needed.
+        do {
+            books = try await bookService.fetchBooks(
+                groupIds: groupIds.isEmpty ? nil : groupIds,
+                availability: selectedAvailability == "Available" ? "AVAILABLE" : nil,
+                genres: selectedGenre != nil ? [selectedGenre!] : nil,
+                sortBy: "RECENT",
+                search: searchText.isEmpty ? nil : searchText
+            )
             isLoading = false
-            return
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            isLoading = false
         }
-        
-        stopListening()
-        startListening(for: bookClubId)
     }
     
+    /// Refresh books with current filters
+    func refreshBooks() async {
+        await fetchBooks(for: selectedGroupIds)
+    }
+    
+    /// Clear all filters and reload
     func clearFilters() {
         selectedGenre = nil
         selectedAvailability = nil
+        searchText = ""
+        
+        Task {
+            await refreshBooks()
+        }
+    }
+    
+    /// Load mock data for development
+    func loadMockBooks() {
+        bookService.loadMockBooks()
+        books = bookService.books
     }
 }

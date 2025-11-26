@@ -1,30 +1,13 @@
 // BookClubApp.swift
 import SwiftUI
-import FirebaseCore
-import FirebaseFirestore
-import FirebaseAuth
-import FirebaseStorage
-import FirebaseAppCheck
 
 @main
 struct BookClubApp: App {
-    // Register app delegate for Firebase and FCM setup
+    // Register app delegate for APNs setup
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     init() {
-        print("🚀 Book Club app starting up...")
-        
-        // Configure App Check Debug Provider for Simulator
-        #if DEBUG
-        let providerFactory = AppCheckDebugProviderFactory()
-        AppCheck.setAppCheckProviderFactory(providerFactory)
-        print("🛡️ App Check Debug Provider configured")
-        #endif
-        
-        // Configure emulators for local testing
-        #if DEBUG
-        //configureEmulators()
-        #endif
+        print("🚀 BookShare app starting up...")
     }
     
     var body: some Scene {
@@ -33,28 +16,4 @@ struct BookClubApp: App {
                 .environmentObject(ThemeManager())
         }
     }
-    
-    // MARK: - Emulator Configuration
-//    private func configureEmulators() {
-//        print("🔧 Configuring Firebase emulators for local development...")
-//        
-//        // Firestore emulator configuration
-//        let settings = Firestore.firestore().settings
-//        settings.host = "127.0.0.1:8080"
-//        settings.cacheSettings = MemoryCacheSettings()
-//        settings.isSSLEnabled = false
-//        Firestore.firestore().settings = settings
-//        
-//        // Storage emulator configuration
-//        Storage.storage().useEmulator(withHost: "127.0.0.1", port: 9199)
-//        
-//        // NOTE: Auth emulator is disabled because it doesn't support real phone authentication
-//        // The app uses mock authentication in development mode instead
-//        // If you need to test with Auth emulator, use test phone numbers like +1 650-555-3434
-//        
-//        print("✅ Firebase emulators configured")
-//        print("📋 Firestore: 127.0.0.1:8080")
-//        print("📋 Storage: 127.0.0.1:9199")
-//        print("📋 Auth: Using production Firebase (with mock mode in FirebaseAuthService)")
-//    }
 }

@@ -111,7 +111,7 @@ struct AddBookView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
-            .onChange(of: cameraPermission.permissionGranted) { granted in
+            .onChange(of: cameraPermission.permissionGranted) { _, granted in
                 if granted {
                     showingISBNScanner = true
                 }
@@ -151,7 +151,8 @@ class AddBookViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     
-    private let firestoreService = FirestoreService()
+    private let bookService = BookService()
+    private let authService = AuthService()
     
     let genres = ["Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery", "Other"]
     
@@ -168,12 +169,16 @@ class AddBookViewModel: ObservableObject {
             return
         }
         
-        // Get current user from UserDefaults
-        guard let userData = UserDefaults.standard.dictionary(forKey: "currentUser"),
-              let user = User.fromUserDefaultsDictionary(userData),
-              let userId = user.id,
-              let activeBookClubId = user.activeBookClubId else {
-            errorMessage = "Please sign in and join a book club first"
+        // Get current user
+        guard let user = User.loadFromUserDefaults() else {
+            errorMessage = "Please sign in first"
+            showError = true
+            return
+        }
+        
+        // Get user's first group (or use mock for now)
+        guard let firstGroupId = user.joinedGroupIds.first ?? user.createdGroupIds.first else {
+            errorMessage = "Please join a group first"
             showError = true
             return
         }
@@ -186,15 +191,14 @@ class AddBookViewModel: ObservableObject {
                 author: author.trimmingCharacters(in: .whitespacesAndNewlines),
                 genre: selectedGenre,
                 description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-                imageURL: "https://via.placeholder.com/150", // Placeholder image
-                isAvailable: true,
-                ownerId: userId,
+                imageUrl: "https://via.placeholder.com/150", // Placeholder image
+                ownerId: user.id,
                 ownerName: user.name,
-                bookClubId: activeBookClubId
+                visibleInGroups: [firstGroupId]
             )
             
-            let bookId = try await firestoreService.addBook(newBook)
-            print("✅ Book added successfully with ID: \(bookId)")
+            let addedBook = try await bookService.createBook(newBook)
+            print("✅ Book added successfully with ID: \(addedBook.id)")
             showSuccessAlert = true
         } catch {
             print("❌ Error adding book: \(error)")

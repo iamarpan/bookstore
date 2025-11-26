@@ -8,7 +8,9 @@ class BookDetailViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var hasRequestedBook = false
-    @Published var existingRequest: BookRequest?
+    @Published var existingTransaction: Transaction?
+    
+    private let transactionService = TransactionService()
     
     init(book: Book) {
         self.book = book
@@ -20,21 +22,19 @@ class BookDetailViewModel: ObservableObject {
         
         isLoading = true
         
-        // Create a new book request
-        let newRequest = BookRequest(
-            bookId: book.id ?? "",
-            borrowerId: User.mockUser.id ?? "",
-            borrowerName: User.mockUser.name,
-            ownerId: book.ownerId,
-            bookClubId: book.bookClubId
-        )
+        // Get current user (use mock for now)
+        _ = User.loadFromUserDefaults() ?? User.mockUser
         
-        // Simulate API call
+        // Create a borrow request
         do {
-            try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+            let transaction = try await transactionService.createBorrowRequest(
+                bookId: book.id,
+                duration: .twoWeeks,
+                message: "I'd like to borrow this book!"
+            )
             
             // Update state
-            existingRequest = newRequest
+            existingTransaction = transaction
             hasRequestedBook = true
             showSuccessAlert = true
             
@@ -47,16 +47,17 @@ class BookDetailViewModel: ObservableObject {
     }
     
     func cancelRequest() async {
-        guard hasRequestedBook else { return }
+        guard hasRequestedBook, let _ = existingTransaction else { return }
         
         isLoading = true
         
-        // Simulate API call to cancel request
+        // TODO: Add cancel request API endpoint
+        // For now, just update local state
         do {
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             
             // Update state
-            existingRequest = nil
+            existingTransaction = nil
             hasRequestedBook = false
             
         } catch {
@@ -71,29 +72,22 @@ class BookDetailViewModel: ObservableObject {
         // Check if user has already requested this book
         // In a real app, this would be an API call
         // For now, simulate with mock data
-        if book.title == "The Great Gatsby" {
-            // Simulate existing request for demo
-            existingRequest = BookRequest(
-                bookId: book.id ?? "",
-                borrowerId: User.mockUser.id ?? "",
-                borrowerName: User.mockUser.name,
-                ownerId: book.ownerId,
-                bookClubId: book.bookClubId
-            )
-            hasRequestedBook = true
-        }
+        hasRequestedBook = false
     }
     
     var canRequestBook: Bool {
-        return book.isAvailable && 
-               !hasRequestedBook && 
-               book.ownerId != User.mockUser.id
+        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
+        return book.isAvailable &&
+               !hasRequestedBook &&
+               book.ownerId != currentUser.id
     }
     
     var requestButtonTitle: String {
+        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
+        
         if !book.isAvailable {
             return "Not Available"
-        } else if book.ownerId == User.mockUser.id {
+        } else if book.ownerId == currentUser.id {
             return "Your Book"
         } else if hasRequestedBook {
             return "Request Sent"
@@ -103,19 +97,21 @@ class BookDetailViewModel: ObservableObject {
     }
     
     var requestStatus: String? {
-        guard let request = existingRequest else { return nil }
+        guard let transaction = existingTransaction else { return nil }
         
-        switch request.status {
+        switch transaction.status {
         case .pending:
             return "Your request is pending approval"
         case .approved:
-            return "Request approved! Contact the owner"
+            return "Request approved! Arrange book handover"
         case .rejected:
             return "Request was rejected"
+        case .active:
+            return "Book is currently borrowed"
         case .returned:
             return "Book has been returned"
-        case .overdue:
-            return "Book is overdue for return"
+        case .cancelled:
+            return "Request was cancelled"
         }
     }
-} 
+}

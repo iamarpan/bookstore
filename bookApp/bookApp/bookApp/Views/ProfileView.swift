@@ -10,29 +10,29 @@ struct ProfileView: View {
         NavigationView {
             List {
                 Section {
-                    if let currentUser = authViewModel.currentUser {
+                    if let user = authViewModel.currentUser {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 50))
                                 .foregroundColor(AppTheme.primaryGreen)
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(currentUser.name)
+                                Text(user.name)
                                     .font(.title2)
                                     .fontWeight(.semibold)
                                     .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                                 
-                                if let clubId = currentUser.activeBookClubId {
-                                    Text("Active Book Club")
+                                if let clubId = user.joinedGroupIds.first ?? user.createdGroupIds.first {
+                                    Text("Member of Book Club")
                                         .font(.caption)
                                         .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
                                 }
                                 
-                                Text(currentUser.mobile)
+                                Text(user.phoneNumber)
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                                 
-                                if let email = currentUser.email {
+                                if let email = user.email {
                                     Text(email)
                                         .font(.subheadline)
                                         .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))

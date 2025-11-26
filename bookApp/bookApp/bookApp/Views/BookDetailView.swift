@@ -40,7 +40,7 @@ struct BookDetailView: View {
     @ViewBuilder
     private var requestStatusSection: some View {
         if let status = viewModel.requestStatus {
-            RequestStatusView(status: status, requestStatus: viewModel.existingRequest?.status)
+            RequestStatusView(status: status, requestStatus: viewModel.existingTransaction?.status)
         }
     }
     
@@ -70,7 +70,7 @@ struct BookHeaderView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             // Book cover
-            AsyncImage(url: URL(string: book.imageURL)) { image in
+            AsyncImage(url: URL(string: book.imageUrl)) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -201,7 +201,7 @@ struct OwnerInfoView: View {
 
 struct RequestStatusView: View {
     let status: String
-    let requestStatus: RequestStatus?
+    let requestStatus: TransactionStatus?
     
     var body: some View {
         HStack {
@@ -229,10 +229,12 @@ struct RequestStatusView: View {
             return "checkmark.circle.fill"
         case .rejected:
             return "xmark.circle.fill"
+        case .active:
+            return "book.circle.fill"
         case .returned:
             return "arrow.uturn.left.circle.fill"
-        case .overdue:
-            return "exclamationmark.triangle.fill"
+        case .cancelled:
+            return "xmark.circle"
         default:
             return "info.circle.fill"
         }
@@ -246,10 +248,12 @@ struct RequestStatusView: View {
             return .green
         case .rejected:
             return .red
+        case .active:
+            return .blue
         case .returned:
             return .blue
-        case .overdue:
-            return .red
+        case .cancelled:
+            return .gray
         default:
             return .gray
         }

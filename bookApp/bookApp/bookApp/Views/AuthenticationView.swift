@@ -16,8 +16,8 @@ struct AuthenticationView: View {
                         .environmentObject(authViewModel)
                         .environmentObject(themeManager)
                 } else {
-                    // Google Sign-In View
-                    GoogleSignInView()
+                    // Phone OTP Sign-In View
+                    PhoneSignInView()
                         .environmentObject(authViewModel)
                         .environmentObject(themeManager)
                 }
@@ -33,9 +33,10 @@ struct AuthenticationView: View {
     }
 }
 
-struct GoogleSignInView: View {
+struct PhoneSignInView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var themeManager: ThemeManager
+    @State private var otpSent = false
     
     var body: some View {
         VStack(spacing: 40) {
@@ -44,7 +45,7 @@ struct GoogleSignInView: View {
             
             Spacer()
             
-            // Google Sign-In Section
+            // Phone Sign-In Section
             VStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Welcome!")
@@ -52,45 +53,64 @@ struct GoogleSignInView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                     
-                    Text("Sign in with Google to continue")
+                    Text(otpSent ? "Enter the OTP sent to your phone" : "Enter your phone number to continue")
                         .font(.body)
                         .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // Google Sign-In Button
-                Button {
-                    Task {
-                        await authViewModel.signInWithGoogle()
-                    }
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                        
-                        Text("Continue with Google")
+                if !otpSent {
+                    // Phone Number Field
+                    TextField("Phone Number", text: $authViewModel.phoneNumber)
+                        .keyboardType(.phonePad)
+                        .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                    
+                    Button {
+                        Task {
+                            await authViewModel.sendOTP()
+                            otpSent = true
+                        }
+                    } label: {
+                        Text("Send OTP")
                             .font(.body)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(AppTheme.primaryGreen)
+                            .cornerRadius(12)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.26, green: 0.52, blue: 0.96),
-                                Color(red: 0.13, green: 0.42, blue: 0.85)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .cornerRadius(12)
-                    .shadow(color: Color(red: 0.26, green: 0.52, blue: 0.96).opacity(0.3), radius: 8, x: 0, y: 4)
+                    .disabled(!authViewModel.isPhoneValid)
+                } else {
+                    // OTP Field
+                    TextField("Enter OTP", text: $authViewModel.otp)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                    
+                    Button {
+                        Task {
+                            await authViewModel.verifyOTP()
+                        }
+                    } label: {
+                        Text("Verify OTP")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(AppTheme.primaryGreen)
+                            .cornerRadius(12)
+                    }
+                    .disabled(!authViewModel.isOTPValid)
+                    
+                    Button("Resend OTP") {
+                        Task {
+                            await authViewModel.sendOTP()
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundColor(AppTheme.primaryGreen)
                 }
-                .disabled(authViewModel.isLoading)
-                .opacity(authViewModel.isLoading ? 0.7 : 1.0)
                 
                 if authViewModel.isLoading {
                     ProgressView()
@@ -101,6 +121,16 @@ struct GoogleSignInView: View {
             .padding(.horizontal, 32)
             
             Spacer()
+            
+            // Dev Mode: Mock Login
+            #if DEBUG
+            Button("Mock Login (Dev)") {
+                authViewModel.mockLogin()
+            }
+            .font(.caption)
+            .foregroundColor(.orange)
+            .padding(.bottom, 20)
+            #endif
             
             // Privacy Notice
             VStack(spacing: 8) {
@@ -166,67 +196,28 @@ struct RegistrationView: View {
                             .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     }
                     
-                    // Mobile Field
+                    // Phone Number Field (Optional for extra validation)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Mobile Number")
+                        Text("Phone Number (Optional)")
                             .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                         
-                        TextField("Enter your mobile number", text: $authViewModel.mobile)
+                        TextField("Enter your phone number", text: $authViewModel.phoneNumber)
                             .keyboardType(.phonePad)
                             .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     }
                     
-                    Divider()
+                    // Note: Club joining will be implemented later
+                    Text("You'll be able to join or create clubs after registration")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
                         .padding(.vertical, 8)
-                    
-                    // Club Selection Mode
-                    Picker("Mode", selection: $authViewModel.isCreatingClub) {
-                        Text("Create New Club").tag(true)
-                        Text("Join Existing Club").tag(false)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
-                    if authViewModel.isCreatingClub {
-                        // Create Club Fields
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Club Name")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                            
-                            TextField("e.g. The Sunday Readers", text: $authViewModel.clubName)
-                                .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Description (Optional)")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                            
-                            TextField("What's this club about?", text: $authViewModel.clubDescription)
-                                .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
-                        }
-                    } else {
-                        // Join Club Fields
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Invite Code")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                            
-                            TextField("Enter 6-digit code", text: $authViewModel.inviteCode)
-                                .keyboardType(.numberPad)
-                                .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
-                        }
-                    }
                     
                     // Complete Registration Button
                     Button {
                         Task {
-                            await authViewModel.completeRegistration()
+                            await authViewModel.verifyOTP()
                         }
                     } label: {
                         HStack {
@@ -236,7 +227,7 @@ struct RegistrationView: View {
                                     .scaleEffect(0.8)
                             }
                             
-                            Text(authViewModel.isCreatingClub ? "Create Club & Join" : "Join Club")
+                            Text("Complete Registration")
                                 .font(.body)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
@@ -247,8 +238,8 @@ struct RegistrationView: View {
                         .cornerRadius(12)
                         .shadow(color: AppTheme.primaryGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(!authViewModel.isValid || authViewModel.isLoading)
-                    .opacity(authViewModel.isValid && !authViewModel.isLoading ? 1.0 : 0.6)
+                    .disabled(!authViewModel.isRegistrationValid || authViewModel.isLoading)
+                    .opacity(authViewModel.isRegistrationValid && !authViewModel.isLoading ? 1.0 : 0.6)
                     .padding(.top, 8)
                     
                     Spacer(minLength: 40)

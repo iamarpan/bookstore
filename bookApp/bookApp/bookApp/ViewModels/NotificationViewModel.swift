@@ -1,48 +1,105 @@
 // ViewModels/NotificationViewModel.swift
 import Foundation
 import Combine
-import FirebaseFirestore
 
 @MainActor
 class NotificationViewModel: ObservableObject {
+    // MARK: - Published Properties
     @Published var notifications: [BookNotification] = []
-    @Published var unreadCount = 0
+    @Published var unreadCount: Int = 0
+    @Published var isLoading: Bool = false
+    @Published var showError: Bool = false
+    @Published var errorMessage: String? = nil
     
-    private var notificationsListener: ListenerRegistration?
-    private var db: Firestore { Firestore.firestore() }
+    // MARK: - Services
+    private let notificationService: NotificationService
     
-    func startListening(for userId: String) {
-        notificationsListener = db.collection("notifications")
-            .whereField("userId", isEqualTo: userId)
-            .order(by: "timestamp", descending: true)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else { return }
-                
-                let notifications = documents.compactMap { document in
-                    BookNotification.fromDictionary(document.data(), id: document.documentID)
-                }
-                
-                Task { @MainActor in
-                    self?.notifications = notifications
-                    self?.unreadCount = notifications.filter { !$0.isRead }.count
-                }
-            }
+    // MARK: - Computed Properties
+    
+    var unreadNotifications: [BookNotification] {
+        notifications.filter { !$0.isRead }
     }
     
-    func markAsRead(_ notification: BookNotification) async {
-        guard let id = notification.id else { return }
+    var readNotifications: [BookNotification] {
+        notifications.filter { $0.isRead }
+    }
+    
+    var hasUnread: Bool {
+        unreadCount > 0
+    }
+    
+    // MARK: - Initialization
+    
+    init(notificationService: NotificationService = NotificationService()) {
+        self.notificationService = notificationService
         
-        do {
-            try await db.collection("notifications").document(id).updateData([
-                "isRead": true
-            ])
-        } catch {
-            print("Error marking notification as read: \(error)")
-        }
+        // Observe service updates
+        notificationService.$notifications
+            .assign(to: &$notifications)
+        
+        notificationService.$unreadCount
+            .assign(to: &$unreadCount)
     }
     
-    func stopListening() {
-        notificationsListener?.remove()
-        notificationsListener = nil
+    // MARK: - Fetch Methods
+    
+    /// Fetch all notifications
+    func fetchNotifications(for userId: String, unreadOnly: Bool = false) async {
+        isLoading = true
+        errorMessage = nil
+        
+        await notificationService.fetchNotifications(
+            userId: userId,
+            unreadOnly: unreadOnly
+        )
+        
+        isLoading = false
+    }
+    
+    /// Refresh notifications
+    func refreshNotifications(for userId: String) async {
+        await fetchNotifications(for: userId)
+    }
+    
+    // MARK: - Notification Actions
+    
+    /// Mark a notification as read
+    func markAsRead(_ notification: BookNotification) async {
+        await notificationService.markAsRead(notification)
+    }
+    
+    /// Mark all notifications as read
+    func markAllAsRead(userId: String) async {
+        await notificationService.markAllAsRead(userId: userId)
+    }
+    
+    /// Delete a notification
+    func deleteNotification(_ notification: BookNotification) async {
+        await notificationService.deleteNotification(notification)
+    }
+    
+    /// Clear badge count
+    func clearBadge() {
+        notificationService.clearBadge()
+    }
+    
+    // MARK: - Permission Management
+    
+    /// Request notification permissions
+    func requestPermissions() async -> Bool {
+        return await notificationService.requestNotificationPermission()
+    }
+    
+    /// Check permission status
+    func checkPermissions() {
+        notificationService.checkNotificationPermission()
+    }
+    
+    // MARK: - Mock Data
+    
+    /// Load mock notifications for development
+    func loadMockNotifications() {
+        notificationService.loadMockNotifications()
+        print("✅ Loaded mock notifications")
     }
 }

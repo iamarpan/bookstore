@@ -48,7 +48,7 @@ struct MainTabView: View {
             setupTabBarAppearance()
             startDataListening()
         }
-        .onChange(of: themeManager.isDarkMode) { _ in
+        .onChange(of: themeManager.isDarkMode) { _, _ in
             setupTabBarAppearance()
         }
         .onShake {
@@ -58,7 +58,7 @@ struct MainTabView: View {
         .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Logout Now", role: .destructive) {
-                authViewModel.quickSignOut()
+                authViewModel.signOut()
             }
         } message: {
             Text("Detected shake gesture. Do you want to logout immediately for security?")
@@ -66,11 +66,14 @@ struct MainTabView: View {
     }
     
     private func startDataListening() {
-        // Get current user and start listening for books
-        if let user = authViewModel.currentUser,
-           let activeBookClubId = user.activeBookClubId {
-            homeViewModel.startListening(for: activeBookClubId)
-            myLibraryViewModel.loadLibraryData()
+        // Get current user and load initial data
+        if let user = authViewModel.currentUser {
+            let groupIds = user.joinedGroupIds + user.createdGroupIds
+            
+            Task {
+                await homeViewModel.fetchBooks(for: groupIds)
+                await myLibraryViewModel.fetchAllData(userId: user.id)
+            }
         }
     }
     
