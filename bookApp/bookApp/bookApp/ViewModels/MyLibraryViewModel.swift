@@ -7,6 +7,7 @@ class MyLibraryViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var myBooks: [Book] = []
     @Published var borrowedBooks: [Transaction] = []
+    @Published var lentBooks: [Transaction] = []
     @Published var bookHistory: [Transaction] = []
     @Published var isLoading: Bool = false
     @Published var showError: Bool = false
@@ -36,10 +37,7 @@ class MyLibraryViewModel: ObservableObject {
     }
     
     // Computed properties for views
-    var lentBooks: [Transaction] {
-        // TODO: Fetch transactions where current user is the owner
-        []
-    }
+    // Removed computed lentBooks property in favor of @Published
     
     var myListedBooks: [Book] {
         myBooks
@@ -175,6 +173,9 @@ class MyLibraryViewModel: ObservableObject {
         transactionService.loadMockTransactions()
         borrowedBooks = transactionService.transactions.filter { 
             $0.borrowerId == "usr_demo" && $0.status == .active 
+        }
+        lentBooks = transactionService.transactions.filter {
+            $0.ownerId == "usr_demo"
         }
         bookHistory = transactionService.transactions.filter { $0.status == .returned }
         
