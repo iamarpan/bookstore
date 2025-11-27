@@ -13,7 +13,7 @@ class BookService: ObservableObject {
     
     // MARK: - Initialization
     
-    nonisolated init(apiClient: APIClient = .shared) {
+    init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
     }
     

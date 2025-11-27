@@ -59,8 +59,8 @@ class HomeViewModel: ObservableObject {
     
     // MARK: - Initialization
     
-    init(bookService: BookService = BookService()) {
-        self.bookService = bookService
+    init(bookService: BookService? = nil) {
+        self.bookService = bookService ?? BookService()
     }
     
     // MARK: - Methods

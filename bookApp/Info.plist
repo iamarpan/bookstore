@@ -21,8 +21,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>FirebaseMessagingAutoInitEnabled</key>
-	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

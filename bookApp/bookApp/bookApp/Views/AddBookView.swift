@@ -160,7 +160,7 @@ struct AddBookView: View {
                     await viewModel.fetchUserGroups()
                 }
             }
-            .alert(isPresented: $viewModel.showSuccessAlert) {
+            .alert("Success", isPresented: $viewModel.showSuccessAlert) {
                 Button("OK") { 
                     viewModel.resetForm()
                 }
@@ -232,7 +232,7 @@ class AddBookViewModel: ObservableObject {
     }
     
     func fetchUserGroups() async {
-        guard let userId = User.loadFromUserDefaults()?.id else { return }
+        guard User.loadFromUserDefaults() != nil else { return }
         
         do {
             let groups = try await groupService.fetchMyGroups()

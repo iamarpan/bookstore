@@ -409,6 +409,8 @@ struct EmptyStateView: View {
     
     var body: some View {
         VStack(spacing: 16) {
+            Spacer()
+            
             Image(systemName: icon)
                 .font(.system(size: 50))
                 .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
@@ -422,6 +424,8 @@ struct EmptyStateView: View {
                 .font(.body)
                 .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
                 .multilineTextAlignment(.center)
+            
+            Spacer()
         }
         .padding()
     }

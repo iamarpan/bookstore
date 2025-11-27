@@ -23,7 +23,7 @@ struct ProfileView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
                                 
-                                if let clubId = user.joinedGroupIds.first ?? user.createdGroupIds.first {
+                                if !user.joinedGroupIds.isEmpty || !user.createdGroupIds.isEmpty {
                                     Text("Member of Book Club")
                                         .font(.caption)
                                         .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
@@ -195,7 +195,7 @@ struct ProfileView: View {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
                 Task {
-                    await authViewModel.signOut()
+                    authViewModel.signOut()
                 }
             }
         } message: {
