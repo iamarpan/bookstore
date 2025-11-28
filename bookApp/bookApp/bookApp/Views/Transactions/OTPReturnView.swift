@@ -41,10 +41,10 @@ struct OTPReturnView: View {
             if !isOwner {
                 confirmButton
                     .padding()
-                    .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+                    .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
             }
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Return Book")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: $viewModel.showError) {
@@ -70,15 +70,15 @@ struct OTPReturnView: View {
         VStack(spacing: 12) {
             Image(systemName: "arrow.uturn.left.circle.fill")
                 .font(.system(size: 40))
-                .foregroundColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.primaryAccent)
                 .padding()
-                .background(AppTheme.lightGreen)
+                .background(AppTheme.primaryAccent.opacity(0.1))
                 .clipShape(Circle())
             
             Text(isOwner ? "Show Code to Borrower" : "Verify Return")
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
         }
         .padding(.vertical, 20)
     }
@@ -89,7 +89,7 @@ struct OTPReturnView: View {
              : "Ask the owner for the 4-digit code displayed on their screen and enter it below to confirm return.")
             .font(.body)
             .multilineTextAlignment(.center)
-            .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+            .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
             .padding(.horizontal)
     }
     
@@ -111,7 +111,7 @@ struct OTPReturnView: View {
                     Text("Copy Code")
                 }
                 .font(.caption)
-                .foregroundColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.primaryAccent)
             }
         }
     }
@@ -119,13 +119,13 @@ struct OTPReturnView: View {
     private func otpDigitBox(digit: String) -> some View {
         Text(digit)
             .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .frame(width: 60, height: 70)
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.primaryGreen.opacity(0.3), lineWidth: 1)
+                    .stroke(AppTheme.primaryAccent.opacity(0.3), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 2)
     }
@@ -159,13 +159,13 @@ struct OTPReturnView: View {
         
         return Text(digit)
             .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .frame(width: 60, height: 70)
-            .background(isActive ? AppTheme.primaryGreen.opacity(0.1) : AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(isActive ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isActive ? AppTheme.primaryGreen : Color.gray.opacity(0.3), lineWidth: isActive ? 2 : 1)
+                    .stroke(isActive ? AppTheme.primaryAccent : Color.gray.opacity(0.3), lineWidth: isActive ? 2 : 1)
             )
             .onTapGesture {
                 // Focus logic would go here
@@ -179,12 +179,12 @@ struct OTPReturnView: View {
             if isOwner {
                 Text("Code expires in")
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 
                 Text(viewModel.timeRemaining)
                     .font(.headline)
                     .monospacedDigit()
-                    .foregroundColor(viewModel.timeRemainingInt < 60 ? .red : AppTheme.primaryGreen)
+                    .foregroundColor(viewModel.timeRemainingInt < 60 ? .red : AppTheme.primaryAccent)
             }
         }
     }
@@ -195,16 +195,16 @@ struct OTPReturnView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Book Condition")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             Text("Please verify the book is in good condition before the borrower confirms the return.")
                 .font(.caption)
-                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
             
             // Toggle or checklist could go here
         }
         .padding()
-        .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+        .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
         .cornerRadius(12)
     }
     
@@ -227,7 +227,7 @@ struct OTPReturnView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(viewModel.isValidCode ? AppTheme.primaryGreen : Color.gray)
+            .background(viewModel.isValidCode ? AppTheme.primaryAccent : Color.gray)
             .foregroundColor(.white)
             .cornerRadius(12)
         }

@@ -21,7 +21,7 @@ struct AddBookView: View {
                         HStack {
                             Image(systemName: "barcode.viewfinder")
                                 .font(.title2)
-                                .foregroundColor(AppTheme.primaryGreen)
+                                .foregroundColor(AppTheme.primaryAccent)
                             
                             VStack(alignment: .leading) {
                                 Text("Scan ISBN Barcode")
@@ -37,7 +37,7 @@ struct AddBookView: View {
                             if viewModel.isLoadingFromISBN {
                                 ProgressView()
                                     .scaleEffect(0.8)
-                                    .accentColor(AppTheme.primaryGreen)
+                                    .accentColor(AppTheme.primaryAccent)
                             } else {
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(AppTheme.tertiaryText)
@@ -60,7 +60,7 @@ struct AddBookView: View {
                                 .tag(genre)
                         }
                     }
-                    .accentColor(AppTheme.primaryGreen)
+                    .accentColor(AppTheme.primaryAccent)
                     
                     TextField("Description", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...6)
@@ -86,10 +86,10 @@ struct AddBookView: View {
                                 .tag(condition)
                         }
                     }
-                    .accentColor(AppTheme.primaryGreen)
+                    .accentColor(AppTheme.primaryAccent)
                     
                     Toggle("Available for Lending", isOn: $viewModel.isAvailable)
-                        .toggleStyle(SwitchToggleStyle(tint: AppTheme.primaryGreen))
+                        .toggleStyle(SwitchToggleStyle(tint: AppTheme.primaryAccent))
                 }
                 
                 Section(header: Text("Visible In Groups").foregroundColor(AppTheme.primaryText)) {
@@ -105,7 +105,7 @@ struct AddBookView: View {
                                 Spacer()
                                 if viewModel.selectedGroupIds.contains(group.id) {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(AppTheme.primaryGreen)
+                                        .foregroundColor(AppTheme.primaryAccent)
                                 } else {
                                     Image(systemName: "circle")
                                         .foregroundColor(.gray)
@@ -145,7 +145,7 @@ struct AddBookView: View {
                             Spacer()
                         }
                         .padding()
-                        .background(viewModel.isFormValid && !viewModel.isLoading ? AppTheme.primaryGreen : AppTheme.tertiaryText)
+                        .background(viewModel.isFormValid && !viewModel.isLoading ? AppTheme.primaryAccent : AppTheme.tertiaryText)
                         .cornerRadius(10)
                     }
                     .disabled(viewModel.isLoading || !viewModel.isFormValid)
@@ -153,7 +153,7 @@ struct AddBookView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Add Book")
             .onAppear {
                 Task {
@@ -189,14 +189,14 @@ struct AddBookView: View {
                 setupFormAppearance()
             }
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
     }
     
     private func setupFormAppearance() {
         // Customize form appearance for current theme
-        UITableView.appearance().backgroundColor = UIColor(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
-        UITextField.appearance().textColor = UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-        UITextView.appearance().textColor = UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+        UITableView.appearance().backgroundColor = UIColor(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
+        UITextField.appearance().textColor = UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+        UITextView.appearance().textColor = UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
     }
 }
 

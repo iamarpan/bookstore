@@ -11,37 +11,67 @@ struct OTPHandoverView: View {
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            headerView
+        ZStack {
+            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
+                .ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 32) {
-                    // Instructions
-                    instructionsView
+            VStack(spacing: 24) {
+                // Header
+                Text(isOwner ? "Verify Borrower" : "Your Ticket")
+                    .font(AppTheme.headerFont(size: 24))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                    .padding(.top)
+                
+                // Ticket Card
+                TicketView(isOwner: isOwner, viewModel: viewModel)
+                    .padding(.horizontal, 24)
+                    .shadow(color: AppTheme.shadowCard, radius: 20, x: 0, y: 10)
+                
+                if isOwner {
+                    // Input Field (Hidden but active)
+                    TextField("", text: $viewModel.enteredCode)
+                        .keyboardType(.numberPad)
+                        .opacity(0.01)
+                        .frame(width: 0, height: 0)
+                        .onChange(of: viewModel.enteredCode) { _, newValue in
+                            if newValue.count > 4 {
+                                viewModel.enteredCode = String(newValue.prefix(4))
+                            }
+                        }
                     
-                    // OTP Section
-                    if isOwner {
-                        ownerView
-                    } else {
-                        borrowerView
+                    // Confirm Button
+                    Button(action: {
+                        Task {
+                            await viewModel.confirmHandover()
+                        }
+                    }) {
+                        HStack {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Confirm Handover")
+                                    .fontWeight(.bold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(viewModel.isValidCode ? AppTheme.primaryAccent : AppTheme.tertiaryText)
+                        .foregroundColor(.white)
+                        .cornerRadius(AppTheme.buttonRadius)
+                        .shadow(color: viewModel.isValidCode ? AppTheme.primaryAccent.opacity(0.3) : Color.clear, radius: 10, x: 0, y: 5)
                     }
-                    
-                    // Timer/Status
-                    statusView
+                    .disabled(!viewModel.isValidCode || viewModel.isLoading)
+                    .padding(.horizontal, 24)
+                } else {
+                    Text("Show this code to the owner")
+                        .font(AppTheme.bodyFont(size: 16))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
-                .padding()
-            }
-            
-            // Action Button (for Owner)
-            if isOwner {
-                confirmButton
-                    .padding()
-                    .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+                
+                Spacer()
             }
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
-        .navigationTitle("Handover Book")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK") { }
@@ -57,163 +87,120 @@ struct OTPHandoverView: View {
         }
         .onAppear {
             viewModel.setup(transaction: transaction, isOwner: isOwner)
+            // Haptic feedback
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
         }
-    }
-    
-    // MARK: - Views
-    
-    private var headerView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "hand.wave.fill")
-                .font(.system(size: 40))
-                .foregroundColor(AppTheme.primaryGreen)
-                .padding()
-                .background(AppTheme.lightGreen)
-                .clipShape(Circle())
-            
-            Text(isOwner ? "Verify Borrower" : "Show Code to Owner")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-        }
-        .padding(.vertical, 20)
-    }
-    
-    private var instructionsView: some View {
-        Text(isOwner 
-             ? "Ask the borrower for the 4-digit code displayed on their screen and enter it below to confirm handover."
-             : "Show this 4-digit code to the owner when you meet to pick up the book.")
-            .font(.body)
-            .multilineTextAlignment(.center)
-            .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
-            .padding(.horizontal)
-    }
-    
-    // MARK: - Borrower View (Display Code)
-    
-    private var borrowerView: some View {
-        VStack(spacing: 20) {
-            HStack(spacing: 16) {
-                ForEach(0..<4) { index in
-                    otpDigitBox(digit: viewModel.otpCode.count > index ? String(Array(viewModel.otpCode)[index]) : "")
-                }
-            }
-            
-            Button(action: {
-                UIPasteboard.general.string = viewModel.otpCode
-            }) {
-                HStack {
-                    Image(systemName: "doc.on.doc")
-                    Text("Copy Code")
-                }
-                .font(.caption)
-                .foregroundColor(AppTheme.primaryGreen)
-            }
-        }
-    }
-    
-    private func otpDigitBox(digit: String) -> some View {
-        Text(digit)
-            .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-            .frame(width: 60, height: 70)
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.primaryGreen.opacity(0.3), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 2)
-    }
-    
-    // MARK: - Owner View (Enter Code)
-    
-    private var ownerView: some View {
-        VStack(spacing: 20) {
-            HStack(spacing: 16) {
-                ForEach(0..<4) { index in
-                    otpInputBox(index: index)
-                }
-            }
-            
-            // Hidden text field for input handling
-            TextField("", text: $viewModel.enteredCode)
-                .keyboardType(.numberPad)
-                .opacity(0.01) // Invisible but focusable
-                .frame(width: 0, height: 0)
-                .onChange(of: viewModel.enteredCode) { _, newValue in
-                    if newValue.count > 4 {
-                        viewModel.enteredCode = String(newValue.prefix(4))
-                    }
-                }
-        }
-    }
-    
-    private func otpInputBox(index: Int) -> some View {
-        let digit = viewModel.enteredCode.count > index ? String(Array(viewModel.enteredCode)[index]) : ""
-        let isActive = viewModel.enteredCode.count == index
-        
-        return Text(digit)
-            .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-            .frame(width: 60, height: 70)
-            .background(isActive ? AppTheme.primaryGreen.opacity(0.1) : AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isActive ? AppTheme.primaryGreen : Color.gray.opacity(0.3), lineWidth: isActive ? 2 : 1)
-            )
-            .onTapGesture {
-                // Focus logic would go here
-            }
-    }
-    
-    // MARK: - Status View
-    
-    private var statusView: some View {
-        VStack(spacing: 8) {
-            if !isOwner {
-                Text("Code expires in")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
-                
-                Text(viewModel.timeRemaining)
-                    .font(.headline)
-                    .monospacedDigit()
-                    .foregroundColor(viewModel.timeRemainingInt < 60 ? .red : AppTheme.primaryGreen)
-            }
-        }
-    }
-    
-    // MARK: - Confirm Button
-    
-    private var confirmButton: some View {
-        Button(action: {
-            Task {
-                await viewModel.confirmHandover()
-            }
-        }) {
-            HStack {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Confirm Handover")
-                        .fontWeight(.bold)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(viewModel.isValidCode ? AppTheme.primaryGreen : Color.gray)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-        }
-        .disabled(!viewModel.isValidCode || viewModel.isLoading)
     }
 }
 
-// MARK: - ViewModel
+struct TicketView: View {
+    let isOwner: Bool
+    @ObservedObject var viewModel: OTPHandoverViewModel
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Top Section (Info)
+            VStack(spacing: 16) {
+                Image(systemName: "book.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(AppTheme.primaryAccent)
+                
+                Text(isOwner ? "Enter Code" : "Scan Code")
+                    .font(AppTheme.headerFont(size: 20))
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Divider()
+                    .background(AppTheme.secondaryText.opacity(0.2))
+            }
+            .padding(24)
+            .background(Color.white)
+            
+            // Perforation
+            HStack(spacing: 4) {
+                ForEach(0..<20) { _ in
+                    Circle()
+                        .fill(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .frame(height: 10)
+            .background(Color.white)
+            .mask(Rectangle().padding(.horizontal, -10)) // Clip edges if needed
+            
+            // Bottom Section (Code)
+            VStack(spacing: 20) {
+                if isOwner {
+                    HStack(spacing: 16) {
+                        ForEach(0..<4) { index in
+                            let digit = viewModel.enteredCode.count > index ? String(Array(viewModel.enteredCode)[index]) : ""
+                            let isActive = viewModel.enteredCode.count == index
+                            
+                            Text(digit)
+                                .font(.system(size: 32, weight: .bold, design: .monospaced))
+                                .foregroundColor(AppTheme.primaryText)
+                                .frame(width: 50, height: 60)
+                                .background(isActive ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.primaryBackground)
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(isActive ? AppTheme.primaryAccent : Color.clear, lineWidth: 2)
+                                )
+                        }
+                    }
+                } else {
+                    Text(viewModel.otpCode)
+                        .font(.system(size: 56, weight: .bold, design: .monospaced))
+                        .foregroundColor(AppTheme.primaryText)
+                        .kerning(10)
+                    
+                    Text("Expires in \(viewModel.timeRemaining)")
+                        .font(AppTheme.bodyFont(size: 14, weight: .medium))
+                        .foregroundColor(viewModel.timeRemainingInt < 60 ? AppTheme.errorColor : AppTheme.secondaryText)
+                }
+            }
+            .padding(32)
+            .frame(maxWidth: .infinity)
+            .background(Color.white)
+        }
+        .cornerRadius(20)
+        .mask(TicketShape())
+    }
+}
 
+struct TicketShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let cornerRadius: CGFloat = 20
+        let notchRadius: CGFloat = 10
+        let notchY = rect.height * 0.4 // Position of the notch
+        
+        path.move(to: CGPoint(x: cornerRadius, y: 0))
+        path.addLine(to: CGPoint(x: rect.width - cornerRadius, y: 0))
+        path.addArc(center: CGPoint(x: rect.width - cornerRadius, y: cornerRadius), radius: cornerRadius, startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
+        
+        path.addLine(to: CGPoint(x: rect.width, y: notchY - notchRadius))
+        path.addArc(center: CGPoint(x: rect.width, y: notchY), radius: notchRadius, startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 90), clockwise: true) // Notch
+        
+        path.addLine(to: CGPoint(x: rect.width, y: rect.height - cornerRadius))
+        path.addArc(center: CGPoint(x: rect.width - cornerRadius, y: rect.height), radius: cornerRadius, startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
+        
+        path.addLine(to: CGPoint(x: cornerRadius, y: rect.height))
+        path.addArc(center: CGPoint(x: cornerRadius, y: rect.height - cornerRadius), radius: cornerRadius, startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
+        
+        path.addLine(to: CGPoint(x: 0, y: notchY + notchRadius))
+        path.addArc(center: CGPoint(x: 0, y: notchY), radius: notchRadius, startAngle: Angle(degrees: 90), endAngle: Angle(degrees: -90), clockwise: true) // Notch
+        
+        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
+        path.addArc(center: CGPoint(x: cornerRadius, y: cornerRadius), radius: cornerRadius, startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
+        
+        return path
+    }
+}
+
+// Keep ViewModel as is
 @MainActor
 class OTPHandoverViewModel: ObservableObject {
     @Published var otpCode = "1234" // Mock code

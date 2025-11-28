@@ -1,31 +1,111 @@
 import SwiftUI
 
 struct AppTheme {
-    // MARK: - Colors
+    // MARK: - 1. Color Palette (Warm & Paper-Like)
     
-    // Background Colors
-    static let primaryBackground = Color(red: 0.11, green: 0.11, blue: 0.12) // Dark gray
-    static let secondaryBackground = Color(red: 0.15, green: 0.15, blue: 0.16) // Slightly lighter
-    static let cardBackground = Color(red: 0.18, green: 0.18, blue: 0.19) // Card background
+    // Backgrounds
+    static let primaryBackground = Color(hex: "F9F7F2") // Warm Alabaster
+    static let cardBackground = Color(hex: "FFFFFF") // Pure White
+    static let glassBackground = Color.white.opacity(0.85) // Glassmorphism
     
-    // Green Accent Colors
-    static let primaryGreen = Color(red: 0.2, green: 0.8, blue: 0.4) // Bright green
-    static let secondaryGreen = Color(red: 0.15, green: 0.6, blue: 0.3) // Darker green
-    static let lightGreen = Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.1) // Light green background
+    // Text
+    static let primaryText = Color(hex: "1A1A1A") // Soft Black
+    static let secondaryText = Color(hex: "585858") // Dark Grey
+    static let tertiaryText = Color(hex: "8A8A8A") // Medium Grey
     
-    // Text Colors
-    static let primaryText = Color.white
-    static let secondaryText = Color(red: 0.8, green: 0.8, blue: 0.8)
-    static let tertiaryText = Color(red: 0.6, green: 0.6, blue: 0.6)
+    // Brand & Actions
+    static let primaryAccent = Color(hex: "C2410C") // Burnt Orange/Terracotta
+    static let secondaryAccent = Color(hex: "334155") // Slate Blue
     
-    // Status Colors
-    static let successColor = primaryGreen
-    static let warningColor = Color.orange
-    static let errorColor = Color.red
+    // Status Colors (Pastel/Soft)
+    static let successColor = Color(hex: "059669") // Emerald
+    static let successBg = Color(hex: "ECFDF5") // Light Emerald
+    static let warningColor = Color(hex: "D97706") // Amber
+    static let errorColor = Color(hex: "DC2626") // Rose
+    static let separatorColor = Color(hex: "E5E5EA") // Light Gray
     
-    // Border and Separator Colors
-    static let borderColor = Color(red: 0.3, green: 0.3, blue: 0.3)
-    static let separatorColor = Color(red: 0.25, green: 0.25, blue: 0.25)
+    // MARK: - 2. Typography
+    // Using system fonts for now, but styled to match the spec.
+    // Ideally we would load custom fonts like Libre Baskerville.
+    
+    static func headerFont(size: CGFloat = 24) -> Font {
+        .system(size: size, weight: .bold, design: .serif)
+    }
+    
+    static func bodyFont(size: CGFloat = 16, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .default)
+    }
+    
+    // MARK: - 3. Surfaces & Depth
+    
+    static let cardRadius: CGFloat = 20
+    static let buttonRadius: CGFloat = 100 // Pill shape
+    static let inputRadius: CGFloat = 16
+    
+    static let shadowCard = Color.black.opacity(0.08)
+    static let shadowFloating = Color.black.opacity(0.1)
+    
+    // MARK: - Dynamic Colors (Adapting to Dark Mode if needed, but prioritizing the Warm Theme)
+    
+    static func colorPrimaryBackground(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "1C1C1E") : primaryBackground
+    }
+    
+    static func colorCardBackground(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "2C2C2E") : cardBackground
+    }
+    
+    static func colorPrimaryText(for isDarkMode: Bool) -> Color {
+        isDarkMode ? .white : primaryText
+    }
+    
+    static func colorSecondaryText(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "AEAEB2") : secondaryText
+    }
+    
+    static func colorTertiaryText(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "636366") : tertiaryText
+    }
+    
+    static func colorSecondaryBackground(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "2C2C2E") : Color(hex: "F2F2F7")
+    }
+    
+    static func dynamicBorderColor(for isDarkMode: Bool) -> Color {
+        isDarkMode ? separatorColor : Color(hex: "E5E5EA")
+    }
+    
+    static func dynamicSeparatorColor(for isDarkMode: Bool) -> Color {
+        isDarkMode ? separatorColor : Color(hex: "E5E5EA")
+    }
+}
+
+// MARK: - Color Extension for Hex Support
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 1, 1, 0)
+        }
+        
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
 }
 
 // MARK: - Custom Modifiers
@@ -40,15 +120,16 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(.white)
-            .font(.headline)
+            .font(AppTheme.bodyFont(size: 17, weight: .semibold))
             .padding()
             .frame(maxWidth: .infinity)
             .background(
                 isEnabled ? 
-                (configuration.isPressed ? AppTheme.secondaryGreen : AppTheme.primaryGreen) :
+                (configuration.isPressed ? AppTheme.primaryAccent.opacity(0.9) : AppTheme.primaryAccent) :
                 AppTheme.tertiaryText
             )
-            .cornerRadius(12)
+            .cornerRadius(AppTheme.buttonRadius)
+            .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
@@ -57,16 +138,12 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(AppTheme.primaryGreen)
-            .font(.headline)
+            .foregroundColor(AppTheme.primaryAccent)
+            .font(AppTheme.bodyFont(size: 17, weight: .medium))
             .padding()
             .frame(maxWidth: .infinity)
-            .background(AppTheme.lightGreen)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.primaryGreen, lineWidth: 1)
-            )
+            .background(AppTheme.primaryAccent.opacity(0.1))
+            .cornerRadius(AppTheme.buttonRadius)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
@@ -76,8 +153,20 @@ struct AppCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(AppTheme.cardBackground)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+            .cornerRadius(AppTheme.cardRadius)
+            .shadow(color: AppTheme.shadowCard, radius: 20, x: 0, y: 10)
+    }
+}
+
+struct GlassmorphicStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.cardRadius)
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+            )
+            .cornerRadius(AppTheme.cardRadius)
     }
 }
 
@@ -85,4 +174,8 @@ extension View {
     func appCardStyle() -> some View {
         modifier(AppCardStyle())
     }
-} 
+    
+    func glassmorphic() -> some View {
+        modifier(GlassmorphicStyle())
+    }
+}

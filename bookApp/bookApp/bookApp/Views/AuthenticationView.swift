@@ -6,7 +6,7 @@ struct AuthenticationView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode)
+            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -51,11 +51,11 @@ struct PhoneSignInView: View {
                     Text("Welcome!")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     Text(otpSent ? "Enter the OTP sent to your phone" : "Enter your phone number to continue")
                         .font(.body)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -77,7 +77,7 @@ struct PhoneSignInView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(AppTheme.primaryGreen)
+                            .background(AppTheme.primaryAccent)
                             .cornerRadius(12)
                     }
                     .disabled(!authViewModel.isPhoneValid)
@@ -98,7 +98,7 @@ struct PhoneSignInView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(AppTheme.primaryGreen)
+                            .background(AppTheme.primaryAccent)
                             .cornerRadius(12)
                     }
                     .disabled(!authViewModel.isOTPValid)
@@ -109,12 +109,12 @@ struct PhoneSignInView: View {
                         }
                     }
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 }
                 
                 if authViewModel.isLoading {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.primaryGreen))
+                        .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.primaryAccent))
                         .scaleEffect(1.2)
                 }
             }
@@ -136,24 +136,24 @@ struct PhoneSignInView: View {
             VStack(spacing: 8) {
                 Text("By continuing, you agree to our")
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 
                 HStack(spacing: 4) {
                     Button("Terms of Service") {
                         // Handle terms of service
                     }
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                     
                     Text("and")
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     
                     Button("Privacy Policy") {
                         // Handle privacy policy
                     }
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 }
             }
             .padding(.bottom, 40)
@@ -172,11 +172,11 @@ struct RegistrationView: View {
                 Text("Complete Your Profile")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 
                 Text("Set up your account and join a club")
                     .font(.subheadline)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 40)
@@ -190,7 +190,7 @@ struct RegistrationView: View {
                         Text("Full Name")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
                         TextField("Enter your full name", text: $authViewModel.name)
                             .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
@@ -201,7 +201,7 @@ struct RegistrationView: View {
                         Text("Phone Number (Optional)")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
                         TextField("Enter your phone number", text: $authViewModel.phoneNumber)
                             .keyboardType(.phonePad)
@@ -211,7 +211,7 @@ struct RegistrationView: View {
                     // Note: Club joining will be implemented later
                     Text("You'll be able to join or create clubs after registration")
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                         .padding(.vertical, 8)
                     
                     // Complete Registration Button
@@ -234,9 +234,9 @@ struct RegistrationView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(AppTheme.primaryGreen)
+                        .background(AppTheme.primaryAccent)
                         .cornerRadius(12)
-                        .shadow(color: AppTheme.primaryGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                     .disabled(!authViewModel.isRegistrationValid || authViewModel.isLoading)
                     .opacity(authViewModel.isRegistrationValid && !authViewModel.isLoading ? 1.0 : 0.6)
@@ -260,16 +260,16 @@ struct AuthHeaderView: View {
             VStack(spacing: 8) {
                 Image(systemName: "books.vertical.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 
                 Text("Book Club")
                     .font(.title)
                     .fontWeight(.bold)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                 
                 Text("Create or join clubs to share books")
                     .font(.subheadline)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     .multilineTextAlignment(.center)
             }
         }
@@ -285,11 +285,11 @@ struct CustomTextFieldStyle: TextFieldStyle {
         configuration
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
-            .background(AppTheme.dynamicCardBackground(isDarkMode))
+            .background(AppTheme.colorCardBackground(for: isDarkMode))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(AppTheme.dynamicTertiaryText(isDarkMode).opacity(0.3), lineWidth: 1)
+                    .stroke(AppTheme.colorTertiaryText(for: isDarkMode).opacity(0.3), lineWidth: 1)
             )
     }
 }

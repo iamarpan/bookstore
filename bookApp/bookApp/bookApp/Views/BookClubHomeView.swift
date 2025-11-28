@@ -12,12 +12,12 @@ struct BookClubHomeView: View {
                     Text(bookClub.name)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     if !bookClub.description.isEmpty {
                         Text(bookClub.description)
                             .font(.subheadline)
-                            .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                            .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                             .lineLimit(2)
                     }
                 }
@@ -35,9 +35,9 @@ struct BookClubHomeView: View {
                             .font(.caption)
                             .fontWeight(.medium)
                     }
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                     .padding(8)
-                    .background(AppTheme.primaryGreen.opacity(0.1))
+                    .background(AppTheme.primaryAccent.opacity(0.1))
                     .cornerRadius(8)
                 }
             }
@@ -51,7 +51,7 @@ struct BookClubHomeView: View {
                 } icon: {
                     Image(systemName: "person.2.fill")
                 }
-                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 
                 Label {
                     Text("Code: \(bookClub.inviteCode)")
@@ -61,14 +61,14 @@ struct BookClubHomeView: View {
                 } icon: {
                     Image(systemName: "number")
                 }
-                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 .onTapGesture {
                     UIPasteboard.general.string = bookClub.inviteCode
                 }
             }
         }
         .padding()
-        .background(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+        .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }

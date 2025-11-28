@@ -30,16 +30,16 @@ struct GroupCardView: View {
                     // Group icon
                     Image(systemName: group.privacy == .public_ ? "person.3.fill" : "lock.fill")
                         .font(.title2)
-                        .foregroundColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.primaryAccent)
                         .frame(width: 50, height: 50)
-                        .background(AppTheme.lightGreen)
+                        .background(AppTheme.primaryAccent.opacity(0.1))
                         .clipShape(Circle())
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text(group.name)
                             .font(.headline)
                             .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                             .lineLimit(1)
                         
                         HStack(spacing: 4) {
@@ -48,7 +48,7 @@ struct GroupCardView: View {
                             Text(group.privacy == .public_ ? "Public" : "Private")
                                 .font(.caption)
                         }
-                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     }
                     
                     Spacer()
@@ -61,14 +61,14 @@ struct GroupCardView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(AppTheme.primaryGreen)
+                                .background(AppTheme.primaryAccent)
                                 .cornerRadius(8)
                         }
                         .buttonStyle(PlainButtonStyle())
                     } else {
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                     }
                 }
                 
@@ -76,7 +76,7 @@ struct GroupCardView: View {
                 if !group.description.isEmpty {
                     Text(group.description)
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                         .lineLimit(2)
                 }
                 
@@ -107,7 +107,7 @@ struct GroupCardView: View {
                 }
             }
             .padding(16)
-            .background(AppTheme.dynamicCardBackground(isDarkMode))
+            .background(AppTheme.colorCardBackground(for: isDarkMode))
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.1), radius: 4, x: 0, y: 2)
         }
@@ -126,17 +126,17 @@ struct StatItem: View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption2)
-                .foregroundColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.primaryAccent)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                 
                 Text(label)
                     .font(.caption2)
-                    .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
             }
         }
     }

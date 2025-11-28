@@ -4,6 +4,8 @@ struct BookDetailView: View {
     @StateObject private var viewModel: BookDetailViewModel
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var tabManager: TabManager
     @State private var showBorrowRequest = false
     
     init(book: Book) {
@@ -11,277 +13,319 @@ struct BookDetailView: View {
     }
     
     var body: some View {
-        mainContent
-            .navigationBarTitleDisplayMode(.inline)
-            .alert("Request Sent!", isPresented: $viewModel.showSuccessAlert) {
-                Button("OK") { }
-            } message: {
-                Text("Your request has been sent to \(viewModel.book.ownerName). They will be notified about your request.")
-            }
-            .alert("Error", isPresented: $viewModel.showError) {
-                Button("OK") { }
-            } message: {
-                Text(viewModel.errorMessage ?? "An unknown error occurred")
-            }
-    }
-    
-    private var mainContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                BookHeaderView(book: viewModel.book)
-                BookDescriptionView(book: viewModel.book)
-                OwnerInfoView(book: viewModel.book)
-                requestStatusSection
-                requestButtonSection
-                Spacer(minLength: 100)
-            }
-            .padding()
-        }
-    }
-    
-    @ViewBuilder
-    private var requestStatusSection: some View {
-        if let status = viewModel.requestStatus {
-            RequestStatusView(status: status, requestStatus: viewModel.existingTransaction?.status)
-        }
-    }
-    
-    private var requestButtonSection: some View {
-        RequestButtonView(
-            title: viewModel.requestButtonTitle,
-            canRequest: viewModel.canRequestBook,
-            isLoading: viewModel.isLoading,
-            hasRequested: viewModel.hasRequestedBook
-        ) {
-                if viewModel.canRequestBook {
-                    showBorrowRequest = true
-                } else if viewModel.hasRequestedBook {
-                    Task {
-                        await viewModel.cancelRequest()
+        ZStack(alignment: .bottom) {
+            // Background
+            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Parallax Header
+                    ParallaxHeader(book: viewModel.book)
+                        .frame(height: 300)
+                    
+                    // Content
+                    VStack(alignment: .leading, spacing: 24) {
+                        BookInfoSection(book: viewModel.book, isDarkMode: themeManager.isDarkMode)
+                        
+                        Divider()
+                            .background(AppTheme.separatorColor)
+                        
+                        BookDescriptionView(book: viewModel.book)
+                        
+                        OwnerInfoView(book: viewModel.book)
+                        
+                        if let status = viewModel.requestStatus {
+                            RequestStatusView(status: status, requestStatus: viewModel.existingTransaction?.status)
+                        }
+                        
+                        Spacer(minLength: 100)
                     }
+                    .padding(24)
+                    .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
+                    .cornerRadius(30, corners: [.topLeft, .topRight])
+                    .offset(y: -30) // Overlap the header
                 }
             }
-        .sheet(isPresented: $showBorrowRequest, onDismiss: {
-            // Refresh status when sheet is dismissed
-            // viewModel.checkExistingRequest() // Make this public if needed
-        }) {
+            .edgesIgnoringSafeArea(.top)
+            
+            // Floating Action Bar
+            if viewModel.canRequestBook || viewModel.hasRequestedBook {
+                VStack {
+                    Spacer()
+                    RequestButtonView(
+                        title: viewModel.requestButtonTitle,
+                        canRequest: viewModel.canRequestBook,
+                        isLoading: viewModel.isLoading,
+                        hasRequested: viewModel.hasRequestedBook
+                    ) {
+                        if viewModel.canRequestBook {
+                            showBorrowRequest = true
+                        } else if viewModel.hasRequestedBook {
+                            Task {
+                                await viewModel.cancelRequest()
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0),
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0.9),
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 120)
+                )
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showBorrowRequest) {
             NavigationView {
                 BorrowRequestView(book: viewModel.book)
+            }
+        }
+        .alert("Request Sent!", isPresented: $viewModel.showSuccessAlert) {
+            Button("OK") { }
+        } message: {
+            Text("Your request has been sent to \(viewModel.book.ownerName). They will be notified about your request.")
+        }
+        .alert("Error", isPresented: $viewModel.showError) {
+            Button("OK") { }
+        } message: {
+            Text(viewModel.errorMessage ?? "An unknown error occurred")
+        }
+        .onAppear {
+            tabManager.hide()
+        }
+        .onDisappear {
+            tabManager.show()
+        }
+    }
+}
+
+struct ParallaxHeader: View {
+    let book: Book
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let minY = geometry.frame(in: .global).minY
+            
+            ZStack {
+                AsyncImage(url: URL(string: book.imageUrl)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height + (minY > 0 ? minY : 0))
+                        .clipped()
+                        .offset(y: (minY > 0 ? -minY : 0))
+                        .blur(radius: minY < 0 ? abs(minY) / 20 : 0) // Blur on scroll up
+                } placeholder: {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                }
+                
+                // Gradient Overlay
+                LinearGradient(
+                    gradient: Gradient(colors: [.black.opacity(0.6), .clear]),
+                    startPoint: .bottom,
+                    endPoint: .center
+                )
             }
         }
     }
 }
 
-struct BookHeaderView: View {
+struct BookInfoSection: View {
     let book: Book
+    let isDarkMode: Bool
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Book cover
-            AsyncImage(url: URL(string: book.imageUrl)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color(.systemGray4))
-                    .overlay(
-                        Image(systemName: "book.closed")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray)
-                    )
-            }
-            .frame(width: 120, height: 180)
-            .cornerRadius(12)
-            .shadow(radius: 5)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(book.title)
+                .font(AppTheme.headerFont(size: 28))
+                .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                .fixedSize(horizontal: false, vertical: true)
             
-            // Book info
-            VStack(alignment: .leading, spacing: 8) {
-                Text(book.title)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .lineLimit(3)
+            Text("by \(book.author)")
+                .font(AppTheme.bodyFont(size: 18, weight: .medium))
+                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+            
+            HStack(spacing: 12) {
+                // Genre Tag
+                Text(book.genre.uppercased())
+                    .font(AppTheme.bodyFont(size: 12, weight: .bold))
+                    .foregroundColor(AppTheme.secondaryAccent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(AppTheme.secondaryAccent.opacity(0.1))
+                    .cornerRadius(AppTheme.buttonRadius)
                 
-                Text("by \(book.author)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                // Genre tag
-                Text(book.genre)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(Color.blue)
-                    .cornerRadius(12)
-                
-                // Availability status
-                HStack {
+                // Availability
+                HStack(spacing: 4) {
                     Circle()
-                        .fill(book.isAvailable ? Color.green : Color.orange)
+                        .fill(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
                         .frame(width: 8, height: 8)
-                    
-                    Text(book.isAvailable ? "Available" : "Currently Borrowed")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(book.isAvailable ? .green : .orange)
+                    Text(book.isAvailable ? "Available" : "Borrowed")
+                        .font(AppTheme.bodyFont(size: 14, weight: .medium))
+                        .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
                 }
-                
-                // Condition & Price
-                HStack(spacing: 12) {
-                    Label(book.condition.rawValue.capitalized, systemImage: "star.fill")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    if book.lendingPricePerWeek > 0 {
-                        Label(String(format: "$%.2f/week", book.lendingPricePerWeek), systemImage: "tag.fill")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Label("Free to Borrow", systemImage: "gift.fill")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.top, 4)
-                
-                Spacer()
             }
             
-            Spacer()
+            // Condition & Price
+            HStack(spacing: 16) {
+                Label(book.condition.rawValue.capitalized, systemImage: "star.fill")
+                    .font(AppTheme.bodyFont(size: 14))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                
+                if book.lendingPricePerWeek > 0 {
+                    Label(String(format: "$%.2f/week", book.lendingPricePerWeek), systemImage: "tag.fill")
+                        .font(AppTheme.bodyFont(size: 14))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                } else {
+                    Label("Free to Borrow", systemImage: "gift.fill")
+                        .font(AppTheme.bodyFont(size: 14))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                }
+            }
+            .padding(.top, 8)
         }
+    }
+}
+
+// Helper for rounded corners
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
     }
 }
 
 struct BookDescriptionView: View {
     let book: Book
     @State private var isExpanded = false
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("About This Book")
-                .font(.headline)
-                .fontWeight(.semibold)
+                .font(AppTheme.headerFont(size: 20))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             Text(book.description)
-                .font(.body)
+                .font(AppTheme.bodyFont(size: 16))
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 .lineLimit(isExpanded ? nil : 4)
-                .foregroundColor(.secondary)
+                .lineSpacing(4)
             
-            if book.description.count > 200 {
-                Button(isExpanded ? "Show Less" : "Show More") {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isExpanded.toggle()
-                    }
-                }
-                .font(.caption)
-                .foregroundColor(.blue)
+            Button(action: { isExpanded.toggle() }) {
+                Text(isExpanded ? "Read Less" : "Read More")
+                    .font(AppTheme.bodyFont(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.primaryAccent)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
 }
 
 struct OwnerInfoView: View {
     let book: Book
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Book Owner")
-                .font(.headline)
-                .fontWeight(.semibold)
+        HStack(spacing: 16) {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 50))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
-            HStack {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(.blue)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Owned by")
+                    .font(AppTheme.bodyFont(size: 12))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(book.ownerName)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-
-                }
-                
-                Spacer()
-                
-                // Contact button (placeholder)
-                Button(action: {
-                    // Contact functionality
-                }) {
-                    Image(systemName: "message.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.green)
-                }
+                Text(book.ownerName)
+                    .font(AppTheme.headerFont(size: 18))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                // View Profile action
+            }) {
+                Text("View Profile")
+                    .font(AppTheme.bodyFont(size: 14, weight: .medium))
+                    .foregroundColor(AppTheme.primaryAccent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(AppTheme.primaryAccent.opacity(0.1))
+                    .cornerRadius(AppTheme.buttonRadius)
             }
         }
         .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+        .cornerRadius(AppTheme.cardRadius)
     }
 }
 
 struct RequestStatusView: View {
-    let status: String
+    let status: RequestStatus
     let requestStatus: TransactionStatus?
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         HStack {
-            Image(systemName: statusIcon)
-                .font(.system(size: 20))
-                .foregroundColor(statusColor)
-            
-            Text(status)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(statusColor)
-            
+            Image(systemName: iconName)
+            Text(statusMessage)
+                .font(AppTheme.bodyFont(size: 14, weight: .medium))
             Spacer()
         }
         .padding()
-        .background(statusColor.opacity(0.1))
-        .cornerRadius(12)
+        .background(backgroundColor.opacity(0.1))
+        .foregroundColor(backgroundColor)
+        .cornerRadius(AppTheme.inputRadius)
     }
     
-    private var statusIcon: String {
-        switch requestStatus {
-        case .pending:
-            return "clock.circle.fill"
-        case .approved:
-            return "checkmark.circle.fill"
-        case .rejected:
-            return "xmark.circle.fill"
-        case .active:
-            return "book.circle.fill"
-        case .returned:
-            return "arrow.uturn.left.circle.fill"
-        case .cancelled:
-            return "xmark.circle"
-        default:
-            return "info.circle.fill"
+    var iconName: String {
+        switch status {
+        case .canRequest: return "arrow.right.circle"
+        case .requested: return "clock.fill"
+        case .borrowed: return "book.fill"
+        case .unavailable: return "xmark.circle.fill"
+        case .ownBook: return "person.fill"
         }
     }
     
-    private var statusColor: Color {
-        switch requestStatus {
-        case .pending:
-            return .orange
-        case .approved:
-            return .green
-        case .rejected:
-            return .red
-        case .active:
-            return .blue
-        case .returned:
-            return .blue
-        case .cancelled:
-            return .gray
-        default:
-            return .gray
+    var statusMessage: String {
+        switch status {
+        case .canRequest: return "Available to borrow"
+        case .requested: return "Request Pending"
+        case .borrowed: return "Currently Borrowed"
+        case .unavailable: return "Currently Unavailable"
+        case .ownBook: return "This is your book"
+        }
+    }
+    
+    var backgroundColor: Color {
+        switch status {
+        case .canRequest: return AppTheme.successColor
+        case .requested: return AppTheme.warningColor
+        case .borrowed: return AppTheme.primaryAccent
+        case .unavailable: return AppTheme.errorColor
+        case .ownBook: return AppTheme.secondaryAccent
         }
     }
 }
@@ -296,26 +340,15 @@ struct RequestButtonView: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                Spacer()
-                
                 if isLoading {
                     ProgressView()
-                        .scaleEffect(0.9)
-                        .foregroundColor(.white)
-                    
-                    Text(hasRequested ? "Canceling..." : "Sending Request...")
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Image(systemName: buttonIcon)
-                        .font(.system(size: 16, weight: .semibold))
-                    
                     Text(title)
-                        .fontWeight(.semibold)
+                        .fontWeight(.bold)
                 }
-                
-                Spacer()
             }
+            .frame(maxWidth: .infinity)
             .padding()
             .background(buttonColor)
             .foregroundColor(.white)
@@ -349,4 +382,4 @@ struct BookDetailView_Previews: PreviewProvider {
             BookDetailView(book: Book.mockBooks[0])
         }
     }
-} 
+}

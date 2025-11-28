@@ -15,28 +15,28 @@ struct ProfileView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 50))
-                                .foregroundColor(AppTheme.primaryGreen)
+                                .foregroundColor(AppTheme.primaryAccent)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(user.name)
                                     .font(.title2)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 
                                 if !user.joinedGroupIds.isEmpty || !user.createdGroupIds.isEmpty {
                                     Text("Member of Book Club")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                                 }
                                 
                                 Text(user.phoneNumber)
                                     .font(.subheadline)
-                                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                                 
                                 if let email = user.email {
                                     Text(email)
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                                 }
                             }
                             
@@ -46,16 +46,16 @@ struct ProfileView: View {
                         
                         NavigationLink(destination: EditProfileView()) {
                             Text("Edit Profile")
-                                .foregroundColor(AppTheme.primaryGreen)
+                                .foregroundColor(AppTheme.primaryAccent)
                         }
                     }
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
-                Section(header: Text("Library Stats").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
+                Section(header: Text("Library Stats").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     ProfileStatRow(
                         icon: "books.vertical.fill",
-                        iconColor: AppTheme.primaryGreen,
+                        iconColor: AppTheme.primaryAccent,
                         title: "Books Added",
                         value: "\(viewModel.booksAddedCount)",
                         isDarkMode: themeManager.isDarkMode
@@ -85,18 +85,18 @@ struct ProfileView: View {
                         isDarkMode: themeManager.isDarkMode
                     )
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
-                Section(header: Text("Settings").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
+                Section(header: Text("Settings").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     HStack {
                         Image(systemName: "bell.fill")
                             .foregroundColor(AppTheme.errorColor)
                             .frame(width: 24)
                         Text("Notifications")
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         Spacer()
                         Toggle("", isOn: $notificationsEnabled)
-                            .accentColor(AppTheme.primaryGreen)
+                            .accentColor(AppTheme.primaryAccent)
                     }
                     
                     HStack {
@@ -104,18 +104,18 @@ struct ProfileView: View {
                             .foregroundColor(themeManager.isDarkMode ? .purple : .orange)
                             .frame(width: 24)
                         Text("Dark Mode")
-                            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         Spacer()
                         Toggle("", isOn: $themeManager.isDarkMode)
-                            .accentColor(AppTheme.primaryGreen)
+                            .accentColor(AppTheme.primaryAccent)
                     }
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
-                Section(header: Text("Support").foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))) {
+                Section(header: Text("Support").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     ProfileMenuRow(
                         icon: "questionmark.circle.fill",
-                        iconColor: AppTheme.primaryGreen,
+                        iconColor: AppTheme.primaryAccent,
                         title: "Help & Support",
                         isDarkMode: themeManager.isDarkMode
                     )
@@ -129,12 +129,12 @@ struct ProfileView: View {
                     
                     ProfileMenuRow(
                         icon: "envelope.fill",
-                        iconColor: AppTheme.primaryGreen,
+                        iconColor: AppTheme.primaryAccent,
                         title: "Contact Us",
                         isDarkMode: themeManager.isDarkMode
                     )
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
                 Section {
                     Button(action: {
@@ -142,18 +142,18 @@ struct ProfileView: View {
                     }) {
                         HStack {
                             Image(systemName: "info.circle.fill")
-                                .foregroundColor(AppTheme.primaryGreen)
+                                .foregroundColor(AppTheme.primaryAccent)
                                 .frame(width: 24)
                             Text("About App")
-                                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                                 .font(.caption)
                         }
                     }
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
                 Section {
                     Button(action: {
@@ -177,10 +177,10 @@ struct ProfileView: View {
                     }
                     .disabled(authViewModel.isLoading)
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
             }
             .scrollContentBackground(.hidden)
-            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Profile")
             .onAppear {
                 Task {
@@ -188,9 +188,9 @@ struct ProfileView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.large)
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
@@ -217,10 +217,10 @@ struct ProfileStatRow: View {
                 .foregroundColor(iconColor)
                 .frame(width: 24)
             Text(title)
-                .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
             Spacer()
             Text(value)
-                .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                 .fontWeight(.medium)
         }
     }
@@ -238,10 +238,10 @@ struct ProfileMenuRow: View {
                 .foregroundColor(iconColor)
                 .frame(width: 24)
             Text(title)
-                .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
             Spacer()
             Image(systemName: "chevron.right")
-                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                 .font(.caption)
         }
     }

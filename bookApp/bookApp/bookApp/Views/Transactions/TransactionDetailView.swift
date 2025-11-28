@@ -32,7 +32,7 @@ struct TransactionDetailView: View {
             }
             .padding()
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Transaction Details")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -80,7 +80,7 @@ struct TransactionDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Book")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack(spacing: 16) {
                 // Book Cover Placeholder
@@ -96,17 +96,17 @@ struct TransactionDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Book Title Placeholder") // In real app, fetch book details
                         .font(.headline)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     Text("Author Name")
                         .font(.subheadline)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
                 
                 Spacer()
             }
             .padding()
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
         }
     }
@@ -115,21 +115,21 @@ struct TransactionDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(viewModel.isOwner(userId: authViewModel.currentUser?.id ?? "") ? "Borrower" : "Owner")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack(spacing: 16) {
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.otherPartyName)
                         .font(.headline)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     Text("Tap to contact")
                         .font(.caption)
-                        .foregroundColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.primaryAccent)
                 }
                 
                 Spacer()
@@ -139,11 +139,11 @@ struct TransactionDetailView: View {
                 }) {
                     Image(systemName: "message.circle.fill")
                         .font(.title)
-                        .foregroundColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.primaryAccent)
                 }
             }
             .padding()
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
         }
     }
@@ -152,7 +152,7 @@ struct TransactionDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Timeline")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             VStack(alignment: .leading, spacing: 0) {
                 timelineItem(title: "Requested", date: viewModel.transaction.requestedAt, isCompleted: true)
@@ -161,7 +161,7 @@ struct TransactionDetailView: View {
                 timelineItem(title: "Returned", date: viewModel.transaction.returnedAt, isCompleted: viewModel.transaction.status == .returned, isLast: true)
             }
             .padding()
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
         }
     }
@@ -170,12 +170,12 @@ struct TransactionDetailView: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(spacing: 0) {
                 Circle()
-                    .fill(isCompleted ? AppTheme.primaryGreen : Color.gray.opacity(0.3))
+                    .fill(isCompleted ? AppTheme.primaryAccent : Color.gray.opacity(0.3))
                     .frame(width: 12, height: 12)
                 
                 if !isLast {
                     Rectangle()
-                        .fill(isCompleted ? AppTheme.primaryGreen : Color.gray.opacity(0.3))
+                        .fill(isCompleted ? AppTheme.primaryAccent : Color.gray.opacity(0.3))
                         .frame(width: 2)
                         .frame(height: 30)
                 }
@@ -185,12 +185,12 @@ struct TransactionDetailView: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(isCompleted ? .semibold : .regular)
-                    .foregroundColor(isCompleted ? AppTheme.dynamicPrimaryText(themeManager.isDarkMode) : AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                    .foregroundColor(isCompleted ? AppTheme.colorPrimaryText(for: themeManager.isDarkMode) : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 
                 if let date = date {
                     Text(date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption2)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
             }
             
@@ -201,7 +201,7 @@ struct TransactionDetailView: View {
     private var actionSection: some View {
         VStack(spacing: 12) {
             if viewModel.canApprove(userId: authViewModel.currentUser?.id ?? "") {
-                actionButton(title: "Approve Request", icon: "checkmark.circle.fill", color: AppTheme.primaryGreen) {
+                actionButton(title: "Approve Request", icon: "checkmark.circle.fill", color: AppTheme.primaryAccent) {
                     Task { await viewModel.approveRequest() }
                 }
                 
@@ -211,13 +211,13 @@ struct TransactionDetailView: View {
             }
             
             if viewModel.canHandover {
-                actionButton(title: "Handover Book", icon: "hand.wave.fill", color: AppTheme.primaryGreen) {
+                actionButton(title: "Handover Book", icon: "hand.wave.fill", color: AppTheme.primaryAccent) {
                     viewModel.activeSheet = .handover
                 }
             }
             
             if viewModel.canReturn {
-                actionButton(title: "Return Book", icon: "arrow.uturn.left.circle.fill", color: AppTheme.primaryGreen) {
+                actionButton(title: "Return Book", icon: "arrow.uturn.left.circle.fill", color: AppTheme.primaryAccent) {
                     viewModel.activeSheet = .returnBook
                 }
             }

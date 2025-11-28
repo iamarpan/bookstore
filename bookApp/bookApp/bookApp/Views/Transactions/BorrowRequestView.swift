@@ -30,10 +30,10 @@ struct BorrowRequestView: View {
             // Action Button
             actionButton
                 .padding()
-                .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+                .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
                 .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: -5)
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Request to Borrow")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: $viewModel.showError) {
@@ -74,29 +74,29 @@ struct BorrowRequestView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(book.title)
                     .font(.headline)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     .lineLimit(2)
                 
                 Text(book.author)
                     .font(.subheadline)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 
                 // Owner info
                 HStack(spacing: 6) {
                     Image(systemName: "person.circle.fill")
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     
                     Text("Owner: \(book.ownerId)") // In real app, resolve owner name
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
             }
             
             Spacer()
         }
         .padding()
-        .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+        .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
         .cornerRadius(12)
     }
     
@@ -104,7 +104,7 @@ struct BorrowRequestView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Borrow Duration")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack(spacing: 12) {
                 durationOption(weeks: 1)
@@ -127,12 +127,12 @@ struct BorrowRequestView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(isSelected ? AppTheme.primaryGreen.opacity(0.1) : AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
-            .foregroundColor(isSelected ? AppTheme.primaryGreen : AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .background(isSelected ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .foregroundColor(isSelected ? AppTheme.primaryAccent : AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? AppTheme.primaryGreen : Color.clear, lineWidth: 2)
+                    .stroke(isSelected ? AppTheme.primaryAccent : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -142,12 +142,12 @@ struct BorrowRequestView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Message to Owner (Optional)")
                 .font(.headline)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             TextEditor(text: $viewModel.message)
                 .frame(height: 100)
                 .padding(8)
-                .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+                .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
@@ -160,16 +160,16 @@ struct BorrowRequestView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "info.circle")
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                     .font(.caption)
                 
                 Text("By sending this request, you agree to return the book in the same condition. The owner will review your request.")
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
             }
         }
         .padding()
-        .background(AppTheme.primaryGreen.opacity(0.05))
+        .background(AppTheme.primaryAccent.opacity(0.05))
         .cornerRadius(8)
     }
     
@@ -190,7 +190,7 @@ struct BorrowRequestView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(AppTheme.primaryGreen)
+            .background(AppTheme.primaryAccent)
             .foregroundColor(.white)
             .cornerRadius(12)
         }

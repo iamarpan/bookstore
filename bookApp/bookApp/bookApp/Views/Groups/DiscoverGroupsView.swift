@@ -23,7 +23,7 @@ struct DiscoverGroupsView: View {
                 groupsList
             }
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Discover Groups")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -41,11 +41,11 @@ struct DiscoverGroupsView: View {
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
             TextField("Search groups...", text: $viewModel.searchText)
                 .textFieldStyle(PlainTextFieldStyle())
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 .onChange(of: viewModel.searchText) { _, _ in
                     Task {
                         await viewModel.performSearch()
@@ -60,12 +60,12 @@ struct DiscoverGroupsView: View {
                     }
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 }
             }
         }
         .padding()
-        .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+        .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
         .cornerRadius(10)
         .padding()
     }
@@ -118,12 +118,12 @@ struct DiscoverGroupsView: View {
         .font(.subheadline)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(isSelected ? AppTheme.primaryGreen.opacity(0.1) : AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
-        .foregroundColor(isSelected ? AppTheme.primaryGreen : AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+        .background(isSelected ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+        .foregroundColor(isSelected ? AppTheme.primaryAccent : AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(isSelected ? AppTheme.primaryGreen : Color.clear, lineWidth: 1)
+                .stroke(isSelected ? AppTheme.primaryAccent : Color.clear, lineWidth: 1)
         )
     }
     
@@ -159,8 +159,8 @@ struct DiscoverGroupsView: View {
         VStack {
             Spacer()
             ProgressView("Searching groups...")
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                .accentColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                .accentColor(AppTheme.primaryAccent)
             Spacer()
         }
     }
@@ -170,16 +170,16 @@ struct DiscoverGroupsView: View {
             Spacer()
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 50))
-                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
             Text("No groups found")
                 .font(.title3)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             Text("Try adjusting your search or filters")
                 .font(.body)
-                .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
             Spacer()
         }
     }

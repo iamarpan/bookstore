@@ -10,10 +10,10 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             mainContent
-                .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+                .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
                 .navigationTitle("Book Club")
                 .navigationBarTitleDisplayMode(.large)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 .toolbar {
                     toolbarContent
                 }
@@ -41,7 +41,7 @@ struct HomeView: View {
                     setupNavigationBarAppearance()
                 }
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
     }
     
     private var mainContent: some View {
@@ -63,24 +63,29 @@ struct HomeView: View {
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
-            TextField("Search books, authors, genres...", text: $homeViewModel.searchText)
-                .textFieldStyle(PlainTextFieldStyle())
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            TextField("Search books, authors...", text: $homeViewModel.searchText)
+                .font(AppTheme.bodyFont())
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
         }
         .padding()
-        .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
-        .cornerRadius(10)
+        .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
+        .cornerRadius(AppTheme.inputRadius)
+        .shadow(color: AppTheme.shadowCard, radius: 10, x: 0, y: 4)
     }
     
     private var filterButton: some View {
         Button(action: {
             showingFilterSheet.toggle()
         }) {
-            Image(systemName: homeViewModel.hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+            Image(systemName: homeViewModel.hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "slider.horizontal.3")
                 .font(.title2)
-                .foregroundColor(homeViewModel.hasActiveFilters ? AppTheme.primaryGreen : AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                .foregroundColor(homeViewModel.hasActiveFilters ? AppTheme.primaryAccent : AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                .padding(12)
+                .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
+                .clipShape(Circle())
+                .shadow(color: AppTheme.shadowCard, radius: 10, x: 0, y: 4)
         }
     }
     
@@ -110,8 +115,8 @@ struct HomeView: View {
         VStack {
             Spacer()
             ProgressView("Loading books...")
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                .accentColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                .accentColor(AppTheme.primaryAccent)
             Spacer()
         }
         .frame(height: 200)
@@ -123,13 +128,13 @@ struct HomeView: View {
             VStack {
                 Image(systemName: "books.vertical")
                     .font(.system(size: 50))
-                    .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 Text("No books found")
                     .font(.title2)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 Text("Try adjusting your search or filters")
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             }
             Spacer()
         }
@@ -167,7 +172,7 @@ struct HomeView: View {
             } label: {
                 Image(systemName: "person.circle")
                     .font(.title2)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
             }
         }
     }
@@ -176,9 +181,9 @@ struct HomeView: View {
         // Customize navigation bar appearance based on theme
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
-        appearance.titleTextAttributes = [.foregroundColor: UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))]
-        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))]
+        appearance.backgroundColor = UIColor(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
+        appearance.titleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
         
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
@@ -194,17 +199,17 @@ struct FilterSheet: View {
         NavigationView {
             filterContent
                 .padding()
-                .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+                .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
                 .navigationTitle("Filters")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationBarItems(
                     trailing: Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 )
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
     }
     
     private var filterContent: some View {
@@ -221,7 +226,7 @@ struct FilterSheet: View {
             Text("Genre")
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -245,7 +250,7 @@ struct FilterSheet: View {
             Text("Availability")
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             VStack(spacing: 8) {
                 ForEach(homeViewModel.availabilityOptions, id: \.self) { availability in
@@ -290,11 +295,11 @@ struct FilterOptionButton: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundColor(isSelected ? .white : AppTheme.dynamicPrimaryText(isDarkMode))
+                .foregroundColor(isSelected ? .white : AppTheme.colorPrimaryText(for: isDarkMode))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 16)
-                .background(isSelected ? AppTheme.primaryGreen : AppTheme.dynamicSecondaryBackground(isDarkMode))
+                .background(isSelected ? AppTheme.primaryAccent : AppTheme.colorSecondaryBackground(for: isDarkMode))
                 .cornerRadius(10)
         }
     }
@@ -305,66 +310,77 @@ struct BookTileView: View {
     let isDarkMode: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Book Cover
+        VStack(alignment: .leading, spacing: 12) {
+            // Book Cover with Deep Shadow
             AsyncImage(url: URL(string: book.imageUrl)) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } placeholder: {
                 Rectangle()
-                    .fill(AppTheme.dynamicSecondaryBackground(isDarkMode))
+                    .fill(AppTheme.colorSecondaryBackground(for: isDarkMode))
                     .overlay(
-                        Image(systemName: "book")
-                            .font(.title)
-                            .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                        Image(systemName: "book.closed.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                     )
             }
-            .frame(height: 140)
+            .frame(height: 200) // Taller cover
             .frame(maxWidth: .infinity)
-            .cornerRadius(8)
-            .clipped()
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4) // Cover shadow
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
+                // Title (Serif)
                 Text(book.title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .font(AppTheme.headerFont(size: 18)) // Serif font
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                    .fixedSize(horizontal: false, vertical: true)
                 
+                // Author
                 Text("by \(book.author)")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                    .font(AppTheme.bodyFont(size: 14))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     .lineLimit(1)
                 
-                Text(book.genre)
-                    .font(.caption2)
-                    .foregroundColor(AppTheme.primaryGreen)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(AppTheme.lightGreen)
-                    .cornerRadius(4)
+                // Genre Tag
+                Text(book.genre.uppercased())
+                    .font(AppTheme.bodyFont(size: 10, weight: .bold))
+                    .foregroundColor(AppTheme.secondaryAccent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.secondaryAccent.opacity(0.1))
+                    .cornerRadius(AppTheme.buttonRadius)
                 
-                Spacer(minLength: 4)
+                Spacer(minLength: 8)
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Owner: \(book.ownerName)")
-                        .font(.caption2)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
-                        .lineLimit(1)
+                // Footer: Owner & Availability
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                        Text(book.ownerName)
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                            .lineLimit(1)
+                    }
                     
-                    Text(book.isAvailable ? "Available" : "Borrowed")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                    Spacer()
+                    
+                    // Availability Dot
+                    Circle()
+                        .fill(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                        .frame(width: 8, height: 8)
                 }
             }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
         }
         .padding(12)
-        .background(AppTheme.dynamicCardBackground(isDarkMode))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.1), radius: 4, x: 0, y: 2)
+        .appCardStyle() // New card style
     }
 }
 

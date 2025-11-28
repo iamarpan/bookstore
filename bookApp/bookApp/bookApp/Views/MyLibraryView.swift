@@ -16,14 +16,14 @@ struct MyLibraryView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
-                .accentColor(AppTheme.primaryGreen)
+                .accentColor(AppTheme.primaryAccent)
                 
                 // Content
                 if viewModel.isLoading {
                     Spacer()
                     ProgressView("Loading library...")
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                        .accentColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                        .accentColor(AppTheme.primaryAccent)
                     Spacer()
                 } else {
                     if selectedSegment == 0 {
@@ -35,9 +35,9 @@ struct MyLibraryView: View {
                     }
                 }
             }
-            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("My Library")
-            .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -46,7 +46,7 @@ struct MyLibraryView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .foregroundColor(AppTheme.primaryGreen)
+                            .foregroundColor(AppTheme.primaryAccent)
                     }
                 }
             }
@@ -59,7 +59,7 @@ struct MyLibraryView: View {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
     }
 }
 
@@ -78,11 +78,11 @@ struct BorrowedBooksView: View {
         } else {
             List(requests) { request in
                 RequestRowView(request: request, showActions: false, isDarkMode: isDarkMode)
-                    .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
+                    .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
             }
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
-            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
+            .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
         }
     }
 }
@@ -105,11 +105,11 @@ struct LentBooksView: View {
                 RequestRowView(request: request, showActions: true, isDarkMode: isDarkMode) { action in
                     handleRequestAction(request: request, action: action)
                 }
-                .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
+                .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
             }
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
-            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
+            .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
         }
     }
     
@@ -141,11 +141,11 @@ struct MyListedBooksView: View {
         } else {
             List(books) { book in
                 MyBookRowView(book: book, viewModel: viewModel, isDarkMode: isDarkMode)
-                    .listRowBackground(AppTheme.dynamicCardBackground(isDarkMode))
+                    .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
             }
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
-            .background(AppTheme.dynamicPrimaryBackground(isDarkMode))
+            .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
         }
     }
 }
@@ -165,10 +165,10 @@ struct MyBookRowView: View {
                         .aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Rectangle()
-                        .fill(AppTheme.dynamicSecondaryBackground(isDarkMode))
+                        .fill(AppTheme.colorSecondaryBackground(for: isDarkMode))
                         .overlay(
                             Image(systemName: "book.closed")
-                                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                         )
                 }
                 .frame(width: 50, height: 70)
@@ -177,19 +177,19 @@ struct MyBookRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(book.title)
                         .font(.headline)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                         .lineLimit(2)
                     
                     Text("by \(book.author)")
                         .font(.subheadline)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     
                     Text(book.genre)
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(AppTheme.primaryGreen.opacity(0.2))
+                        .background(AppTheme.primaryAccent.opacity(0.2))
                         .cornerRadius(4)
                 }
                 
@@ -211,7 +211,7 @@ struct MyBookRowView: View {
                 HStack {
                     Text("Added: \(Date().formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
-                        .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                     
                     Spacer()
                 }
@@ -235,7 +235,7 @@ struct MyBookRowView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(AppTheme.dynamicCardBackground(isDarkMode))
+        .background(AppTheme.colorCardBackground(for: isDarkMode))
         .cornerRadius(10)
         .alert("Delete Book", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -265,11 +265,11 @@ struct ToggleAvailabilityButton: View {
                 Text(book.isAvailable ? "Mark Unavailable" : "Mark Available")
             }
             .font(.caption)
-            .foregroundColor(AppTheme.primaryGreen)
+            .foregroundColor(AppTheme.primaryAccent)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
-            .background(AppTheme.primaryGreen.opacity(0.15))
+            .background(AppTheme.primaryAccent.opacity(0.15))
             .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
@@ -325,11 +325,11 @@ struct RequestRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("The Great Gatsby") // Mock book title
                         .font(.headline)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                     
                     Text(showActions ? "Requested by: \(request.borrowerName)" : "Lent by: John Smith")
                         .font(.subheadline)
-                        .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     
 
                 }
@@ -342,7 +342,7 @@ struct RequestRowView: View {
             HStack {
                 Text("Requested: \(request.requestedAt.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                    .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                 
                 Spacer()
                 
@@ -351,7 +351,7 @@ struct RequestRowView: View {
                         // Navigate to book details
                     }
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 }
             }
             
@@ -382,7 +382,7 @@ struct RequestRowView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(AppTheme.dynamicCardBackground(isDarkMode))
+        .background(AppTheme.colorCardBackground(for: isDarkMode))
         .cornerRadius(10)
     }
 }
@@ -406,7 +406,7 @@ struct StatusBadge: View {
         case .pending: return AppTheme.warningColor
         case .approved: return AppTheme.successColor
         case .rejected: return AppTheme.errorColor
-        case .active: return AppTheme.primaryGreen
+        case .active: return AppTheme.primaryAccent
         case .returned: return AppTheme.successColor
         case .cancelled: return AppTheme.errorColor
         }
@@ -425,16 +425,16 @@ struct EmptyStateView: View {
             
             Image(systemName: icon)
                 .font(.system(size: 50))
-                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
             
             Text(title)
                 .font(.title2)
                 .fontWeight(.medium)
-                .foregroundColor(AppTheme.dynamicSecondaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
             
             Text(message)
                 .font(.body)
-                .foregroundColor(AppTheme.dynamicTertiaryText(isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                 .multilineTextAlignment(.center)
             
             Spacer()

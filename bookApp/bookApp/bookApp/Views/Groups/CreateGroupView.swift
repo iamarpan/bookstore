@@ -47,9 +47,9 @@ struct CreateGroupView: View {
             // Create Button
             createButton
                 .padding()
-                .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
+                .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
         }
-        .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Create Group")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: $viewModel.showError) {
@@ -74,16 +74,16 @@ struct CreateGroupView: View {
         }) {
             ZStack {
                 Rectangle()
-                    .fill(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+                    .fill(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                     .frame(height: 150)
                 
                 VStack(spacing: 8) {
                     Image(systemName: "camera.fill")
                         .font(.title)
-                        .foregroundColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.primaryAccent)
                     Text("Add Cover Photo")
                         .font(.caption)
-                        .foregroundColor(AppTheme.primaryGreen)
+                        .foregroundColor(AppTheme.primaryAccent)
                 }
             }
         }
@@ -94,13 +94,13 @@ struct CreateGroupView: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             if isMultiline {
                 TextEditor(text: text)
                     .frame(height: 100)
                     .padding(8)
-                    .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
@@ -109,7 +109,7 @@ struct CreateGroupView: View {
             } else {
                 TextField(placeholder, text: text)
                     .padding()
-                    .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
@@ -124,7 +124,7 @@ struct CreateGroupView: View {
             Text("Category")
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             Menu {
                 ForEach([GroupCategory.friends, .office, .neighborhood, .bookClub, .school], id: \.self) { category in
@@ -135,13 +135,13 @@ struct CreateGroupView: View {
             } label: {
                 HStack {
                     Text(viewModel.category.displayName)
-                        .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     Spacer()
                     Image(systemName: "chevron.down")
-                        .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 }
                 .padding()
-                .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+                .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
@@ -156,7 +156,7 @@ struct CreateGroupView: View {
             Text("Privacy")
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack(spacing: 16) {
                 privacyOption(
@@ -183,29 +183,29 @@ struct CreateGroupView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: icon)
-                        .foregroundColor(isSelected ? AppTheme.primaryGreen : AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                        .foregroundColor(isSelected ? AppTheme.primaryAccent : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     Spacer()
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(AppTheme.primaryGreen)
+                            .foregroundColor(AppTheme.primaryAccent)
                     }
                 }
                 
                 Text(title)
                     .fontWeight(.semibold)
-                    .foregroundColor(isSelected ? AppTheme.primaryGreen : AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    .foregroundColor(isSelected ? AppTheme.primaryAccent : AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 
                 Text(description)
                     .font(.caption)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                     .multilineTextAlignment(.leading)
             }
             .padding()
-            .background(isSelected ? AppTheme.primaryGreen.opacity(0.1) : AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(isSelected ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? AppTheme.primaryGreen : Color.clear, lineWidth: 1)
+                    .stroke(isSelected ? AppTheme.primaryAccent : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -216,20 +216,20 @@ struct CreateGroupView: View {
             Text("Location")
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack {
                 Image(systemName: "location.fill")
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
                 Text("Current Location")
-                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 Spacer()
                 Text("Update")
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
             }
             .padding()
-            .background(AppTheme.dynamicSecondaryBackground(themeManager.isDarkMode))
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
             .cornerRadius(8)
         }
     }
@@ -251,7 +251,7 @@ struct CreateGroupView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(viewModel.isValid ? AppTheme.primaryGreen : Color.gray)
+            .background(viewModel.isValid ? AppTheme.primaryAccent : Color.gray)
             .foregroundColor(.white)
             .cornerRadius(12)
         }

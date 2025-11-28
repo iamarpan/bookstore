@@ -17,7 +17,7 @@ struct MyGroupsView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
-                .accentColor(AppTheme.primaryGreen)
+                .accentColor(AppTheme.primaryAccent)
                 
                 // Content
                 if viewModel.isLoading {
@@ -30,7 +30,7 @@ struct MyGroupsView: View {
                     }
                 }
             }
-            .background(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode).ignoresSafeArea())
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("My Groups")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -48,7 +48,7 @@ struct MyGroupsView: View {
                 Text(viewModel.errorMessage ?? "An unknown error occurred")
             }
         }
-        .accentColor(AppTheme.primaryGreen)
+        .accentColor(AppTheme.primaryAccent)
     }
     
     // MARK: - Joined Groups View
@@ -119,8 +119,8 @@ struct MyGroupsView: View {
         VStack {
             Spacer()
             ProgressView("Loading groups...")
-                .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-                .accentColor(AppTheme.primaryGreen)
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                .accentColor(AppTheme.primaryAccent)
             Spacer()
         }
     }
@@ -133,17 +133,17 @@ struct MyGroupsView: View {
             
             Image(systemName: icon)
                 .font(.system(size: 60))
-                .foregroundColor(AppTheme.dynamicTertiaryText(themeManager.isDarkMode))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
             VStack(spacing: 8) {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 
                 Text(message)
                     .font(.body)
-                    .foregroundColor(AppTheme.dynamicSecondaryText(themeManager.isDarkMode))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
@@ -157,7 +157,7 @@ struct MyGroupsView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(AppTheme.primaryGreen)
+                        .background(AppTheme.primaryAccent)
                         .cornerRadius(12)
                 }
                 .padding(.horizontal, 40)
@@ -171,7 +171,7 @@ struct MyGroupsView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(AppTheme.primaryGreen)
+                        .background(AppTheme.primaryAccent)
                         .cornerRadius(12)
                 }
                 .padding(.horizontal, 40)
@@ -190,14 +190,14 @@ struct MyGroupsView: View {
             NavigationLink(destination: CreateGroupView()) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title3)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
             }
             
             // Discover Groups button
             NavigationLink(destination: DiscoverGroupsView()) {
                 Image(systemName: "magnifyingglass.circle.fill")
                     .font(.title3)
-                    .foregroundColor(AppTheme.primaryGreen)
+                    .foregroundColor(AppTheme.primaryAccent)
             }
         }
     }

@@ -96,22 +96,36 @@ class BookDetailViewModel: ObservableObject {
         }
     }
     
-    var requestStatus: String? {
-        guard let transaction = existingTransaction else { return nil }
+    var requestStatus: RequestStatus? {
+        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
         
-        switch transaction.status {
-        case .pending:
-            return "Your request is pending approval"
-        case .approved:
-            return "Request approved! Arrange book handover"
-        case .rejected:
-            return "Request was rejected"
-        case .active:
-            return "Book is currently borrowed"
-        case .returned:
-            return "Book has been returned"
-        case .cancelled:
-            return "Request was cancelled"
+        if book.ownerId == currentUser.id {
+            return .ownBook
         }
+        
+        if let transaction = existingTransaction {
+            switch transaction.status {
+            case .pending, .approved:
+                return .requested
+            case .active:
+                return .borrowed
+            case .returned, .rejected, .cancelled:
+                return book.isAvailable ? .canRequest : .unavailable
+            }
+        }
+        
+        if !book.isAvailable {
+            return .unavailable
+        }
+        
+        return .canRequest
     }
+}
+
+enum RequestStatus {
+    case canRequest
+    case requested
+    case borrowed
+    case unavailable
+    case ownBook
 }
