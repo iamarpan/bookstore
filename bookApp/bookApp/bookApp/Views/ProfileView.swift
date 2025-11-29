@@ -182,6 +182,9 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Profile")
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 100)
+            }
             .onAppear {
                 Task {
                     await viewModel.fetchStats()

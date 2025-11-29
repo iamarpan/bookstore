@@ -104,6 +104,9 @@ struct HomeView: View {
             }
             .padding(.vertical, 8)
         }
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 100)
+        }
         .refreshable {
             Task {
                 await homeViewModel.refreshBooks()

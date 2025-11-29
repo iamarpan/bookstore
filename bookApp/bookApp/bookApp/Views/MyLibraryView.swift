@@ -83,6 +83,9 @@ struct BorrowedBooksView: View {
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
             .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 100)
+            }
         }
     }
 }
@@ -110,6 +113,9 @@ struct LentBooksView: View {
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
             .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 100)
+            }
         }
     }
     
@@ -146,6 +152,9 @@ struct MyListedBooksView: View {
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
             .background(AppTheme.colorPrimaryBackground(for: isDarkMode))
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 100)
+            }
         }
     }
 }

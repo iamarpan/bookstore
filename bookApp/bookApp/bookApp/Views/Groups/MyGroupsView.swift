@@ -78,6 +78,9 @@ struct MyGroupsView: View {
                     }
                     .padding()
                 }
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear.frame(height: 100)
+                }
             }
         }
     }
@@ -108,6 +111,9 @@ struct MyGroupsView: View {
                         }
                     }
                     .padding()
+                }
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear.frame(height: 100)
                 }
             }
         }

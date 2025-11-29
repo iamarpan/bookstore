@@ -155,6 +155,9 @@ struct AddBookView: View {
             .scrollContentBackground(.hidden)
             .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("Add Book")
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 100)
+            }
             .onAppear {
                 Task {
                     await viewModel.fetchUserGroups()
