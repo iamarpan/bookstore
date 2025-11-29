@@ -16,6 +16,7 @@ struct ContentView: View {
                     .environmentObject(themeManager)
             }
         }
+        .preferredColorScheme(themeManager.colorScheme)
         .animation(.easeInOut(duration: 0.5), value: authViewModel.isAuthenticated)
     }
 }

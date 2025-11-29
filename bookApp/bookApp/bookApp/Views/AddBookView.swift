@@ -10,7 +10,7 @@ struct AddBookView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Quick Add").foregroundColor(AppTheme.primaryText)) {
+                Section(header: Text("Quick Add").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     Button(action: {
                         if cameraPermission.checkPermission() == .authorized {
                             showingISBNScanner = true
@@ -26,10 +26,10 @@ struct AddBookView: View {
                             VStack(alignment: .leading) {
                                 Text("Scan ISBN Barcode")
                                     .fontWeight(.medium)
-                                    .foregroundColor(AppTheme.primaryText)
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 Text("Auto-fill book details")
                                     .font(.caption)
-                                    .foregroundColor(AppTheme.secondaryText)
+                                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                             }
                             
                             Spacer()
@@ -40,23 +40,23 @@ struct AddBookView: View {
                                     .accentColor(AppTheme.primaryAccent)
                             } else {
                                 Image(systemName: "chevron.right")
-                                    .foregroundColor(AppTheme.tertiaryText)
+                                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                             }
                         }
                     }
                     .disabled(viewModel.isLoadingFromISBN)
                 }
                 
-                Section(header: Text("Book Details").foregroundColor(AppTheme.primaryText)) {
+                Section(header: Text("Book Details").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     TextField("Book Title", text: $viewModel.title)
-                        .foregroundColor(AppTheme.primaryText)
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     TextField("Author", text: $viewModel.author)
-                        .foregroundColor(AppTheme.primaryText)
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     Picker("Genre", selection: $viewModel.selectedGenre) {
                         ForEach(viewModel.genres, id: \.self) { genre in
                             Text(genre)
-                                .foregroundColor(AppTheme.primaryText)
+                                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 .tag(genre)
                         }
                     }
@@ -64,25 +64,25 @@ struct AddBookView: View {
                     
                     TextField("Description", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...6)
-                        .foregroundColor(AppTheme.primaryText)
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 }
                 
-                Section(header: Text("Lending Details").foregroundColor(AppTheme.primaryText)) {
+                Section(header: Text("Lending Details").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     HStack {
                         Text("Lending Price (per week)")
-                            .foregroundColor(AppTheme.primaryText)
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         Spacer()
                         TextField("0.00", text: $viewModel.price)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundColor(AppTheme.primaryText)
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                             .frame(width: 100)
                     }
                     
                     Picker("Condition", selection: $viewModel.selectedCondition) {
                         ForEach(viewModel.conditions, id: \.self) { condition in
                             Text(condition.rawValue.capitalized)
-                                .foregroundColor(AppTheme.primaryText)
+                                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 .tag(condition)
                         }
                     }
@@ -92,23 +92,23 @@ struct AddBookView: View {
                         .toggleStyle(SwitchToggleStyle(tint: AppTheme.primaryAccent))
                 }
                 
-                Section(header: Text("Visible In Groups").foregroundColor(AppTheme.primaryText)) {
+                Section(header: Text("Visible In Groups").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     if viewModel.userGroups.isEmpty {
                         Text("No groups found. Join a group to share books.")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                             .font(.caption)
                     } else {
                         ForEach(viewModel.userGroups) { group in
                             HStack {
                                 Text(group.name)
-                                    .foregroundColor(AppTheme.primaryText)
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 Spacer()
                                 if viewModel.selectedGroupIds.contains(group.id) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(AppTheme.primaryAccent)
                                 } else {
                                     Image(systemName: "circle")
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                                 }
                             }
                             .contentShape(Rectangle())
@@ -145,7 +145,7 @@ struct AddBookView: View {
                             Spacer()
                         }
                         .padding()
-                        .background(viewModel.isFormValid && !viewModel.isLoading ? AppTheme.primaryAccent : AppTheme.tertiaryText)
+                        .background(viewModel.isFormValid && !viewModel.isLoading ? AppTheme.primaryAccent : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                         .cornerRadius(10)
                     }
                     .disabled(viewModel.isLoading || !viewModel.isFormValid)
@@ -185,18 +185,8 @@ struct AddBookView: View {
                     }
                 }
             }
-            .onAppear {
-                setupFormAppearance()
-            }
         }
         .accentColor(AppTheme.primaryAccent)
-    }
-    
-    private func setupFormAppearance() {
-        // Customize form appearance for current theme
-        UITableView.appearance().backgroundColor = UIColor(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
-        UITextField.appearance().textColor = UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-        UITextView.appearance().textColor = UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
     }
 }
 

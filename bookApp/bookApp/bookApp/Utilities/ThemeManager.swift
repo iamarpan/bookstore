@@ -9,10 +9,17 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
-        // Default to dark mode, but allow user preference
-        self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? true
+        // Check if user has set a preference, otherwise use system default
+        if let savedPreference = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool {
+            self.isDarkMode = savedPreference
+        } else {
+            // First launch - use system default
+            self.isDarkMode = UITraitCollection.current.userInterfaceStyle == .dark
+            UserDefaults.standard.set(self.isDarkMode, forKey: "isDarkMode")
+        }
     }
     
+    /// Computed property to provide the color scheme based on the app's dark mode setting
     var colorScheme: ColorScheme {
         isDarkMode ? .dark : .light
     }
