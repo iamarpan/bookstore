@@ -45,70 +45,117 @@ struct AddBookView: View {
                         }
                     }
                     .disabled(viewModel.isLoadingFromISBN)
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 }
                 
                 Section(header: Text("Book Details").foregroundColor(AppTheme.primaryText)) {
-                    TextField("Book Title", text: $viewModel.title)
-                        .foregroundColor(AppTheme.primaryText)
-                    TextField("Author", text: $viewModel.author)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Picker("Genre", selection: $viewModel.selectedGenre) {
-                        ForEach(viewModel.genres, id: \.self) { genre in
-                            Text(genre)
-                                .foregroundColor(AppTheme.primaryText)
-                                .tag(genre)
+                    ZStack(alignment: .leading) {
+                        if viewModel.title.isEmpty {
+                            Text("Book Title")
+                                .foregroundStyle(themeManager.isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5))
                         }
+                        TextField("", text: $viewModel.title)
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
                     }
-                    .accentColor(AppTheme.primaryGreen)
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                    ZStack(alignment: .leading) {
+                        if viewModel.author.isEmpty {
+                            Text("Author")
+                                .foregroundStyle(themeManager.isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5))
+                        }
+                        TextField("", text: $viewModel.author)
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                    }
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                     
-                    TextField("Description", text: $viewModel.description, axis: .vertical)
-                        .lineLimit(3...6)
-                        .foregroundColor(AppTheme.primaryText)
+                    HStack {
+                        Text("Genre")
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                        Spacer()
+                        Picker("", selection: $viewModel.selectedGenre) {
+                            ForEach(viewModel.genres, id: \.self) { genre in
+                                Text(genre)
+                                    .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                                    .tag(genre)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .accentColor(AppTheme.primaryGreen)
+                    }
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                    
+                    ZStack(alignment: .topLeading) {
+                        if viewModel.description.isEmpty {
+                            Text("Description")
+                                .foregroundStyle(themeManager.isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5))
+                                .padding(.top, 8)
+                        }
+                        TextField("", text: $viewModel.description, axis: .vertical)
+                            .lineLimit(3...6)
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                    }
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 }
                 
                 Section(header: Text("Lending Details").foregroundColor(AppTheme.primaryText)) {
                     HStack {
                         Text("Lending Price (per week)")
-                            .foregroundColor(AppTheme.primaryText)
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
                         Spacer()
-                        TextField("0.00", text: $viewModel.price)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundColor(AppTheme.primaryText)
-                            .frame(width: 100)
-                    }
-                    
-                    Picker("Condition", selection: $viewModel.selectedCondition) {
-                        ForEach(viewModel.conditions, id: \.self) { condition in
-                            Text(condition.rawValue.capitalized)
-                                .foregroundColor(AppTheme.primaryText)
-                                .tag(condition)
+                        ZStack(alignment: .trailing) {
+                            if viewModel.price.isEmpty {
+                                Text("0.00")
+                                    .foregroundStyle(themeManager.isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5))
+                            }
+                            TextField("", text: $viewModel.price)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
                         }
+                        .frame(width: 100)
                     }
-                    .accentColor(AppTheme.primaryGreen)
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
+                    
+                    HStack {
+                        Text("Condition")
+                            .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                        Spacer()
+                        Picker("", selection: $viewModel.selectedCondition) {
+                            ForEach(viewModel.conditions, id: \.self) { condition in
+                                Text(condition.rawValue.capitalized)
+                                    .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
+                                    .tag(condition)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .accentColor(AppTheme.primaryGreen)
+                    }
+                    .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                     
                     Toggle("Available for Lending", isOn: $viewModel.isAvailable)
+                        .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
                         .toggleStyle(SwitchToggleStyle(tint: AppTheme.primaryGreen))
+                        .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                 }
                 
                 Section(header: Text("Visible In Groups").foregroundColor(AppTheme.primaryText)) {
                     if viewModel.userGroups.isEmpty {
                         Text("No groups found. Join a group to share books.")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(themeManager.isDarkMode ? Color.gray : Color.secondary)
                             .font(.caption)
+                            .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                     } else {
                         ForEach(viewModel.userGroups) { group in
                             HStack {
                                 Text(group.name)
-                                    .foregroundColor(AppTheme.primaryText)
+                                    .foregroundStyle(themeManager.isDarkMode ? Color.white : Color.black)
                                 Spacer()
                                 if viewModel.selectedGroupIds.contains(group.id) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(AppTheme.primaryGreen)
                                 } else {
                                     Image(systemName: "circle")
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppTheme.tertiaryText)
                                 }
                             }
                             .contentShape(Rectangle())
@@ -119,6 +166,7 @@ struct AddBookView: View {
                                     viewModel.selectedGroupIds.insert(group.id)
                                 }
                             }
+                            .listRowBackground(AppTheme.dynamicCardBackground(themeManager.isDarkMode))
                         }
                     }
                 }
@@ -195,8 +243,15 @@ struct AddBookView: View {
     private func setupFormAppearance() {
         // Customize form appearance for current theme
         UITableView.appearance().backgroundColor = UIColor(AppTheme.dynamicPrimaryBackground(themeManager.isDarkMode))
-        UITextField.appearance().textColor = UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
-        UITextView.appearance().textColor = UIColor(AppTheme.dynamicPrimaryText(themeManager.isDarkMode))
+        
+        // Configure TextField placeholder colors based on theme
+        if themeManager.isDarkMode {
+            UITextField.appearance().attributedPlaceholder = nil
+            UITextField.appearance().keyboardAppearance = .dark
+        } else {
+            UITextField.appearance().attributedPlaceholder = nil
+            UITextField.appearance().keyboardAppearance = .light
+        }
     }
 }
 
