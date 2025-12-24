@@ -1,0 +1,309 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  phoneNumber           String    @unique @map("phone_number")
+  phoneVerified         Boolean   @default(false) @map("phone_verified")
+  name                  String
+  email                 String?
+  bio                   String?
+  profileImageUrl       String?   @map("profile_image_url")
+  
+  // Stats
+  booksShared           Int       @default(0) @map("books_shared")
+  successfulLends       Int       @default(0) @map("successful_lends")
+  booksBorrowed         Int       @default(0) @map("books_borrowed")
+  totalEarned           Decimal   @default(0) @map("total_earned") @db.Decimal(10, 2)
+  averageRating         Decimal   @default(0) @map("average_rating") @db.Decimal(3, 2)
+  
+  // Settings
+  phoneVisibility       PhoneVisibility @default(AFTER_APPROVAL) @map("phone_visibility")
+  pushEnabled           Boolean   @default(true) @map("push_enabled")
+  emailEnabled          Boolean   @default(true) @map("email_enabled")
+  borrowRequestsNotif   Boolean   @default(true) @map("borrow_requests_notif")
+  dueDateRemindersNotif Boolean   @default(true) @map("due_date_reminders_notif")
+  groupActivityNotif    Boolean   @default(true) @map("group_activity_notif")
+  
+  // Device
+  deviceToken           String?   @map("device_token")
+  lastTokenUpdate       DateTime? @map("last_token_update")
+  
+  // Status
+  isActive              Boolean   @default(true) @map("is_active")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  lastLoginAt           DateTime? @map("last_login_at")
+  
+  // Relations
+  ownedBooks            Book[]    @relation("BookOwner")
+  createdGroups         Group[]   @relation("GroupCreator")
+  groupMemberships      GroupMember[]
+  borrowedTransactions  Transaction[] @relation("TransactionBorrower")
+  ownedTransactions     Transaction[] @relation("TransactionOwner")
+  notifications         Notification[]
+  refreshTokens         RefreshToken[]
+  
+  @@map("users")
+}
+
+model Book {
+  id                    String    @id @default(uuid())
+  title                 String
+  author                String
+  genre                 String
+  description           String    @db.Text
+  personalNotes         String?   @map("personal_notes") @db.Text
+  imageUrl              String?   @map("image_url")
+  
+  isbn                  String?
+  publisher             String?
+  year                  Int?
+  pages                 Int?
+  language              String    @default("English")
+  
+  condition             BookCondition @default(GOOD)
+  lendingPricePerWeek   Decimal   @default(0) @map("lending_price_per_week") @db.Decimal(10, 2)
+  
+  isAvailable           Boolean   @default(true) @map("is_available")
+  ownerId               String    @map("owner_id")
+  currentTransactionId  String?   @unique @map("current_transaction_id")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  owner                 User      @relation("BookOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  bookGroups            BookGroup[]
+  transactions          Transaction[]
+  
+  @@index([ownerId])
+  @@index([isAvailable])
+  @@index([genre])
+  @@map("books")
+}
+
+model Group {
+  id                    String    @id @default(uuid())
+  name                  String
+  description           String    @db.Text
+  coverImageUrl         String?   @map("cover_image_url")
+  category              GroupCategory @default(FRIENDS)
+  privacy               PrivacySetting @default(PRIVATE)
+  
+  creatorId             String    @map("creator_id")
+  inviteCode            String    @unique @map("invite_code")
+  inviteCodeExpiry      DateTime? @map("invite_code_expiry")
+  
+  rules                 String?   @db.Text
+  booksCount            Int       @default(0) @map("books_count")
+  memberCount           Int       @default(1) @map("member_count")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  creator               User      @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members               GroupMember[]
+  bookGroups            BookGroup[]
+  transactions          Transaction[]
+  
+  @@index([creatorId])
+  @@index([privacy])
+  @@map("groups")
+}
+
+model GroupMember {
+  id                    String    @id @default(uuid())
+  groupId               String    @map("group_id")
+  userId                String    @map("user_id")
+  role                  MemberRole @default(MEMBER)
+  joinedAt              DateTime  @default(now()) @map("joined_at")
+  
+  // Relations
+  group                 Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model BookGroup {
+  id                    String    @id @default(uuid())
+  bookId                String    @map("book_id")
+  groupId               String    @map("group_id")
+  addedAt               DateTime  @default(now()) @map("added_at")
+  
+  // Relations
+  book                  Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  group                 Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@unique([bookId, groupId])
+  @@map("book_groups")
+}
+
+model Transaction {
+  id                    String    @id @default(uuid())
+  bookId                String    @map("book_id")
+  borrowerId            String    @map("borrower_id")
+  ownerId               String    @map("owner_id")
+  groupId               String    @map("group_id")
+  
+  status                TransactionStatus @default(PENDING)
+  duration              BorrowDuration @default(ONE_WEEK)
+  durationDays          Int       @map("duration_days")
+  lendingFee            Decimal   @default(0) @map("lending_fee") @db.Decimal(10, 2)
+  
+  requestMessage        String?   @map("request_message") @db.Text
+  rejectionReason       String?   @map("rejection_reason") @db.Text
+  
+  handoverOTP           String?   @map("handover_otp")
+  handoverOTPExpiry     DateTime? @map("handover_otp_expiry")
+  returnOTP             String?   @map("return_otp")
+  returnOTPExpiry       DateTime? @map("return_otp_expiry")
+  
+  borrowerPaymentConfirmed Boolean @default(false) @map("borrower_payment_confirmed")
+  ownerPaymentConfirmed Boolean @default(false) @map("owner_payment_confirmed")
+  
+  requestedAt           DateTime  @default(now()) @map("requested_at")
+  approvedAt            DateTime? @map("approved_at")
+  handoverAt            DateTime? @map("handover_at")
+  dueDate               DateTime? @map("due_date")
+  returnedAt            DateTime? @map("returned_at")
+  
+  ownerRating           Int?      @map("owner_rating")
+  ownerComment          String?   @map("owner_comment") @db.Text
+  borrowerRating        Int?      @map("borrower_rating")
+  borrowerComment       String?   @map("borrower_comment") @db.Text
+  bookConditionRating   Int?      @map("book_condition_rating")
+  
+  // Relations
+  book                  Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrower              User      @relation("TransactionBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
+  owner                 User      @relation("TransactionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  group                 Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@index([borrowerId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("transactions")
+}
+
+model Notification {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  type                  NotificationType
+  title                 String
+  message               String    @db.Text
+  
+  transactionId         String?   @map("transaction_id")
+  bookId                String?   @map("book_id")
+  groupId               String?   @map("group_id")
+  relatedUserId         String?   @map("related_user_id")
+  
+  isRead                Boolean   @default(false) @map("is_read")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model OTPCode {
+  id                    String    @id @default(uuid())
+  phoneNumber           String    @map("phone_number")
+  otpCode               String    @map("otp_code")
+  expiresAt             DateTime  @map("expires_at")
+  verified              Boolean   @default(false)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  
+  @@index([phoneNumber, expiresAt])
+  @@map("otp_codes")
+}
+
+model RefreshToken {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  token                 String    @unique
+  expiresAt             DateTime  @map("expires_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Enums
+enum PhoneVisibility {
+  AFTER_APPROVAL
+  GROUP_MEMBERS
+  PUBLIC
+}
+
+enum BookCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+enum GroupCategory {
+  FRIENDS
+  OFFICE
+  NEIGHBORHOOD
+  BOOK_CLUB
+  SCHOOL
+}
+
+enum PrivacySetting {
+  PUBLIC
+  PRIVATE
+}
+
+enum MemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+  CREATOR
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  RETURNED
+  REJECTED
+  CANCELLED
+}
+
+enum BorrowDuration {
+  ONE_WEEK
+  TWO_WEEKS
+  ONE_MONTH
+  CUSTOM
+}
+
+enum NotificationType {
+  BORROW_REQUEST
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  DUE_SOON
+  OVERDUE
+  RETURN_REQUESTED
+  NEW_BOOK_IN_GROUP
+}
