@@ -10,62 +10,65 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main Content
-            Group {
-                switch selectedTab {
-                case 0:
-                    HomeView()
-                        .environmentObject(homeViewModel)
-                        .environmentObject(themeManager)
-                        .environmentObject(authViewModel)
-                case 1:
-                    AddBookView()
-                        .environmentObject(themeManager)
-                        .environmentObject(authViewModel)
-                case 2:
-                    MyGroupsView()
-                        .environmentObject(themeManager)
-                        .environmentObject(authViewModel)
-                case 3:
-                    MyLibraryView()
-                        .environmentObject(myLibraryViewModel)
-                        .environmentObject(themeManager)
-                case 4:
-                    ProfileView()
-                        .environmentObject(themeManager)
-                        .environmentObject(authViewModel)
-                default:
-                    HomeView()
-                        .environmentObject(homeViewModel)
-                        .environmentObject(themeManager)
-                        .environmentObject(authViewModel)
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                // Main Content
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        HomeView()
+                            .environmentObject(homeViewModel)
+                            .environmentObject(themeManager)
+                            .environmentObject(authViewModel)
+                    case 1:
+                        AddBookView()
+                            .environmentObject(themeManager)
+                            .environmentObject(authViewModel)
+                    case 2:
+                        MyGroupsView()
+                            .environmentObject(themeManager)
+                            .environmentObject(authViewModel)
+                    case 3:
+                        MyLibraryView()
+                            .environmentObject(myLibraryViewModel)
+                            .environmentObject(themeManager)
+                    case 4:
+                        ProfileView()
+                            .environmentObject(themeManager)
+                            .environmentObject(authViewModel)
+                    default:
+                        HomeView()
+                            .environmentObject(homeViewModel)
+                            .environmentObject(themeManager)
+                            .environmentObject(authViewModel)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, tabManager.isVisible ? 90 : 0)
+                
+                // Floating Dock
+                if tabManager.isVisible {
+                    FloatingDock(selectedTab: $selectedTab)
+                        .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? geometry.safeAreaInsets.bottom : 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
-            // Floating Dock
-            if tabManager.isVisible {
-                FloatingDock(selectedTab: $selectedTab)
-                    .padding(.bottom, 30)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            .environmentObject(tabManager)
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
+            .onAppear {
+                startDataListening()
             }
-        }
-        .environmentObject(tabManager)
-        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
-        .onAppear {
-            startDataListening()
-        }
-        .onShake {
-            showEmergencyLogoutAlert = true
-        }
-        .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Logout Now", role: .destructive) {
-                authViewModel.signOut()
+            .onShake {
+                showEmergencyLogoutAlert = true
             }
-        } message: {
-            Text("Detected shake gesture. Do you want to logout immediately for security?")
+            .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Logout Now", role: .destructive) {
+                    authViewModel.signOut()
+                }
+            } message: {
+                Text("Detected shake gesture. Do you want to logout immediately for security?")
+            }
         }
     }
     
@@ -123,9 +126,15 @@ struct FloatingDock: View {
             }
         }
         .padding(.horizontal, 16)
-        .background(AppTheme.glassBackground)
-        .glassmorphic()
-        .cornerRadius(AppTheme.buttonRadius)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
+                .fill(AppTheme.colorGlassBackground(for: themeManager.isDarkMode))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
+                .stroke(Color.white.opacity(themeManager.isDarkMode ? 0.1 : 0.2), lineWidth: 1)
+        )
         .shadow(color: AppTheme.shadowFloating, radius: 20, x: 0, y: 10)
         .padding(.horizontal, 24)
     }

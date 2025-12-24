@@ -6,7 +6,6 @@ struct AppTheme {
     // Backgrounds
     static let primaryBackground = Color(hex: "F9F7F2") // Warm Alabaster
     static let cardBackground = Color(hex: "FFFFFF") // Pure White
-    static let glassBackground = Color.white.opacity(0.85) // Glassmorphism
     
     // Text
     static let primaryText = Color(hex: "1A1A1A") // Soft Black
@@ -77,6 +76,10 @@ struct AppTheme {
     
     static func dynamicSeparatorColor(for isDarkMode: Bool) -> Color {
         isDarkMode ? separatorColor : Color(hex: "E5E5EA")
+    }
+    
+    static func colorGlassBackground(for isDarkMode: Bool) -> Color {
+        isDarkMode ? Color(hex: "1C1C1E").opacity(0.85) : Color.white.opacity(0.85)
     }
 }
 
