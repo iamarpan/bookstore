@@ -14,17 +14,20 @@ JWT_REFRESH_SECRET=403c7ac7915df2a493f7c877b353dc0efb61dd824120249ed093febc3a663
 
 ## 🗄️ Supabase Database Configuration
 
-**Your Database URL:**
+**Direct Connection URL (for migrations):**
 ```
-postgresql://postgres:[YOUR-PASSWORD]@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres
+postgresql://postgres:FVu9%268b9kDqGP8%2A@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres
 ```
 
-**⚠️ IMPORTANT:** You need to replace `[YOUR-PASSWORD]` with your actual Supabase password!
+**Pooled Connection URL (recommended for production - use this for Vercel):**
+```
+postgresql://postgres.iyffnwujmbwdeqvqkgqe:FVu9%268b9kDqGP8%2A@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
+```
 
-**For Production (with connection pooling):**
-```
-postgresql://postgres:YOUR_ACTUAL_PASSWORD@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres?pgbouncer=true
-```
+**⚠️ IMPORTANT:** 
+- Use the **pooled connection** for the Vercel production environment (better performance and connection management)
+- The password contains special characters `&` and `*` which are URL-encoded as `%26` and `%2A`
+- For migrations, you may need the direct connection without pgbouncer
 
 ### Where to find your Supabase password:
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
@@ -61,8 +64,9 @@ Value: production
 Environment: Production
 
 Variable Name: DATABASE_URL  
-Value: postgresql://postgres:YOUR_ACTUAL_PASSWORD@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres?pgbouncer=true
+Value: postgresql://postgres.iyffnwujmbwdeqvqkgqe:FVu9%268b9kDqGP8%2A@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
 Environment: Production
+
 
 Variable Name: JWT_ACCESS_SECRET
 Value: 3e057ebae69f8c01b9f1899c5886d836f56925c734b504df179d9577ca01f386917d138da93d05c9e8f42252843fa413465880bb6c9fe6872d9fcda5134eda7e
@@ -90,9 +94,10 @@ Environment: Production
 ```bash
 cd /Users/ayushyachitransh/development/bookstore/backend
 
-# Set DATABASE_URL (replace YOUR_ACTUAL_PASSWORD)
+# Set DATABASE_URL (using pooled connection)
 vercel env add DATABASE_URL production
-# When prompted, paste: postgresql://postgres:YOUR_ACTUAL_PASSWORD@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres?pgbouncer=true
+# When prompted, paste: postgresql://postgres.iyffnwujmbwdeqvqkgqe:FVu9%268b9kDqGP8%2A@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
+
 
 # Set JWT secrets
 vercel env add JWT_ACCESS_SECRET production

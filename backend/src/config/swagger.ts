@@ -19,12 +19,8 @@ const options: swaggerJsdoc.Options = {
                 description: 'Development server',
             },
             {
-                url: 'https://staging-api.bookshare.com/api/v1',
-                description: 'Staging server',
-            },
-            {
-                url: 'https://api.bookshare.com/api/v1',
-                description: 'Production server',
+                url: 'https://bookapp-iota-nine.vercel.app/api/v1',
+                description: 'Production server (Vercel)',
             },
         ],
         components: {

@@ -18,17 +18,72 @@ dotenv.config();
 const app: Application = express();
 
 // Security & Parsing Middleware
-app.use(helmet());
+// Configure helmet with relaxed CSP for Swagger UI
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            imgSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
+        },
+    },
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Bookstore API Documentation',
-}));
+// Swagger Documentation - Using CDN for Vercel compatibility
+app.get('/api-docs', (req: Request, res: Response) => {
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bookstore API Documentation</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+        <style>
+            .swagger-ui .topbar { display: none }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+        <script>
+            window.onload = function() {
+                window.ui = SwaggerUIBundle({
+                    spec: ${JSON.stringify(swaggerSpec)},
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                        SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout",
+                    persistAuthorization: true
+                });
+            };
+        </script>
+    </body>
+    </html>
+    `;
+    res.send(html);
+});
+
+// JSON spec endpoint
+app.get('/api-docs/swagger.json', (req: Request, res: Response) => {
+    res.json(swaggerSpec);
+});
+
+
+
+
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
