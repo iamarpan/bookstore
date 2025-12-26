@@ -11,9 +11,9 @@ enum APIEnvironment: String {
         case .development:
             return "http://localhost:3000/api/v1"
         case .staging:
-            return "https://staging-api.bookshare.com/api/v1"
+            return "https://bookapp-iota-nine.vercel.app/api/v1"
         case .production:
-            return "https://api.bookshare.com/api/v1"
+            return "https://bookapp-iota-nine.vercel.app/api/v1"
         }
     }
     
@@ -30,8 +30,9 @@ enum APIEnvironment: String {
 class APIConfiguration {
     static let shared = APIConfiguration()
     
-    // Current environment - change this or make it configurable
-    var currentEnvironment: APIEnvironment = .development
+    // Current environment - using production (Vercel deployment)
+    var currentEnvironment: APIEnvironment = .production
+
     
     var baseURL: String {
         currentEnvironment.baseURL
