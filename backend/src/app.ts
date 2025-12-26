@@ -36,6 +36,22 @@ app.use(morgan('dev'));
 
 // Swagger Documentation - Using CDN for Vercel compatibility
 app.get('/api-docs', (req: Request, res: Response) => {
+    // Generate dynamic spec with correct server URL
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}/api/v1`;
+
+    // Clone the spec and update servers dynamically
+    const dynamicSpec = {
+        ...swaggerSpec,
+        servers: [
+            {
+                url: baseUrl,
+                description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
+            },
+        ],
+    };
+
     const html = `
     <!DOCTYPE html>
     <html lang="en">
@@ -55,7 +71,7 @@ app.get('/api-docs', (req: Request, res: Response) => {
         <script>
             window.onload = function() {
                 window.ui = SwaggerUIBundle({
-                    spec: ${JSON.stringify(swaggerSpec)},
+                    spec: ${JSON.stringify(dynamicSpec)},
                     dom_id: '#swagger-ui',
                     deepLinking: true,
                     presets: [
@@ -78,7 +94,22 @@ app.get('/api-docs', (req: Request, res: Response) => {
 
 // JSON spec endpoint
 app.get('/api-docs/swagger.json', (req: Request, res: Response) => {
-    res.json(swaggerSpec);
+    // Generate dynamic spec with correct server URL
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}/api/v1`;
+
+    const dynamicSpec = {
+        ...swaggerSpec,
+        servers: [
+            {
+                url: baseUrl,
+                description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
+            },
+        ],
+    };
+
+    res.json(dynamicSpec);
 });
 
 
