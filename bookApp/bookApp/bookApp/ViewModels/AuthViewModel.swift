@@ -84,8 +84,18 @@ class AuthViewModel: ObservableObject {
             resetForm()
             
         } catch {
-            errorMessage = "Verification failed: \(error.localizedDescription)"
-            showError = true
+            // Check if this is a "Name is required" error (new user)
+            let errorDescription = error.localizedDescription.lowercased()
+            if errorDescription.contains("name is required") || errorDescription.contains("name") {
+                // This is a new user - show registration form
+                needsRegistration = true
+                showRegistrationForm = true
+                errorMessage = nil // Clear error since we're showing registration form
+            } else {
+                // Other error - show error message
+                errorMessage = "Verification failed: \(error.localizedDescription)"
+                showError = true
+            }
         }
     }
     
