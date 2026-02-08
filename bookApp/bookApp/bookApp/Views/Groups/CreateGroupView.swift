@@ -100,21 +100,11 @@ struct CreateGroupView: View {
                 TextEditor(text: text)
                     .frame(height: 100)
                     .padding(8)
-                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+                    .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                     .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                    )
             } else {
                 TextField(placeholder, text: text)
-                    .padding()
-                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                    )
+                    .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
             }
         }
     }
@@ -141,12 +131,8 @@ struct CreateGroupView: View {
                         .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 }
                 .padding()
-                .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+                .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
             }
         }
     }
@@ -201,12 +187,8 @@ struct CreateGroupView: View {
                     .multilineTextAlignment(.leading)
             }
             .padding()
-            .background(isSelected ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .background(isSelected ? AppTheme.primaryAccent.opacity(0.15) : AppTheme.colorCardBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? AppTheme.primaryAccent : Color.clear, lineWidth: 1)
-            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -235,26 +217,20 @@ struct CreateGroupView: View {
     }
     
     private var createButton: some View {
-        Button(action: {
+        Button {
             Task {
                 await viewModel.createGroup(userId: authViewModel.currentUser?.id ?? "")
             }
-        }) {
+        } label: {
             HStack {
                 if viewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Create Group")
-                        .fontWeight(.bold)
                 }
+                Text("Create Group")
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(viewModel.isValid ? AppTheme.primaryAccent : Color.gray)
-            .foregroundColor(.white)
-            .cornerRadius(12)
         }
+        .buttonStyle(PrimaryButtonStyle(isEnabled: viewModel.isValid && !viewModel.isLoading))
         .disabled(!viewModel.isValid || viewModel.isLoading)
     }
 }

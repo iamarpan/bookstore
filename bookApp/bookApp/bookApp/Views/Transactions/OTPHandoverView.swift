@@ -141,12 +141,8 @@ struct TicketView: View {
                                 .font(.system(size: 32, weight: .bold, design: .monospaced))
                                 .foregroundColor(AppTheme.primaryText)
                                 .frame(width: 50, height: 60)
-                                .background(isActive ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.primaryBackground)
+                                .background(isActive ? AppTheme.primaryAccent.opacity(0.15) : AppTheme.primaryBackground)
                                 .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isActive ? AppTheme.primaryAccent : Color.clear, lineWidth: 2)
-                                )
                         }
                     }
                 } else {

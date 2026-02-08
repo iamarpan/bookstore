@@ -124,15 +124,14 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .foregroundColor(.white)
             .font(AppTheme.bodyFont(size: 17, weight: .semibold))
-            .padding()
             .frame(maxWidth: .infinity)
+            .frame(height: 56)
             .background(
                 isEnabled ? 
                 (configuration.isPressed ? AppTheme.primaryAccent.opacity(0.9) : AppTheme.primaryAccent) :
                 AppTheme.tertiaryText
             )
-            .cornerRadius(AppTheme.buttonRadius)
-            .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
+            .cornerRadius(12)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
@@ -143,12 +142,34 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .foregroundColor(AppTheme.primaryAccent)
             .font(AppTheme.bodyFont(size: 17, weight: .medium))
-            .padding()
             .frame(maxWidth: .infinity)
+            .frame(height: 56)
             .background(AppTheme.primaryAccent.opacity(0.1))
-            .cornerRadius(AppTheme.buttonRadius)
+            .cornerRadius(12)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+struct TertiaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(AppTheme.primaryAccent)
+            .font(AppTheme.bodyFont(size: 15, weight: .medium))
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+struct AppTextFieldStyle: TextFieldStyle {
+    let isDarkMode: Bool
+    
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .background(AppTheme.colorCardBackground(for: isDarkMode))
+            .cornerRadius(8)
     }
 }
 

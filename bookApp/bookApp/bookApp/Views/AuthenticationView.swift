@@ -63,7 +63,7 @@ struct PhoneSignInView: View {
                     // Phone Number Field
                     TextField("Phone Number", text: $authViewModel.phoneNumber)
                         .keyboardType(.phonePad)
-                        .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     
                     Button {
                         Task {
@@ -72,20 +72,14 @@ struct PhoneSignInView: View {
                         }
                     } label: {
                         Text("Send OTP")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(AppTheme.primaryAccent)
-                            .cornerRadius(12)
                     }
+                    .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isPhoneValid))
                     .disabled(!authViewModel.isPhoneValid)
                 } else {
                     // OTP Field
                     TextField("Enter OTP", text: $authViewModel.otp)
                         .keyboardType(.numberPad)
-                        .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     
                     Button {
                         Task {
@@ -93,14 +87,8 @@ struct PhoneSignInView: View {
                         }
                     } label: {
                         Text("Verify OTP")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(AppTheme.primaryAccent)
-                            .cornerRadius(12)
                     }
+                    .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isOTPValid))
                     .disabled(!authViewModel.isOTPValid)
                     
                     Button("Resend OTP") {
@@ -108,8 +96,7 @@ struct PhoneSignInView: View {
                             await authViewModel.sendOTP()
                         }
                     }
-                    .font(.caption)
-                    .foregroundColor(AppTheme.primaryAccent)
+                    .buttonStyle(TertiaryButtonStyle())
                 }
                 
                 if authViewModel.isLoading {
@@ -127,7 +114,7 @@ struct PhoneSignInView: View {
             Button("Mock Login (Dev)") {
                 authViewModel.mockLogin()
             }
-            .font(.caption)
+            .buttonStyle(TertiaryButtonStyle())
             .foregroundColor(.orange)
             .padding(.bottom, 20)
             #endif
@@ -142,8 +129,8 @@ struct PhoneSignInView: View {
                     Button("Terms of Service") {
                         // Handle terms of service
                     }
+                    .buttonStyle(TertiaryButtonStyle())
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryAccent)
                     
                     Text("and")
                         .font(.caption)
@@ -152,8 +139,8 @@ struct PhoneSignInView: View {
                     Button("Privacy Policy") {
                         // Handle privacy policy
                     }
+                    .buttonStyle(TertiaryButtonStyle())
                     .font(.caption)
-                    .foregroundColor(AppTheme.primaryAccent)
                 }
             }
             .padding(.bottom, 40)
@@ -193,7 +180,7 @@ struct RegistrationView: View {
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
                         TextField("Enter your full name", text: $authViewModel.name)
-                            .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                            .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     }
                     
                     // Phone Number Field (Optional for extra validation)
@@ -205,7 +192,7 @@ struct RegistrationView: View {
                         
                         TextField("Enter your phone number", text: $authViewModel.phoneNumber)
                             .keyboardType(.phonePad)
-                            .textFieldStyle(CustomTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                            .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
                     }
                     
                     // Note: Club joining will be implemented later
@@ -228,18 +215,10 @@ struct RegistrationView: View {
                             }
                             
                             Text("Complete Registration")
-                                .font(.body)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(AppTheme.primaryAccent)
-                        .cornerRadius(12)
-                        .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
+                    .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isRegistrationValid && !authViewModel.isLoading))
                     .disabled(!authViewModel.isRegistrationValid || authViewModel.isLoading)
-                    .opacity(authViewModel.isRegistrationValid && !authViewModel.isLoading ? 1.0 : 0.6)
                     .padding(.top, 8)
                     
                     Spacer(minLength: 40)
@@ -275,22 +254,6 @@ struct AuthHeaderView: View {
         }
         .padding(.top, 40)
         .padding(.horizontal, 32)
-    }
-}
-
-struct CustomTextFieldStyle: TextFieldStyle {
-    let isDarkMode: Bool
-    
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(AppTheme.colorCardBackground(for: isDarkMode))
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(AppTheme.colorTertiaryText(for: isDarkMode).opacity(0.3), lineWidth: 1)
-            )
     }
 }
 

@@ -85,15 +85,17 @@ class AuthViewModel: ObservableObject {
             
         } catch {
             // Check if this is a "Name is required" error (new user)
-            let errorDescription = error.localizedDescription.lowercased()
-            if errorDescription.contains("name is required") || errorDescription.contains("name") {
+            let errorMessage = error.localizedDescription.lowercased()
+            
+            if errorMessage.contains("name is required") || errorMessage.contains("name") {
                 // This is a new user - show registration form
+                print("📝 New user detected, showing registration form")
                 needsRegistration = true
                 showRegistrationForm = true
-                errorMessage = nil // Clear error since we're showing registration form
+                self.errorMessage = nil // Clear error since we're transitioning to registration
             } else {
                 // Other error - show error message
-                errorMessage = "Verification failed: \(error.localizedDescription)"
+                self.errorMessage = "Verification failed: \(error.localizedDescription)"
                 showError = true
             }
         }

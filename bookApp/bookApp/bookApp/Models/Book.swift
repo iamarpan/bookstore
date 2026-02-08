@@ -57,9 +57,132 @@ struct Book: Identifiable, Codable {
         case lendingPricePerWeek
         case isAvailable
         case ownerId, ownerName, ownerRating, ownerBooksCount, ownerProfileImageUrl
+        case owner  // Nested owner object from API
+        case bookGroups  // Nested bookGroups array from API
         case visibleInGroups
         case currentTransactionId
         case createdAt, updatedAt
+    }
+    
+    // Nested owner structure from API
+    private struct OwnerResponse: Codable {
+        let id: String
+        let name: String
+        let averageRating: String?
+        let booksShared: Int?
+        let profileImageUrl: String?
+    }
+    
+    // Nested bookGroup structure from API
+    private struct BookGroupResponse: Codable {
+        let groupId: String
+        let group: GroupInfo?
+        
+        struct GroupInfo: Codable {
+            let id: String
+            let name: String
+        }
+    }
+    
+    // MARK: - Custom Decoder
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Basic fields
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        author = try container.decode(String.self, forKey: .author)
+        genre = try container.decode(String.self, forKey: .genre)
+        description = try container.decode(String.self, forKey: .description)
+        personalNotes = try container.decodeIfPresent(String.self, forKey: .personalNotes)
+        imageUrl = try container.decode(String.self, forKey: .imageUrl)
+        
+        // ISBN and metadata
+        isbn = try container.decodeIfPresent(String.self, forKey: .isbn)
+        publisher = try container.decodeIfPresent(String.self, forKey: .publisher)
+        year = try container.decodeIfPresent(Int.self, forKey: .year)
+        pages = try container.decodeIfPresent(Int.self, forKey: .pages)
+        language = try container.decodeIfPresent(String.self, forKey: .language)
+        
+        // Condition
+        condition = try container.decode(BookCondition.self, forKey: .condition)
+        
+        // Convert string lendingPricePerWeek to Double
+        if let priceString = try? container.decode(String.self, forKey: .lendingPricePerWeek) {
+            lendingPricePerWeek = Double(priceString) ?? 0
+        } else if let priceDouble = try? container.decode(Double.self, forKey: .lendingPricePerWeek) {
+            lendingPricePerWeek = priceDouble
+        } else {
+            lendingPricePerWeek = 0
+        }
+        
+        // Availability
+        isAvailable = try container.decode(Bool.self, forKey: .isAvailable)
+        
+        // Owner - handle both flat and nested structure
+        if let ownerResponse = try? container.decode(OwnerResponse.self, forKey: .owner) {
+            // Nested owner object from API
+            ownerId = ownerResponse.id
+            ownerName = ownerResponse.name
+            if let ratingString = ownerResponse.averageRating {
+                ownerRating = Double(ratingString)
+            } else {
+                ownerRating = nil
+            }
+            ownerBooksCount = ownerResponse.booksShared
+            ownerProfileImageUrl = ownerResponse.profileImageUrl
+        } else if let id = try? container.decode(String.self, forKey: .ownerId) {
+            // Flat structure (fallback)
+            ownerId = id
+            ownerName = (try? container.decode(String.self, forKey: .ownerName)) ?? ""
+            ownerRating = try? container.decode(Double.self, forKey: .ownerRating)
+            ownerBooksCount = try? container.decode(Int.self, forKey: .ownerBooksCount)
+            ownerProfileImageUrl = try? container.decode(String.self, forKey: .ownerProfileImageUrl)
+        } else {
+            throw DecodingError.dataCorruptedError(forKey: .ownerId, in: container, debugDescription: "Owner information missing")
+        }
+        
+        // Visible groups - extract from bookGroups array
+        if let bookGroupsResponse = try? container.decode([BookGroupResponse].self, forKey: .bookGroups) {
+            visibleInGroups = bookGroupsResponse.map { $0.groupId }
+        } else {
+            visibleInGroups = (try? container.decode([String].self, forKey: .visibleInGroups)) ?? []
+        }
+        
+        // Transaction
+        currentTransactionId = try container.decodeIfPresent(String.self, forKey: .currentTransactionId)
+        
+        // Timestamps
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(author, forKey: .author)
+        try container.encode(genre, forKey: .genre)
+        try container.encode(description, forKey: .description)
+        try container.encode(personalNotes, forKey: .personalNotes)
+        try container.encode(imageUrl, forKey: .imageUrl)
+        try container.encode(isbn, forKey: .isbn)
+        try container.encode(publisher, forKey: .publisher)
+        try container.encode(year, forKey: .year)
+        try container.encode(pages, forKey: .pages)
+        try container.encode(language, forKey: .language)
+        try container.encode(condition, forKey: .condition)
+        try container.encode("\(Int(lendingPricePerWeek))", forKey: .lendingPricePerWeek)
+        try container.encode(isAvailable, forKey: .isAvailable)
+        try container.encode(ownerId, forKey: .ownerId)
+        try container.encode(currentTransactionId, forKey: .currentTransactionId)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        
+        // Note: For simplicity, we are not encoding 'owner' and 'bookGroups' back to their complex nested objects
+        // as the backend usually expects simpler structures during POST/PUT. 
+        // If we really need them, we'd rebuild OwnerResponse and BookGroupResponse here.
     }
     
     // MARK: - Initializers

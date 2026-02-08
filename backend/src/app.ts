@@ -11,6 +11,7 @@ import { swaggerUi, getSwaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import bookRoutes from './routes/book.routes';
+import transactionRoutes from './routes/transaction.routes';
 
 // Load environment variables
 dotenv.config();
@@ -137,6 +138,7 @@ app.get('/api/v1', (req: Request, res: Response) => {
             auth: '/api/v1/auth',
             users: '/api/v1/users',
             books: '/api/v1/books',
+            transactions: '/api/v1/transactions',
         },
         documentation: '/api-docs',
     });
@@ -146,6 +148,7 @@ app.get('/api/v1', (req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/books', bookRoutes);
+app.use('/api/v1/transactions', transactionRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -13,6 +13,7 @@ enum APIError: Error, LocalizedError {
     case noData
     case tokenExpired
     case unknown
+    case badRequest(String)
     
     var errorDescription: String? {
         switch self {
@@ -36,6 +37,8 @@ enum APIError: Error, LocalizedError {
             return "No data received from server"
         case .tokenExpired:
             return "Session expired. Please log in again."
+        case .badRequest(let message):
+            return message
         case .unknown:
             return "An unknown error occurred"
         }
@@ -68,9 +71,6 @@ class APIClient {
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     
-    // Request logging
-    private var loggingEnabled = true
-    
     private init() {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = APIConfiguration.shared.requestTimeout
@@ -81,8 +81,31 @@ class APIClient {
         self.keychainManager = KeychainManager.shared
         
         // Configure JSON decoder for ISO8601 dates
+        // Configure JSON decoder to handle ISO8601 with fractional seconds (milliseconds)
         self.decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            let formatter = ISO8601DateFormatter()
+            
+            // 1. Try with fractional seconds (e.g., "2023-11-20T12:00:00.000Z")
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            // 2. Fallback to standard internet date time (e.g., "2023-11-20T12:00:00Z")
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date string: \(dateString)"
+            )
+        }
         decoder.keyDecodingStrategy = .useDefaultKeys
         
         // Configure JSON encoder
@@ -270,6 +293,13 @@ class APIClient {
                     throw APIError.decodingError(error)
                 }
                 
+            case 400:
+                // Bad Request - try to decode error message
+                if let errorResponse = try? decoder.decode(ErrorResponse.self, from: data) {
+                    throw APIError.badRequest(errorResponse.message)
+                }
+                throw APIError.badRequest("Bad Request")
+                
             case 401:
                 // Unauthorized - try to refresh token
                 if retryCount < 1 {
@@ -372,7 +402,7 @@ class APIClient {
     // MARK: - Logging
     
     private func logRequest<B: Encodable>(_ request: URLRequest, body: B?) {
-        guard loggingEnabled else { return }
+        guard config.loggingEnabled else { return }
         
         print("📤 API Request")
         print("   Method: \(request.httpMethod ?? "UNKNOWN")")
@@ -392,7 +422,7 @@ class APIClient {
     }
     
     private func logResponse(_ response: URLResponse, data: Data) {
-        guard loggingEnabled else { return }
+        guard config.loggingEnabled else { return }
         
         guard let httpResponse = response as? HTTPURLResponse else { return }
         

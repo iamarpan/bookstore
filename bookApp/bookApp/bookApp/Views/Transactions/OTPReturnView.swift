@@ -121,12 +121,8 @@ struct OTPReturnView: View {
             .font(.system(size: 32, weight: .bold, design: .monospaced))
             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .frame(width: 60, height: 70)
-            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.primaryAccent.opacity(0.3), lineWidth: 1)
-            )
             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 2)
     }
     
@@ -161,12 +157,8 @@ struct OTPReturnView: View {
             .font(.system(size: 32, weight: .bold, design: .monospaced))
             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .frame(width: 60, height: 70)
-            .background(isActive ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .background(isActive ? AppTheme.primaryAccent.opacity(0.15) : AppTheme.colorCardBackground(for: themeManager.isDarkMode))
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isActive ? AppTheme.primaryAccent : Color.gray.opacity(0.3), lineWidth: isActive ? 2 : 1)
-            )
             .onTapGesture {
                 // Focus logic would go here
             }
@@ -211,26 +203,20 @@ struct OTPReturnView: View {
     // MARK: - Confirm Button
     
     private var confirmButton: some View {
-        Button(action: {
+        Button {
             Task {
                 await viewModel.confirmReturn()
             }
-        }) {
+        } label: {
             HStack {
                 if viewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Confirm Return")
-                        .fontWeight(.bold)
                 }
+                Text("Confirm Return")
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(viewModel.isValidCode ? AppTheme.primaryAccent : Color.gray)
-            .foregroundColor(.white)
-            .cornerRadius(12)
         }
+        .buttonStyle(PrimaryButtonStyle(isEnabled: viewModel.isValidCode && !viewModel.isLoading))
         .disabled(!viewModel.isValidCode || viewModel.isLoading)
     }
 }

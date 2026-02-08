@@ -7,7 +7,7 @@ echo "🧪 Testing Bookstore Production API"
 echo "===================================="
 echo ""
 
-API_BASE="https://bookapp-iota-nine.vercel.app"
+API_BASE="https://bookapp-6gnv099up-ayushyachitranshs-projects.vercel.app"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 echo "1️⃣  Testing Health Endpoint..."
 HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "$API_BASE/health")
 HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
-BODY=$(echo "$HEALTH_RESPONSE" | head -n-1)
+BODY=$(echo "$HEALTH_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo -e "${GREEN}✅ Health check passed${NC}"
@@ -34,7 +34,7 @@ echo ""
 echo "2️⃣  Testing API Info Endpoint..."
 API_RESPONSE=$(curl -s -w "\n%{http_code}" "$API_BASE/api/v1")
 HTTP_CODE=$(echo "$API_RESPONSE" | tail -n1)
-BODY=$(echo "$API_RESPONSE" | head -n-1)
+BODY=$(echo "$API_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo -e "${GREEN}✅ API info endpoint working${NC}"
@@ -51,7 +51,7 @@ OTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/api/v1/auth/send-o
   -H "Content-Type: application/json" \
   -d '{"phoneNumber": "+919876543210"}')
 HTTP_CODE=$(echo "$OTP_RESPONSE" | tail -n1)
-BODY=$(echo "$OTP_RESPONSE" | head -n-1)
+BODY=$(echo "$OTP_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo -e "${GREEN}✅ Send OTP endpoint working${NC}"
@@ -67,7 +67,7 @@ echo ""
 echo "4️⃣  Testing Protected Endpoint (should return 401)..."
 GENRES_RESPONSE=$(curl -s -w "\n%{http_code}" "$API_BASE/api/v1/books/genres")
 HTTP_CODE=$(echo "$GENRES_RESPONSE" | tail -n1)
-BODY=$(echo "$GENRES_RESPONSE" | head -n-1)
+BODY=$(echo "$GENRES_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "401" ]; then
     echo -e "${GREEN}✅ Protected endpoint correctly requires authentication${NC}"

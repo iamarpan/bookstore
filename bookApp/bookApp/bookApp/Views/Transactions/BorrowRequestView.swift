@@ -127,13 +127,9 @@ struct BorrowRequestView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(isSelected ? AppTheme.primaryAccent.opacity(0.1) : AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .background(isSelected ? AppTheme.primaryAccent.opacity(0.15) : AppTheme.colorCardBackground(for: themeManager.isDarkMode))
             .foregroundColor(isSelected ? AppTheme.primaryAccent : AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? AppTheme.primaryAccent : Color.clear, lineWidth: 2)
-            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -147,12 +143,8 @@ struct BorrowRequestView: View {
             TextEditor(text: $viewModel.message)
                 .frame(height: 100)
                 .padding(8)
-                .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+                .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
         }
     }
     
@@ -174,26 +166,20 @@ struct BorrowRequestView: View {
     }
     
     private var actionButton: some View {
-        Button(action: {
+        Button {
             Task {
                 await viewModel.sendRequest(bookId: book.id, ownerId: book.ownerId, borrowerId: authViewModel.currentUser?.id ?? "")
             }
-        }) {
+        } label: {
             HStack {
                 if viewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Send Request")
-                        .fontWeight(.bold)
                 }
+                Text("Send Request")
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(AppTheme.primaryAccent)
-            .foregroundColor(.white)
-            .cornerRadius(12)
         }
+        .buttonStyle(PrimaryButtonStyle(isEnabled: !viewModel.isLoading))
         .disabled(viewModel.isLoading)
     }
 }
