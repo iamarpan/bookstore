@@ -71,30 +71,30 @@ struct NotificationPreferences: Codable {
 // MARK: - User Model
 struct User: Identifiable, Codable {
     let id: String
-    var phoneNumber: String  // Primary identifier, now required
-    var phoneVerified: Bool
+    var phoneNumber: String  // Primary identifier, required by API
+    var phoneVerified: Bool?  // Optional - not returned by API initially
     var name: String
     var email: String?  // Optional
     var bio: String?
     var profileImageUrl: String?
     
-    // Group memberships
-    var joinedGroupIds: [String]
-    var createdGroupIds: [String]
+    // Group memberships - local only, not returned by API
+    var joinedGroupIds: [String]?
+    var createdGroupIds: [String]?
     
     // Statistics
     var stats: UserStats
     
-    // Settings
-    var privacySettings: PrivacySettings
-    var notificationPreferences: NotificationPreferences
+    // Settings - local only, not returned by API
+    var privacySettings: PrivacySettings?
+    var notificationPreferences: NotificationPreferences?
     
-    // Device and session
+    // Device and session - local only
     var deviceToken: String?  // APNs token for push notifications
     var lastTokenUpdate: Date?
     
-    // Account status
-    var isActive: Bool
+    // Account status - some fields not returned by API
+    var isActive: Bool?
     var createdAt: Date
     var lastLoginAt: Date?
     
@@ -109,25 +109,53 @@ struct User: Identifiable, Codable {
         case isActive, createdAt, lastLoginAt
     }
     
+    // MARK: - Custom Decoder
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Required fields from API
+        id = try container.decode(String.self, forKey: .id)
+        phoneNumber = try container.decode(String.self, forKey: .phoneNumber)
+        name = try container.decode(String.self, forKey: .name)
+        stats = try container.decode(UserStats.self, forKey: .stats)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        
+        // Optional fields from API
+        phoneVerified = try container.decodeIfPresent(Bool.self, forKey: .phoneVerified)
+        email = try container.decodeIfPresent(String.self, forKey: .email)
+        bio = try container.decodeIfPresent(String.self, forKey: .bio)
+        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        
+        // Local-only fields (may be in UserDefaults but not from API)
+        joinedGroupIds = try container.decodeIfPresent([String].self, forKey: .joinedGroupIds)
+        createdGroupIds = try container.decodeIfPresent([String].self, forKey: .createdGroupIds)
+        privacySettings = try container.decodeIfPresent(PrivacySettings.self, forKey: .privacySettings)
+        notificationPreferences = try container.decodeIfPresent(NotificationPreferences.self, forKey: .notificationPreferences)
+        deviceToken = try container.decodeIfPresent(String.self, forKey: .deviceToken)
+        lastTokenUpdate = try container.decodeIfPresent(Date.self, forKey: .lastTokenUpdate)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive)
+        lastLoginAt = try container.decodeIfPresent(Date.self, forKey: .lastLoginAt)
+    }
+    
     // MARK: - Initializers
     
     /// Main initializer for creating a new user
     init(
         id: String = UUID().uuidString,
         phoneNumber: String,
-        phoneVerified: Bool = false,
+        phoneVerified: Bool? = nil,
         name: String,
         email: String? = nil,
         bio: String? = nil,
         profileImageUrl: String? = nil,
-        joinedGroupIds: [String] = [],
-        createdGroupIds: [String] = [],
+        joinedGroupIds: [String]? = nil,
+        createdGroupIds: [String]? = nil,
         stats: UserStats = UserStats(),
-        privacySettings: PrivacySettings = PrivacySettings(),
-        notificationPreferences: NotificationPreferences = NotificationPreferences(),
+        privacySettings: PrivacySettings? = nil,
+        notificationPreferences: NotificationPreferences? = nil,
         deviceToken: String? = nil,
         lastTokenUpdate: Date? = nil,
-        isActive: Bool = true,
+        isActive: Bool? = nil,
         createdAt: Date = Date(),
         lastLoginAt: Date? = nil
     ) {
@@ -163,17 +191,22 @@ extension User {
     
     /// Total groups (joined + created)
     var totalGroups: Int {
-        Set(joinedGroupIds + createdGroupIds).count
+        let joined = joinedGroupIds ?? []
+        let created = createdGroupIds ?? []
+        return Set(joined + created).count
     }
     
     /// Check if user is a member of a specific group
     func isMemberOf(groupId: String) -> Bool {
-        joinedGroupIds.contains(groupId) || createdGroupIds.contains(groupId)
+        let joined = joinedGroupIds ?? []
+        let created = createdGroupIds ?? []
+        return joined.contains(groupId) || created.contains(groupId)
     }
     
     /// Check if user created a specific group
     func isCreatorOf(groupId: String) -> Bool {
-        createdGroupIds.contains(groupId)
+        let created = createdGroupIds ?? []
+        return created.contains(groupId)
     }
 }
 
@@ -224,7 +257,10 @@ extension User {
             booksBorrowed: 12,
             totalEarned: 650,
             averageRating: 4.7
-        )
+        ),
+        privacySettings: PrivacySettings(),
+        notificationPreferences: NotificationPreferences(),
+        isActive: true
     )
     
     static let mockUsers: [User] = [
@@ -233,21 +269,24 @@ extension User {
             phoneNumber: "+919876543211",
             phoneVerified: true,
             name: "John Smith",
-            stats: UserStats(booksShared: 12, averageRating: 4.8)
+            stats: UserStats(booksShared: 12, averageRating: 4.8),
+            isActive: true
         ),
         User(
             id: "2",
             phoneNumber: "+919876543212",
             phoneVerified: true,
             name: "Sarah Johnson",
-            stats: UserStats(booksShared: 8, averageRating: 4.9)
+            stats: UserStats(booksShared: 8, averageRating: 4.9),
+            isActive: true
         ),
         User(
             id: "3",
             phoneNumber: "+919876543213",
             phoneVerified: true,
             name: "Alex Rodriguez",
-            stats: UserStats(booksShared: 15, averageRating: 4.6)
+            stats: UserStats(booksShared: 15, averageRating: 4.6),
+            isActive: true
         )
     ]
 }

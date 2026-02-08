@@ -189,9 +189,11 @@ class AuthService: ObservableObject {
         print("✅ User logged out")
     }
     
-    // MARK: - Mock Authentication (for development)
+    #if DEBUG
+    // MARK: - Mock Authentication (for development only)
     
     /// Mock login for testing UI without backend
+    /// ⚠️ This function is only available in DEBUG builds
     func mockLogin() {
         let mockUser = User.mockUser
         currentUser = mockUser
@@ -206,4 +208,5 @@ class AuthService: ObservableObject {
         
         print("✅ Mock user logged in: \(mockUser.name)")
     }
+    #endif
 }

@@ -23,7 +23,7 @@ struct ProfileView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                                 
-                                if !user.joinedGroupIds.isEmpty || !user.createdGroupIds.isEmpty {
+                                if !(user.joinedGroupIds?.isEmpty ?? true) || !(user.createdGroupIds?.isEmpty ?? true) {
                                     Text("Member of Book Club")
                                         .font(.caption)
                                         .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))

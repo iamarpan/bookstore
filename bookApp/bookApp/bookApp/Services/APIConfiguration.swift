@@ -30,21 +30,39 @@ enum APIEnvironment: String {
 class APIConfiguration {
     static let shared = APIConfiguration()
     
-    // Current environment - using production (Vercel deployment)
-    var currentEnvironment: APIEnvironment = .production
-
+    // Current environment - automatically determined based on build configuration
+    var currentEnvironment: APIEnvironment = {
+        #if DEBUG
+        // In debug builds, you can change this to .development or .staging for testing
+        return .production
+        #else
+        // In release builds, always use production
+        return .production
+        #endif
+    }()
     
     var baseURL: String {
         currentEnvironment.baseURL
     }
     
     // Timeouts
+    // Note: Vercel serverless functions may have cold starts (2-3 seconds)
+    // Increased timeout to handle this gracefully
     let requestTimeout: TimeInterval = 30
     let resourceTimeout: TimeInterval = 60
     
     // Retry configuration
     let maxRetries: Int = 3
     let retryDelay: TimeInterval = 1.0
+    
+    // Enable logging only in debug builds
+    var loggingEnabled: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
     
     private init() {}
 }

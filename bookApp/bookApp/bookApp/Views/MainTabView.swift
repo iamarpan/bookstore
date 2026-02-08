@@ -74,7 +74,9 @@ struct MainTabView: View {
     
     private func startDataListening() {
         if let user = authViewModel.currentUser {
-            let groupIds = user.joinedGroupIds + user.createdGroupIds
+            let joinedIds = user.joinedGroupIds ?? []
+            let createdIds = user.createdGroupIds ?? []
+            let groupIds = joinedIds + createdIds
             
             Task {
                 await homeViewModel.fetchBooks(for: groupIds)
