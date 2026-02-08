@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 
 // Swagger
-import { swaggerUi, swaggerSpec } from './config/swagger';
+import { swaggerUi, getSwaggerSpec } from './config/swagger';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -15,10 +15,11 @@ import bookRoutes from './routes/book.routes';
 // Load environment variables
 dotenv.config();
 
+console.log('🚀 Bookstore Backend Initializing...');
+
 const app: Application = express();
 
 // Security & Parsing Middleware
-// Configure helmet with relaxed CSP for Swagger UI
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -36,10 +37,13 @@ app.use(morgan('dev'));
 
 // Swagger Documentation - Using CDN for Vercel compatibility
 app.get('/api-docs', (req: Request, res: Response) => {
+    console.log('Generating API Docs...');
     // Generate dynamic spec with correct server URL
     const protocol = req.protocol;
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}/api/v1`;
+
+    const swaggerSpec = getSwaggerSpec();
 
     // Clone the spec and update servers dynamically
     const dynamicSpec = {
@@ -99,6 +103,8 @@ app.get('/api-docs/swagger.json', (req: Request, res: Response) => {
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}/api/v1`;
 
+    const swaggerSpec = getSwaggerSpec();
+
     const dynamicSpec = {
         ...swaggerSpec,
         servers: [
@@ -112,13 +118,14 @@ app.get('/api-docs/swagger.json', (req: Request, res: Response) => {
     res.json(dynamicSpec);
 });
 
-
-
-
-
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV,
+        initialized: true
+    });
 });
 
 // API info

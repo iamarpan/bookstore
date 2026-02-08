@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { generateTokenPair } from '../utils/jwt';
-import { generateOTP, storeOTP, sendOTPViaSMS, verifyOTP } from './otp.service';
+import { generateOTP, storeOTP, sendOTPViaSMS, checkOTP, consumeOTP } from './otp.service';
+import { formatUserResponse } from '../utils/user.utils';
 
 /**
  * Send OTP to phone number
@@ -31,10 +32,10 @@ export async function verifyOTPService(
     name?: string,
     bio?: string
 ) {
-    // Verify OTP
-    const isValid = await verifyOTP(phoneNumber, otp);
+    // Check if OTP is valid
+    const otpId = await checkOTP(phoneNumber, otp);
 
-    if (!isValid) {
+    if (!otpId) {
         throw new Error('Invalid or expired OTP');
     }
 
@@ -46,8 +47,12 @@ export async function verifyOTPService(
     // If user doesn't exist, create new user (registration)
     if (!user) {
         if (!name) {
+            // DO NOT consume the OTP yet, allow them to come back with a name
             throw new Error('Name is required for new users');
         }
+
+        // OTP is valid and name provided, proceed with registration
+        await consumeOTP(otpId);
 
         user = await prisma.user.create({
             data: {
@@ -61,6 +66,10 @@ export async function verifyOTPService(
 
         console.log(`✅ New user registered: ${user.name} (${user.phoneNumber})`);
     } else {
+        // User exists, they are logging in
+        // Consume OTP and proceed
+        await consumeOTP(otpId);
+
         // Update existing user
         user = await prisma.user.update({
             where: { id: user.id },
@@ -97,7 +106,7 @@ export async function verifyOTPService(
     return {
         accessToken,
         refreshToken,
-        user,
+        user: formatUserResponse(user),
     };
 }
 

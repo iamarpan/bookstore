@@ -1,22 +1,25 @@
 import prisma from '../config/database';
 import { User } from '@prisma/client';
+import { FormattedUser, formatUserResponse } from '../utils/user.utils';
 
 /**
  * Get user by ID
  */
-export async function getUserById(userId: string): Promise<User | null> {
-    return await prisma.user.findUnique({
+export async function getUserById(userId: string): Promise<FormattedUser | null> {
+    const user = await prisma.user.findUnique({
         where: { id: userId },
     });
+    return user ? formatUserResponse(user) : null;
 }
 
 /**
  * Get user by phone number
  */
-export async function getUserByPhone(phoneNumber: string): Promise<User | null> {
-    return await prisma.user.findUnique({
+export async function getUserByPhone(phoneNumber: string): Promise<FormattedUser | null> {
+    const user = await prisma.user.findUnique({
         where: { phoneNumber },
     });
+    return user ? formatUserResponse(user) : null;
 }
 
 /**
@@ -30,8 +33,8 @@ export async function updateUserProfile(
         bio?: string;
         profileImageUrl?: string;
     }
-): Promise<User> {
-    return await prisma.user.update({
+): Promise<FormattedUser> {
+    const user = await prisma.user.update({
         where: { id: userId },
         data: {
             ...data,
@@ -39,6 +42,7 @@ export async function updateUserProfile(
             lastLoginAt: new Date(),
         },
     });
+    return formatUserResponse(user);
 }
 
 /**
@@ -53,11 +57,12 @@ export async function updateNotificationPreferences(
         dueDateRemindersNotif?: boolean;
         groupActivityNotif?: boolean;
     }
-): Promise<User> {
-    return await prisma.user.update({
+): Promise<FormattedUser> {
+    const user = await prisma.user.update({
         where: { id: userId },
         data: preferences,
     });
+    return formatUserResponse(user);
 }
 
 /**
@@ -68,11 +73,12 @@ export async function updatePrivacySettings(
     settings: {
         phoneVisibility?: 'AFTER_APPROVAL' | 'GROUP_MEMBERS' | 'PUBLIC';
     }
-): Promise<User> {
-    return await prisma.user.update({
+): Promise<FormattedUser> {
+    const user = await prisma.user.update({
         where: { id: userId },
         data: settings,
     });
+    return formatUserResponse(user);
 }
 
 /**
@@ -81,14 +87,15 @@ export async function updatePrivacySettings(
 export async function updateDeviceToken(
     userId: string,
     deviceToken: string
-): Promise<User> {
-    return await prisma.user.update({
+): Promise<FormattedUser> {
+    const user = await prisma.user.update({
         where: { id: userId },
         data: {
             deviceToken,
             lastTokenUpdate: new Date(),
         },
     });
+    return formatUserResponse(user);
 }
 
 /**

@@ -22,7 +22,7 @@ async function lookupOpenLibrary(isbn: string): Promise<ISBNBookData | null> {
         const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
         if (!response.ok) return null;
 
-        const data = await response.json();
+        const data: any = await response.json();
 
         // Get cover image
         const imageUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
@@ -33,7 +33,7 @@ async function lookupOpenLibrary(isbn: string): Promise<ISBNBookData | null> {
             const authorKey = data.authors[0].key;
             const authorResponse = await fetch(`https://openlibrary.org${authorKey}.json`);
             if (authorResponse.ok) {
-                const authorData = await authorResponse.json();
+                const authorData: any = await authorResponse.json();
                 author = authorData.name;
             }
         }
@@ -63,7 +63,7 @@ async function lookupGoogleBooks(isbn: string): Promise<ISBNBookData | null> {
         );
         if (!response.ok) return null;
 
-        const data = await response.json();
+        const data: any = await response.json();
         if (!data.items || data.items.length === 0) return null;
 
         const book = data.items[0].volumeInfo;

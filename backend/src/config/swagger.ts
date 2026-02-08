@@ -146,11 +146,33 @@ const options: swaggerJsdoc.Options = {
             },
         ],
     },
-    apis: [
-        `${__dirname}/../routes/*.ts`,  // Development (TypeScript)
-        `${__dirname}/../routes/*.js`,  // Production (compiled JavaScript)
-    ],
+    apis: [], // We'll set this dynamically in getSwaggerSpec
 };
 
-export const swaggerSpec = swaggerJsdoc(options);
+// Helper to get routes path safely
+const getRoutesPath = () => {
+    try {
+        if (process.env.VERCEL) {
+            // On Vercel, paths might be different
+            return './src/routes/*.ts';
+        }
+        return `${__dirname}/../routes/*.ts`;
+    } catch (e) {
+        return './src/routes/*.ts';
+    }
+};
+
+export const getSwaggerSpec = () => {
+    try {
+        const specOptions = {
+            ...options,
+            apis: [getRoutesPath()]
+        };
+        return swaggerJsdoc(specOptions);
+    } catch (error) {
+        console.error('Error generating swagger spec:', error);
+        return {};
+    }
+};
+
 export { swaggerUi };

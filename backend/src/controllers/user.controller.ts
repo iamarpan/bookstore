@@ -112,11 +112,11 @@ export async function updateNotifications(req: Request, res: Response) {
         res.json({
             message: 'Notification preferences updated',
             preferences: {
-                pushEnabled: updatedUser.pushEnabled,
-                emailEnabled: updatedUser.emailEnabled,
-                borrowRequestsNotif: updatedUser.borrowRequestsNotif,
-                dueDateRemindersNotif: updatedUser.dueDateRemindersNotif,
-                groupActivityNotif: updatedUser.groupActivityNotif,
+                pushEnabled: updatedUser.notificationPreferences.pushEnabled,
+                emailEnabled: updatedUser.notificationPreferences.emailEnabled,
+                borrowRequestsNotif: updatedUser.notificationPreferences.borrowRequests,
+                dueDateRemindersNotif: updatedUser.notificationPreferences.dueDateReminders,
+                groupActivityNotif: updatedUser.notificationPreferences.groupActivity,
             },
         });
     } catch (error) {
@@ -156,7 +156,7 @@ export async function updatePrivacy(req: Request, res: Response) {
 
         res.json({
             message: 'Privacy settings updated',
-            phoneVisibility: updatedUser.phoneVisibility,
+            phoneVisibility: updatedUser.privacySettings.phoneVisibility,
         });
     } catch (error) {
         console.error('Update privacy error:', error);

@@ -18,6 +18,9 @@ const prisma =
         },
     });
 
+// Note: Prisma connects lazily on the first request.
+// In serverless, top-level $connect() can lead to timeouts.
+
 if (process.env.NODE_ENV !== 'production') {
     global.prisma = prisma;
 }

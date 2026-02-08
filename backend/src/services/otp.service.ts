@@ -33,9 +33,9 @@ export async function storeOTP(phoneNumber: string, otp: string): Promise<void> 
 }
 
 /**
- * Verify OTP
+ * Check if OTP is valid without consuming it
  */
-export async function verifyOTP(phoneNumber: string, otp: string): Promise<boolean> {
+export async function checkOTP(phoneNumber: string, otp: string): Promise<string | null> {
     const otpRecord = await prisma.oTPCode.findFirst({
         where: {
             phoneNumber,
@@ -47,16 +47,30 @@ export async function verifyOTP(phoneNumber: string, otp: string): Promise<boole
         },
     });
 
-    if (!otpRecord) {
+    return otpRecord?.id || null;
+}
+
+/**
+ * Consume (mark as verified) an OTP
+ */
+export async function consumeOTP(otpId: string): Promise<void> {
+    await prisma.oTPCode.update({
+        where: { id: otpId },
+        data: { verified: true },
+    });
+}
+
+/**
+ * Verify OTP (Traditional one-step verification)
+ */
+export async function verifyOTP(phoneNumber: string, otp: string): Promise<boolean> {
+    const otpId = await checkOTP(phoneNumber, otp);
+
+    if (!otpId) {
         return false;
     }
 
-    // Mark as verified
-    await prisma.oTPCode.update({
-        where: { id: otpRecord.id },
-        data: { verified: true },
-    });
-
+    await consumeOTP(otpId);
     return true;
 }
 
