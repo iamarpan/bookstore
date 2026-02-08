@@ -140,11 +140,12 @@ struct BorrowRequestView: View {
                 .font(.headline)
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
-            TextEditor(text: $viewModel.message)
+            TextEditor(text: $viewModel.message.animation(nil))
                 .frame(height: 100)
                 .padding(8)
                 .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 .cornerRadius(8)
+                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
         }
     }
     

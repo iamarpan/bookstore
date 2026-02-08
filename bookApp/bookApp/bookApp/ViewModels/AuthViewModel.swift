@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 class AuthViewModel: ObservableObject {
@@ -12,6 +13,8 @@ class AuthViewModel: ObservableObject {
     @Published var otp: String = ""
     @Published var name: String = ""
     @Published var bio: String = ""
+    
+    private var cancellables = Set<AnyCancellable>()
     
     // Validation
     var isPhoneValid: Bool {
@@ -36,8 +39,20 @@ class AuthViewModel: ObservableObject {
     }
     
     init() {
+        // Subscribe to auth service changes
+        setupSubscribers()
+        
         // Check for existing authentication session
         checkAuthenticationStatus()
+    }
+    
+    private func setupSubscribers() {
+        authService.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     func checkAuthenticationStatus() {

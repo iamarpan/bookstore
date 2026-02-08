@@ -137,7 +137,7 @@ struct OTPReturnView: View {
             }
             
             // Hidden text field for input handling
-            TextField("", text: $viewModel.enteredCode)
+            TextField("", text: $viewModel.enteredCode.animation(nil))
                 .keyboardType(.numberPad)
                 .opacity(0.01) // Invisible but focusable
                 .frame(width: 0, height: 0)

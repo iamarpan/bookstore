@@ -29,7 +29,7 @@ struct OTPHandoverView: View {
                 
                 if isOwner {
                     // Input Field (Hidden but active)
-                    TextField("", text: $viewModel.enteredCode)
+                    TextField("", text: $viewModel.enteredCode.animation(nil))
                         .keyboardType(.numberPad)
                         .opacity(0.01)
                         .frame(width: 0, height: 0)

@@ -212,12 +212,21 @@ extension User {
 
 // MARK: - Local Storage
 extension User {
-    /// Save user to UserDefaults for offline access
-    func saveToUserDefaults() {
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+    
+    private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        
-        if let encoded = try? encoder.encode(self) {
+        return encoder
+    }()
+    
+    /// Save user to UserDefaults for offline access
+    func saveToUserDefaults() {
+        if let encoded = try? User.encoder.encode(self) {
             UserDefaults.standard.set(encoded, forKey: "currentUser")
         }
     }
@@ -228,10 +237,7 @@ extension User {
             return nil
         }
         
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
-        return try? decoder.decode(User.self, from: data)
+        return try? User.decoder.decode(User.self, from: data)
     }
     
     /// Clear user from UserDefaults (logout)

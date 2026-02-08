@@ -20,14 +20,14 @@ struct CreateGroupView: View {
                         inputField(
                             title: "Group Name",
                             placeholder: "e.g., Downtown Readers",
-                            text: $viewModel.name
+                            text: $viewModel.name.animation(nil)
                         )
                         
                         // Description
                         inputField(
                             title: "Description",
                             placeholder: "What is this group about?",
-                            text: $viewModel.description,
+                            text: $viewModel.description.animation(nil),
                             isMultiline: true
                         )
                         
@@ -102,9 +102,10 @@ struct CreateGroupView: View {
                     .padding(8)
                     .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                     .cornerRadius(8)
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             } else {
                 TextField(placeholder, text: text)
-                    .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                    .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
             }
         }
     }

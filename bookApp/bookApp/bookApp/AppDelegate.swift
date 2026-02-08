@@ -18,10 +18,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
         
-        #if !targetEnvironment(simulator)
-        // Register for remote notifications only on real devices
-        application.registerForRemoteNotifications()
-        #endif
+        // Delay notification registration to prevent blocking the first frame
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            #if !targetEnvironment(simulator)
+            application.registerForRemoteNotifications()
+            #endif
+        }
         
         return true
     }

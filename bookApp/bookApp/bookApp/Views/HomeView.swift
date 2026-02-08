@@ -65,13 +65,11 @@ struct HomeView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
-            TextField("Search books, authors...", text: $homeViewModel.searchText)
+            TextField("Search books, authors...", text: $homeViewModel.searchText.animation(nil))
                 .font(AppTheme.bodyFont())
-                .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                .autocorrectionDisabled()
+                .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
         }
-        .padding()
-        .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
-        .cornerRadius(AppTheme.inputRadius)
         .shadow(color: AppTheme.shadowCard, radius: 10, x: 0, y: 4)
     }
     
@@ -87,6 +85,7 @@ struct HomeView: View {
                 .clipShape(Circle())
                 .shadow(color: AppTheme.shadowCard, radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(PlainButtonStyle())
     }
     
     private var contentSection: some View {
@@ -205,12 +204,15 @@ struct FilterSheet: View {
                 .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
                 .navigationTitle("Filters")
                 .navigationBarTitleDisplayMode(.inline)
-                .navigationBarItems(
-                    trailing: Button("Done") {
-                        presentationMode.wrappedValue.dismiss()
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.primaryAccent)
                     }
-                    .foregroundColor(AppTheme.primaryAccent)
-                )
+                }
         }
         .accentColor(AppTheme.primaryAccent)
     }
@@ -283,6 +285,7 @@ struct FilterSheet: View {
                     .background(AppTheme.errorColor.opacity(0.1))
                     .cornerRadius(10)
             }
+            .buttonStyle(PlainButtonStyle())
         }
     }
 }
@@ -305,6 +308,7 @@ struct FilterOptionButton: View {
                 .background(isSelected ? AppTheme.primaryAccent : AppTheme.colorSecondaryBackground(for: isDarkMode))
                 .cornerRadius(10)
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

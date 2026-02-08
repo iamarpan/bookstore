@@ -43,9 +43,10 @@ struct DiscoverGroupsView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
             
-            TextField("Search groups...", text: $viewModel.searchText)
+            TextField("Search groups...", text: $viewModel.searchText.animation(nil))
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                .autocorrectionDisabled()
                 .onChange(of: viewModel.searchText) { _, _ in
                     Task {
                         await viewModel.performSearch()
@@ -89,6 +90,7 @@ struct DiscoverGroupsView: View {
                         icon: "location"
                     )
                 }
+                .buttonStyle(PlainButtonStyle())
                 
                 // Privacy Filter
                 Menu {
@@ -102,6 +104,7 @@ struct DiscoverGroupsView: View {
                         icon: "lock"
                     )
                 }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal)
             .padding(.bottom, 12)

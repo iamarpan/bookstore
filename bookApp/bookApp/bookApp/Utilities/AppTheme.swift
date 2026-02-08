@@ -5,12 +5,18 @@ struct AppTheme {
     
     // Backgrounds
     static let primaryBackground = Color(hex: "F9F7F2") // Warm Alabaster
+    static let primaryBackgroundDark = Color(hex: "1C1C1E")
     static let cardBackground = Color(hex: "FFFFFF") // Pure White
+    static let cardBackgroundDark = Color(hex: "2C2C2E")
+    static let secondaryBackgroundDark = Color(hex: "2C2C2E")
+    static let secondaryBackgroundLight = Color(hex: "F2F2F7")
     
     // Text
     static let primaryText = Color(hex: "1A1A1A") // Soft Black
     static let secondaryText = Color(hex: "585858") // Dark Grey
+    static let secondaryTextDark = Color(hex: "AEAEB2")
     static let tertiaryText = Color(hex: "8A8A8A") // Medium Grey
+    static let tertiaryTextDark = Color(hex: "636366")
     
     // Brand & Actions
     static let primaryAccent = Color(hex: "C2410C") // Burnt Orange/Terracotta
@@ -47,11 +53,11 @@ struct AppTheme {
     // MARK: - Dynamic Colors (Adapting to Dark Mode if needed, but prioritizing the Warm Theme)
     
     static func colorPrimaryBackground(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color(hex: "1C1C1E") : primaryBackground
+        isDarkMode ? primaryBackgroundDark : primaryBackground
     }
     
     static func colorCardBackground(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color(hex: "2C2C2E") : cardBackground
+        isDarkMode ? cardBackgroundDark : cardBackground
     }
     
     static func colorPrimaryText(for isDarkMode: Bool) -> Color {
@@ -59,15 +65,15 @@ struct AppTheme {
     }
     
     static func colorSecondaryText(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color(hex: "AEAEB2") : secondaryText
+        isDarkMode ? secondaryTextDark : secondaryText
     }
     
     static func colorTertiaryText(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color(hex: "636366") : tertiaryText
+        isDarkMode ? tertiaryTextDark : tertiaryText
     }
     
     static func colorSecondaryBackground(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color(hex: "2C2C2E") : Color(hex: "F2F2F7")
+        isDarkMode ? secondaryBackgroundDark : secondaryBackgroundLight
     }
     
     static func dynamicBorderColor(for isDarkMode: Bool) -> Color {
@@ -161,15 +167,23 @@ struct TertiaryButtonStyle: ButtonStyle {
     }
 }
 
-struct AppTextFieldStyle: TextFieldStyle {
+struct AppTextFieldModifier: ViewModifier {
     let isDarkMode: Bool
     
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
+    func body(content: Content) -> some View {
+        content
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
             .background(AppTheme.colorCardBackground(for: isDarkMode))
             .cornerRadius(8)
+            .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+            .accentColor(AppTheme.primaryAccent)
+    }
+}
+
+extension View {
+    func appTextFieldStyle(isDarkMode: Bool) -> some View {
+        self.modifier(AppTextFieldModifier(isDarkMode: isDarkMode))
     }
 }
 

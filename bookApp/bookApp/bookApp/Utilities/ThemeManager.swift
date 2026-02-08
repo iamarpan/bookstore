@@ -9,13 +9,14 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
-        // Check if user has set a preference, otherwise use system default
+        // 1. Try to load from UserDefaults
         if let savedPreference = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool {
             self.isDarkMode = savedPreference
         } else {
-            // First launch - use system default
-            self.isDarkMode = UITraitCollection.current.userInterfaceStyle == .dark
-            UserDefaults.standard.set(self.isDarkMode, forKey: "isDarkMode")
+            // 2. Fallback: Default to light mode (safer for startup)
+            // TraitCollection access during init can be unreliable/crashy on some iOS versions
+            self.isDarkMode = false
+            UserDefaults.standard.set(false, forKey: "isDarkMode")
         }
     }
     

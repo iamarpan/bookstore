@@ -17,7 +17,6 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(themeManager.colorScheme)
-        .animation(.easeInOut(duration: 0.5), value: authViewModel.isAuthenticated)
     }
 }
 

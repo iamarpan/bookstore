@@ -48,9 +48,9 @@ struct AddBookView: View {
                 }
                 
                 Section(header: Text("Book Details").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
-                    TextField("Book Title", text: $viewModel.title)
+                    TextField("Book Title", text: $viewModel.title.animation(nil))
                         .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-                    TextField("Author", text: $viewModel.author)
+                    TextField("Author", text: $viewModel.author.animation(nil))
                         .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
                     Picker("Genre", selection: $viewModel.selectedGenre) {
@@ -62,7 +62,7 @@ struct AddBookView: View {
                     }
                     .accentColor(AppTheme.primaryAccent)
                     
-                    TextField("Description", text: $viewModel.description, axis: .vertical)
+                    TextField("Description", text: $viewModel.description.animation(nil), axis: .vertical)
                         .lineLimit(3...6)
                         .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 }
@@ -72,7 +72,7 @@ struct AddBookView: View {
                         Text("Lending Price (per week)")
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         Spacer()
-                        TextField("0.00", text: $viewModel.price)
+                        TextField("0.00", text: $viewModel.price.animation(nil))
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))

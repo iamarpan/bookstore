@@ -8,8 +8,8 @@ struct EditProfileView: View {
     var body: some View {
         Form {
             Section(header: Text("Public Info")) {
-                TextField("Name", text: $viewModel.name)
-                TextField("Bio", text: $viewModel.bio)
+                TextField("Name", text: $viewModel.name.animation(nil))
+                TextField("Bio", text: $viewModel.bio.animation(nil))
             }
             
             Section {

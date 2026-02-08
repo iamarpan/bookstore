@@ -61,9 +61,11 @@ struct PhoneSignInView: View {
                 
                 if !otpSent {
                     // Phone Number Field
-                    TextField("Phone Number", text: $authViewModel.phoneNumber)
+                    TextField("Phone Number", text: $authViewModel.phoneNumber.animation(nil))
                         .keyboardType(.phonePad)
-                        .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        .textContentType(.telephoneNumber)
+                        .autocorrectionDisabled()
+                        .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
                     
                     Button {
                         Task {
@@ -77,9 +79,10 @@ struct PhoneSignInView: View {
                     .disabled(!authViewModel.isPhoneValid)
                 } else {
                     // OTP Field
-                    TextField("Enter OTP", text: $authViewModel.otp)
+                    TextField("Enter OTP", text: $authViewModel.otp.animation(nil))
                         .keyboardType(.numberPad)
-                        .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        .textContentType(.oneTimeCode)
+                        .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
                     
                     Button {
                         Task {
@@ -179,8 +182,9 @@ struct RegistrationView: View {
                             .fontWeight(.medium)
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
-                        TextField("Enter your full name", text: $authViewModel.name)
-                            .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                        TextField("Enter your full name", text: $authViewModel.name.animation(nil))
+                            .textContentType(.name)
+                            .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
                     }
                     
                     // Phone Number Field (Optional for extra validation)
@@ -190,9 +194,10 @@ struct RegistrationView: View {
                             .fontWeight(.medium)
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
-                        TextField("Enter your phone number", text: $authViewModel.phoneNumber)
+                        TextField("Enter your phone number", text: $authViewModel.phoneNumber.animation(nil))
                             .keyboardType(.phonePad)
-                            .textFieldStyle(AppTextFieldStyle(isDarkMode: themeManager.isDarkMode))
+                            .textContentType(.telephoneNumber)
+                            .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
                     }
                     
                     // Note: Club joining will be implemented later
