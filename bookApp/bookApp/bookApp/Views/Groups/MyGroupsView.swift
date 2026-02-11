@@ -293,25 +293,13 @@ class GroupViewModel: ObservableObject {
 
 extension BookClub {
     func isCreatedByUser(userId: String) -> Bool {
-        return creatorId == userId
+        // Check if user is the creator either by role or by creatorId
+        return role == .creator || creatorId == userId
     }
 }
 
 // MARK: - Preview Stubs
 
-
-
-
-
-/// Placeholder view for GroupDetailView (will be implemented next)
-struct GroupDetailView: View {
-    let group: BookClub
-    
-    var body: some View {
-        Text("Group Detail: \(group.name)")
-            .navigationTitle(group.name)
-    }
-}
 
 // MARK: - Preview
 

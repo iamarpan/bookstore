@@ -9,7 +9,7 @@ Backend API for the Bookstore iOS Application built with Node.js, Express, TypeS
 - **Language:** TypeScript
 - **Database:** PostgreSQL
 - **ORM:** Prisma
-- **Authentication:** JWT + OTP (Twilio)
+- **Authentication:** JWT + OTP (Twilio WhatsApp)
 
 ## Getting Started
 

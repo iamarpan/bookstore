@@ -6,6 +6,9 @@ struct DiscoverGroupsView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
     
+    @State private var showingInviteCodeSheet = false
+    @State private var inviteCode = ""
+    
     var body: some View {
         VStack(spacing: 0) {
             // Search Bar
@@ -25,7 +28,29 @@ struct DiscoverGroupsView: View {
         }
         .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Discover Groups")
+        .buttonStyle(PlainButtonStyle())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingInviteCodeSheet = true }) {
+                    Image(systemName: "ticket.fill")
+                        .foregroundColor(AppTheme.primaryAccent)
+                }
+            }
+        }
+        .sheet(isPresented: $showingInviteCodeSheet) {
+            InviteCodeInputSheet(
+                inviteCode: $inviteCode,
+                onJoin: {
+                    Task {
+                        await viewModel.joinViaInviteCode(inviteCode)
+                        showingInviteCodeSheet = false
+                        inviteCode = ""
+                    }
+                }
+            )
+            .presentationDetents([.height(250)])
+        }
         .onAppear {
             loadGroups()
         }
@@ -140,7 +165,7 @@ struct DiscoverGroupsView: View {
                         GroupCardView(
                             group: group,
                             isDarkMode: themeManager.isDarkMode,
-                            showJoinButton: !group.isMember(userId: authViewModel.currentUser?.id ?? ""),
+                            showJoinButton: !group.isMember,
                             onTap: { },
                             onJoin: {
                                 Task {
@@ -233,19 +258,26 @@ class DiscoverGroupsViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // In a real app, we'd pass filters to the API
-            // For now, we'll fetch all and filter locally or use mock data
-            if let _ = User.loadFromUserDefaults() {
-                // Real API call would go here
-                // let fetchedGroups = try await groupService.searchGroups(query: searchText, ...)
-                // For now, use mock data since backend search might not be ready
-                loadMockGroups()
-            } else {
-                loadMockGroups()
+            // Fetch groups from backend
+            let allGroups = try await groupService.getAllGroups()
+            
+            // Apply local filtering for now until backend search is fully ready
+            var filtered = allGroups
+            
+            if !searchText.isEmpty {
+                filtered = filtered.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
             }
+            
+            if let privacy = selectedPrivacy {
+                filtered = filtered.filter { $0.privacy == privacy }
+            }
+            
+            self.groups = filtered
+            
         } catch {
             errorMessage = error.localizedDescription
             showError = true
+            print("❌ Error fetching groups: \(error)")
         }
         
         isLoading = false
@@ -257,9 +289,25 @@ class DiscoverGroupsViewModel: ObservableObject {
     }
     
     func joinGroup(_ group: BookClub) async {
-        // Implement join logic
-        print("Joining group: \(group.name)")
-        // try? await groupService.joinGroup(id: group.id)
+        do {
+            try await groupService.joinGroup(id: group.id)
+            print("✅ Joined group: \(group.name)")
+            await fetchGroups()
+        } catch {
+            errorMessage = "Failed to join group: \(error.localizedDescription)"
+            showError = true
+        }
+    }
+    
+    func joinViaInviteCode(_ code: String) async {
+        do {
+            _ = try await groupService.joinViaInvite(code: code)
+            print("✅ Joined group via invite code")
+            await fetchGroups()
+        } catch {
+            errorMessage = "Failed to join group: \(error.localizedDescription)"
+            showError = true
+        }
     }
     
     private func loadMockGroups() {
@@ -290,10 +338,51 @@ class DiscoverGroupsViewModel: ObservableObject {
     }
 }
 
-// MARK: - Helper Extension
-extension BookClub {
-    func isMember(userId: String) -> Bool {
-        return memberIds.contains(userId) || adminIds.contains(userId) || moderatorIds.contains(userId) || creatorId == userId
+// MARK: - Invite Code Input Sheet
+
+struct InviteCodeInputSheet: View {
+    @Binding var inviteCode: String
+    let onJoin: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Enter Invite Code")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                TextField("Invite Code", text: $inviteCode)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal)
+                
+                Button(action: {
+                    onJoin()
+                }) {
+                    Text("Join Group")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(inviteCode.isEmpty ? Color.gray : AppTheme.primaryAccent)
+                        .cornerRadius(12)
+                }
+                .disabled(inviteCode.isEmpty)
+                .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding(.top)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

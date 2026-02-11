@@ -42,11 +42,8 @@ struct BookClub: Identifiable, Codable {
     var category: GroupCategory
     var privacy: PrivacySetting
     
-    // Admin and members
+    // Creator
     let creatorId: String
-    var adminIds: [String]
-    var moderatorIds: [String]
-    var memberIds: [String]
     
     // Invite system
     var inviteCode: String
@@ -58,6 +55,11 @@ struct BookClub: Identifiable, Codable {
     // Stats
     var booksCount: Int
     var memberCount: Int
+    
+    // User's role and membership info (from API)
+    var role: MemberRole?
+    var isMember: Bool = false
+    var joinedAt: Date?
     
     // Calculated fields (not persisted)
     var distance: Double?
@@ -72,10 +74,13 @@ struct BookClub: Identifiable, Codable {
         case coverImageUrl
         case category, privacy
         case distance
-        case creatorId, adminIds, moderatorIds, memberIds
+        case creatorId
         case inviteCode, inviteCodeExpiry
         case rules
         case booksCount, memberCount
+        case role, userRole // Handle both for robustness
+        case isMember
+        case joinedAt
         case createdAt, updatedAt
     }
     
@@ -89,14 +94,14 @@ struct BookClub: Identifiable, Codable {
         category: GroupCategory = .friends,
         privacy: PrivacySetting = .private_,
         creatorId: String,
-        adminIds: [String]? = nil,
-        moderatorIds: [String] = [],
-        memberIds: [String]? = nil,
         inviteCode: String? = nil,
         inviteCodeExpiry: Date? = nil,
         rules: String? = nil,
         booksCount: Int = 0,
         memberCount: Int = 1,
+        role: MemberRole? = nil,
+        isMember: Bool = false,
+        joinedAt: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date? = nil
     ) {
@@ -107,16 +112,68 @@ struct BookClub: Identifiable, Codable {
         self.category = category
         self.privacy = privacy
         self.creatorId = creatorId
-        self.adminIds = adminIds ?? [creatorId]
-        self.moderatorIds = moderatorIds
-        self.memberIds = memberIds ?? [creatorId]
         self.inviteCode = inviteCode ?? Self.generateInviteCode()
         self.inviteCodeExpiry = inviteCodeExpiry
         self.rules = rules
         self.booksCount = booksCount
         self.memberCount = memberCount
+        self.role = role
+        self.isMember = isMember
+        self.joinedAt = joinedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+    
+    // MARK: - Decodable implementation
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+        coverImageUrl = try container.decodeIfPresent(String.self, forKey: .coverImageUrl)
+        category = try container.decode(GroupCategory.self, forKey: .category)
+        privacy = try container.decode(PrivacySetting.self, forKey: .privacy)
+        distance = try container.decodeIfPresent(Double.self, forKey: .distance)
+        creatorId = try container.decode(String.self, forKey: .creatorId)
+        inviteCode = try container.decode(String.self, forKey: .inviteCode)
+        inviteCodeExpiry = try container.decodeIfPresent(Date.self, forKey: .inviteCodeExpiry)
+        rules = try container.decodeIfPresent(String.self, forKey: .rules)
+        booksCount = try container.decode(Int.self, forKey: .booksCount)
+        memberCount = try container.decode(Int.self, forKey: .memberCount)
+        
+        // Robust role decoding: try 'role' then 'userRole'
+        role = try container.decodeIfPresent(MemberRole.self, forKey: .role) ?? 
+               container.decodeIfPresent(MemberRole.self, forKey: .userRole)
+        
+        isMember = try container.decodeIfPresent(Bool.self, forKey: .isMember) ?? (role != nil)
+        joinedAt = try container.decodeIfPresent(Date.self, forKey: .joinedAt)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+    
+    // MARK: - Encodable implementation
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(description, forKey: .description)
+        try container.encodeIfPresent(coverImageUrl, forKey: .coverImageUrl)
+        try container.encode(category, forKey: .category)
+        try container.encode(privacy, forKey: .privacy)
+        try container.encodeIfPresent(distance, forKey: .distance)
+        try container.encode(creatorId, forKey: .creatorId)
+        try container.encode(inviteCode, forKey: .inviteCode)
+        try container.encodeIfPresent(inviteCodeExpiry, forKey: .inviteCodeExpiry)
+        try container.encodeIfPresent(rules, forKey: .rules)
+        try container.encode(booksCount, forKey: .booksCount)
+        try container.encode(memberCount, forKey: .memberCount)
+        try container.encodeIfPresent(role, forKey: .role)
+        try container.encode(isMember, forKey: .isMember)
+        try container.encodeIfPresent(joinedAt, forKey: .joinedAt)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
     }
     
     // MARK: - Helper Methods
@@ -127,30 +184,31 @@ struct BookClub: Identifiable, Codable {
         return String((0..<9).map{ _ in letters.randomElement()! })
     }
     
-    /// Get role for a specific user
-    func role(for userId: String) -> MemberRole? {
-        if creatorId == userId {
-            return .creator
-        } else if adminIds.contains(userId) {
-            return .admin
-        } else if moderatorIds.contains(userId) {
-            return .moderator
-        } else if memberIds.contains(userId) {
-            return .member
-        }
-        return nil
+    /// Check if current user is the creator
+    var isCreator: Bool {
+        return role == .creator
     }
     
-    /// Check if user can moderate
-    func canModerate(userId: String) -> Bool {
-        let userRole = role(for: userId)
-        return userRole == .creator || userRole == .admin || userRole == .moderator
+    /// Check if current user can moderate (moderator, admin, or creator)
+    var canModerate: Bool {
+        guard let role = role else { return false }
+        return role == .creator || role == .admin || role == .moderator
     }
     
-    /// Check if user is admin or creator
-    func isAdmin(userId: String) -> Bool {
-        let userRole = role(for: userId)
-        return userRole == .creator || userRole == .admin
+    /// Check if current user is admin or creator
+    var isAdmin: Bool {
+        guard let role = role else { return false }
+        return role == .creator || role == .admin
+    }
+    
+    /// Check if current user can manage members (admin or creator)
+    var canManageMembers: Bool {
+        return isAdmin
+    }
+    
+    /// Check if current user can update group settings (admin or creator)
+    var canUpdateSettings: Bool {
+        return isAdmin
     }
 }
 
@@ -164,11 +222,12 @@ extension BookClub {
             category: .office,
             privacy: .private_,
             creatorId: "usr_demo",
-            memberIds: ["usr_demo", "1", "2", "3", "4", "5"],
             inviteCode: "ABC123XYZ",
             rules: "1. Return books on time\n2. Keep books in good condition\n3. Be respectful",
             booksCount: 47,
-            memberCount: 6
+            memberCount: 6,
+            role: .creator,
+            joinedAt: Calendar.current.date(byAdding: .day, value: -30, to: Date())
         ),
         BookClub(
             id: "club2",
@@ -178,7 +237,9 @@ extension BookClub {
             privacy: .public_,
             creatorId: "2",
             booksCount: 120,
-            memberCount: 45
+            memberCount: 45,
+            role: .member,
+            joinedAt: Calendar.current.date(byAdding: .day, value: -10, to: Date())
         ),
         BookClub(
             id: "club3",
@@ -188,7 +249,9 @@ extension BookClub {
             privacy: .private_,
             creatorId: "usr_demo",
             booksCount: 23,
-            memberCount: 8
+            memberCount: 8,
+            role: .creator,
+            joinedAt: Calendar.current.date(byAdding: .day, value: -60, to: Date())
         )
     ]
 }

@@ -91,6 +91,48 @@ const options: swaggerJsdoc.Options = {
                         message: { type: 'string', example: 'Invalid input data' },
                     },
                 },
+                Group: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        name: { type: 'string', example: 'Office Book Club' },
+                        description: { type: 'string' },
+                        coverImageUrl: { type: 'string', format: 'uri', nullable: true },
+                        category: {
+                            type: 'string',
+                            enum: ['FRIENDS', 'OFFICE', 'NEIGHBORHOOD', 'BOOK_CLUB', 'SCHOOL'],
+                        },
+                        privacy: {
+                            type: 'string',
+                            enum: ['PUBLIC', 'PRIVATE'],
+                        },
+                        creatorId: { type: 'string', format: 'uuid' },
+                        inviteCode: { type: 'string' },
+                        rules: { type: 'string', nullable: true },
+                        booksCount: { type: 'integer' },
+                        memberCount: { type: 'integer' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' },
+                        role: {
+                            type: 'string',
+                            enum: ['MEMBER', 'MODERATOR', 'ADMIN', 'CREATOR'],
+                        },
+                    },
+                },
+                GroupMember: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        groupId: { type: 'string', format: 'uuid' },
+                        userId: { type: 'string', format: 'uuid' },
+                        role: {
+                            type: 'string',
+                            enum: ['MEMBER', 'MODERATOR', 'ADMIN', 'CREATOR'],
+                        },
+                        joinedAt: { type: 'string', format: 'date-time' },
+                        user: { $ref: '#/components/schemas/User' },
+                    },
+                },
             },
             responses: {
                 UnauthorizedError: {
@@ -143,6 +185,10 @@ const options: swaggerJsdoc.Options = {
             {
                 name: 'Books',
                 description: 'Book catalog, CRUD operations, and ISBN lookup',
+            },
+            {
+                name: 'Groups',
+                description: 'Social book groups management, memberships, and book associations',
             },
         ],
     },

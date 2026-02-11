@@ -45,7 +45,7 @@ struct BookClubHomeView: View {
             // Stats / Info Row
             HStack(spacing: 24) {
                 Label {
-                    Text("\(bookClub.memberIds.count) Members")
+                    Text("\(bookClub.memberCount) Members")
                         .font(.caption)
                         .fontWeight(.medium)
                 } icon: {

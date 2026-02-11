@@ -267,11 +267,13 @@ class CreateGroupViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // In a real app, we'd call the API
-            // let group = try await groupService.createGroup(...)
-            
-            // For now, simulate success with mock delay
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            // Call the real API
+            let _ = try await groupService.createGroup(
+                name: name,
+                description: description,
+                category: category,
+                privacy: privacy
+            )
             
             showSuccess = true
             print("✅ Group created: \(name)")

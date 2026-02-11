@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { generateTokenPair } from '../utils/jwt';
-import { generateOTP, storeOTP, sendOTPViaSMS, checkOTP, consumeOTP } from './otp.service';
+import { generateOTP, storeOTP, sendOTPViaWhatsApp, checkOTP, consumeOTP } from './otp.service';
 import { formatUserResponse } from '../utils/user.utils';
 
 /**
@@ -12,8 +12,8 @@ export async function sendOTPService(phoneNumber: string) {
     // Store OTP in database
     await storeOTP(phoneNumber, otp);
 
-    // Send OTP via SMS
-    await sendOTPViaSMS(phoneNumber, otp);
+    // Send OTP via WhatsApp
+    await sendOTPViaWhatsApp(phoneNumber, otp);
 
     const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES || '5');
 

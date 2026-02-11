@@ -27,14 +27,11 @@ class GroupService: ObservableObject {
         
         defer { isLoading = false }
         
-        struct GroupsResponse: Codable {
-            let groups: [BookClub]
-        }
-        
         do {
-            let response: GroupsResponse = try await apiClient.get("/groups/my")
-            myGroups = response.groups
-            return response.groups
+            // Backend returns array directly, not wrapped in object
+            let groups: [BookClub] = try await apiClient.get("/groups/my-groups")
+            myGroups = groups
+            return groups
         } catch {
             self.error = error.localizedDescription
             throw error
@@ -78,7 +75,7 @@ class GroupService: ObservableObject {
     }
     
     /// Fetch group details
-    func fetchGroup(id: String) async throws -> BookClub {
+    func fetchGroupDetails(id: String) async throws -> BookClub {
         isLoading = true
         error = nil
         
@@ -94,6 +91,11 @@ class GroupService: ObservableObject {
     }
     
     // MARK: - Create Group
+    
+    /// Fetch all groups (for discovery)
+    func getAllGroups() async throws -> [BookClub] {
+        return try await apiClient.get("/groups")
+    }
     
     /// Create a new group
     func createGroup(
@@ -118,13 +120,6 @@ class GroupService: ObservableObject {
             let coverImageUrl: String?
         }
         
-        struct CreateGroupResponse: Codable {
-            let id: String
-            let name: String
-            let inviteCode: String
-            let inviteUrl: String
-        }
-        
         do {
             let request = CreateGroupRequest(
                 name: name,
@@ -135,17 +130,15 @@ class GroupService: ObservableObject {
                 coverImageUrl: coverImageUrl
             )
             
-            let response: CreateGroupResponse = try await apiClient.post(
+            // Backend returns full group object with role included
+            let group: BookClub = try await apiClient.post(
                 "/groups",
                 body: request
             )
             
-            print("✅ Group created: \(response.name)")
-            print("   Invite code: \(response.inviteCode)")
-            print("   Invite URL: \(response.inviteUrl)")
+            print("✅ Group created: \(group.name)")
+            print("   Invite code: \(group.inviteCode)")
             
-            // Fetch full group details
-            let group = try await fetchGroup(id: response.id)
             myGroups.insert(group, at: 0)
             
             return group
@@ -194,14 +187,20 @@ class GroupService: ObservableObject {
         
         defer { isLoading = false }
         
-        struct JoinViaInviteResponse: Codable {
+        struct JoinRequest: Codable {
+            let inviteCode: String
+        }
+        
+        struct JoinResponse: Codable {
+            let message: String
             let group: BookClub
         }
         
         do {
-            let response: JoinViaInviteResponse = try await apiClient.post(
-                "/groups/join-invite/\(code)",
-                body: EmptyRequest()
+            let request = JoinRequest(inviteCode: code)
+            let response: JoinResponse = try await apiClient.post(
+                "/groups/join",
+                body: request
             )
             
             print("✅ Joined group via invite: \(response.group.name)")
@@ -236,37 +235,261 @@ class GroupService: ObservableObject {
         }
     }
     
-    // MARK: - Invite Management
+    // MARK: - Group Management
     
-    /// Generate invite link for group
-    func generateInvite(
-        for groupId: String,
-        expiryDays: Int? = nil
-    ) async throws -> (code: String, url: String) {
+    /// Update group details (admin/creator only)
+    func updateGroup(
+        id: String,
+        name: String? = nil,
+        description: String? = nil,
+        category: GroupCategory? = nil,
+        privacy: PrivacySetting? = nil,
+        coverImageUrl: String? = nil,
+        rules: String? = nil
+    ) async throws -> BookClub {
         isLoading = true
         error = nil
         
         defer { isLoading = false }
         
-        struct InviteRequest: Codable {
-            let expiryDays: Int?
-        }
-        
-        struct InviteResponse: Codable {
-            let inviteCode: String
-            let inviteUrl: String
-            let expiresAt: Date?
+        struct UpdateGroupRequest: Codable {
+            let name: String?
+            let description: String?
+            let category: String?
+            let privacy: String?
+            let coverImageUrl: String?
+            let rules: String?
         }
         
         do {
-            let request = InviteRequest(expiryDays: expiryDays)
-            let response: InviteResponse = try await apiClient.post(
-                "/groups/\(groupId)/invite",
+            let request = UpdateGroupRequest(
+                name: name,
+                description: description,
+                category: category?.rawValue,
+                privacy: privacy?.rawValue,
+                coverImageUrl: coverImageUrl,
+                rules: rules
+            )
+            
+            let group: BookClub = try await apiClient.put(
+                "/groups/\(id)",
                 body: request
             )
             
-            print("✅ Invite generated: \(response.inviteCode)")
-            return (response.inviteCode, response.inviteUrl)
+            // Update in local array
+            if let index = myGroups.firstIndex(where: { $0.id == id }) {
+                myGroups[index] = group
+            }
+            
+            print("✅ Group updated successfully")
+            return group
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    /// Delete group (creator only)
+    func deleteGroup(id: String) async throws {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct DeleteResponse: Codable {
+            let message: String
+        }
+        
+        do {
+            let _: DeleteResponse = try await apiClient.delete("/groups/\(id)")
+            
+            // Remove from local array
+            myGroups.removeAll { $0.id == id }
+            
+            print("✅ Group deleted successfully")
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    // MARK: - Member Management
+    
+    /// Fetch group members
+    func fetchGroupMembers(
+        groupId: String,
+        role: MemberRole? = nil
+    ) async throws -> [GroupMember] {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct MembersResponse: Codable {
+            let members: [GroupMember]
+            let total: Int
+        }
+        
+        var queryParams: [String: Any] = [:]
+        if let role = role {
+            queryParams["role"] = role.rawValue
+        }
+        
+        do {
+            let response: MembersResponse = try await apiClient.get(
+                "/groups/\(groupId)/members",
+                queryParams: queryParams
+            )
+            return response.members
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    /// Update member role (admin/creator only)
+    func updateMemberRole(
+        groupId: String,
+        userId: String,
+        role: MemberRole
+    ) async throws -> GroupMember {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct UpdateRoleRequest: Codable {
+            let role: String
+        }
+        
+        struct UpdateRoleResponse: Codable {
+            let message: String
+            let member: GroupMember
+        }
+        
+        do {
+            let request = UpdateRoleRequest(role: role.rawValue)
+            let response: UpdateRoleResponse = try await apiClient.put(
+                "/groups/\(groupId)/members/\(userId)",
+                body: request
+            )
+            
+            print("✅ Member role updated: \(response.message)")
+            return response.member
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    /// Remove member from group (admin/creator only)
+    func removeMember(
+        groupId: String,
+        userId: String
+    ) async throws {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct RemoveResponse: Codable {
+            let message: String
+        }
+        
+        do {
+            let _: RemoveResponse = try await apiClient.delete(
+                "/groups/\(groupId)/members/\(userId)"
+            )
+            print("✅ Member removed successfully")
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    // MARK: - Group Books
+    
+    /// Fetch books in a group
+    func fetchGroupBooks(
+        groupId: String,
+        page: Int = 1,
+        limit: Int = 20,
+        availability: Bool? = nil,
+        genre: String? = nil,
+        sortBy: String = "RECENT"
+    ) async throws -> (books: [Book], total: Int) {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct BooksResponse: Codable {
+            let books: [Book]
+            let pagination: Pagination
+        }
+        
+        struct Pagination: Codable {
+            let page: Int
+            let limit: Int
+            let total: Int
+            let totalPages: Int
+        }
+        
+        var queryParams: [String: Any] = [
+            "page": page,
+            "limit": limit,
+            "sortBy": sortBy
+        ]
+        
+        if let availability = availability {
+            queryParams["availability"] = availability
+        }
+        if let genre = genre {
+            queryParams["genre"] = genre
+        }
+        
+        do {
+            let response: BooksResponse = try await apiClient.get(
+                "/groups/\(groupId)/books",
+                queryParams: queryParams
+            )
+            return (response.books, response.pagination.total)
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
+    // MARK: - Invite Management
+    
+    /// Regenerate invite code for group (admin/creator only)
+    func regenerateInviteCode(
+        groupId: String,
+        expiresInDays: Int? = nil
+    ) async throws -> (code: String, expiry: Date?) {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        struct RegenerateRequest: Codable {
+            let expiresInDays: Int?
+        }
+        
+        struct RegenerateResponse: Codable {
+            let inviteCode: String
+            let inviteCodeExpiry: Date?
+        }
+        
+        do {
+            let request = RegenerateRequest(expiresInDays: expiresInDays)
+            let response: RegenerateResponse = try await apiClient.post(
+                "/groups/\(groupId)/regenerate-invite",
+                body: request
+            )
+            
+            print("✅ Invite code regenerated: \(response.inviteCode)")
+            return (response.inviteCode, response.inviteCodeExpiry)
         } catch {
             self.error = error.localizedDescription
             throw error
