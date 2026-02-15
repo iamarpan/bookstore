@@ -11,9 +11,9 @@ enum APIEnvironment: String {
         case .development:
             return "http://localhost:3000/api/v1"
         case .staging:
-            return "https://bookapp-iota-nine.vercel.app/api/v1"
+            return "https://api-book-club.zenith-techsphere.com/api/v1"
         case .production:
-            return "https://bookapp-iota-nine.vercel.app/api/v1"
+            return "https://api-book-club.zenith-techsphere.com/api/v1"
         }
     }
     

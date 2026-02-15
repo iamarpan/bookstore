@@ -309,33 +309,6 @@ class DiscoverGroupsViewModel: ObservableObject {
             showError = true
         }
     }
-    
-    private func loadMockGroups() {
-        // Simulate API delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self else { return }
-            
-            var filtered = BookClub.mockClubs
-            
-            // Apply search filter
-            if !self.searchText.isEmpty {
-                filtered = filtered.filter { $0.name.localizedCaseInsensitiveContains(self.searchText) }
-            }
-            
-            // Apply privacy filter
-            if let privacy = self.selectedPrivacy {
-                filtered = filtered.filter { $0.privacy == privacy }
-            }
-            
-            // Apply distance filter (mock logic)
-            if let maxDist = self.selectedDistance {
-                filtered = filtered.filter { ($0.distance ?? 0) <= maxDist }
-            }
-            
-            self.groups = filtered
-            self.isLoading = false
-        }
-    }
 }
 
 // MARK: - Invite Code Input Sheet

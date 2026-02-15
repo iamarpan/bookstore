@@ -161,10 +161,6 @@ struct HomeView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Menu {
-                Button("Load Mock Data") {
-                    homeViewModel.loadMockBooks()
-                }
-                
                 Button("Quick Logout", role: .destructive) {
                     showQuickLogoutAlert = true
                 }

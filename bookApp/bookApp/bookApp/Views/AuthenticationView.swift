@@ -112,16 +112,6 @@ struct PhoneSignInView: View {
             
             Spacer()
             
-            // Dev Mode: Mock Login
-            #if DEBUG
-            Button("Mock Login (Dev)") {
-                authViewModel.mockLogin()
-            }
-            .buttonStyle(TertiaryButtonStyle())
-            .foregroundColor(.orange)
-            .padding(.bottom, 20)
-            #endif
-            
             // Privacy Notice
             VStack(spacing: 8) {
                 Text("By continuing, you agree to our")

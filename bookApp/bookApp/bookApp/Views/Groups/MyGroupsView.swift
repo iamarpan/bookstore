@@ -214,10 +214,8 @@ struct MyGroupsView: View {
         Task {
             if let userId = authViewModel.currentUser?.id {
                 await viewModel.fetchUserGroups(userId: userId)
-            } else {
-                // Load mock data for testing
-                viewModel.loadMockGroups()
             }
+            // When not logged in, groups stay empty (no mock fallback)
         }
     }
 }
@@ -261,30 +259,10 @@ class GroupViewModel: ObservableObject {
     
     /// Refresh groups
     func refreshGroups() async {
-        // Get current user ID from UserDefaults or mock user
         if let user = User.loadFromUserDefaults() {
             await fetchUserGroups(userId: user.id)
         } else {
-            loadMockGroups()
-        }
-    }
-    
-    /// Load mock data for testing
-    func loadMockGroups() {
-        isLoading = true
-        
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self else { return }
-            
-            let allGroups = BookClub.mockClubs
-            let mockUserId = User.mockUser.id
-            
-            self.joinedGroups = allGroups.filter { !$0.isCreatedByUser(userId: mockUserId) }
-            self.createdGroups = allGroups.filter { $0.isCreatedByUser(userId: mockUserId) }
-            
-            self.isLoading = false
-            print("✅ Loaded \(allGroups.count) mock groups")
+            isLoading = false
         }
     }
 }

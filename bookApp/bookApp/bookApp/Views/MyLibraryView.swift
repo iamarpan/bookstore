@@ -38,18 +38,6 @@ struct MyLibraryView: View {
             .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
             .navigationTitle("My Library")
             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button("Load Mock Data") {
-                            viewModel.loadMockData()
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundColor(AppTheme.primaryAccent)
-                    }
-                }
-            }
             .refreshable {
                 viewModel.refreshLibraryData()
             }
