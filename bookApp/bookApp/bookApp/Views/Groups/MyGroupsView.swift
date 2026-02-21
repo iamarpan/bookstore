@@ -245,7 +245,8 @@ class GroupViewModel: ObservableObject {
             let groups = try await groupService.fetchMyGroups()
             
             // Split into joined vs created
-            joinedGroups = groups.filter { !$0.isCreatedByUser(userId: userId) }
+            // Show ALL groups in Joined tab (creators are full members of their own groups too)
+            joinedGroups = groups
             createdGroups = groups.filter { $0.isCreatedByUser(userId: userId) }
             
         } catch {
