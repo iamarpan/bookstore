@@ -41,14 +41,14 @@ class BookService: ObservableObject {
             "limit": limit
         ]
         
-        if let groupIds = groupIds {
-            queryParams["groupIds[]"] = groupIds
+        if let groupIds = groupIds, !groupIds.isEmpty {
+            queryParams["groupIds"] = groupIds.joined(separator: ",")
         }
         if let availability = availability {
             queryParams["availability"] = availability
         }
-        if let genres = genres {
-            queryParams["genres[]"] = genres
+        if let genres = genres, !genres.isEmpty {
+            queryParams["genres"] = genres.joined(separator: ",")
         }
         if let minPrice = minPrice {
             queryParams["minPrice"] = minPrice

@@ -3,9 +3,12 @@ import {
     createGroup,
     getGroupById,
     getUserGroups,
+    getAllGroups,
+    discoverGroups,
     getGroupMembers,
     getGroupBooks,
     joinGroup,
+    joinGroupById,
     leaveGroup,
     updateGroup,
     deleteGroup,
@@ -84,6 +87,79 @@ export async function getMyGroupsController(req: Request, res: Response) {
         res.status(500).json({
             error: 'Internal Server Error',
             message: 'Failed to fetch groups',
+        });
+    }
+}
+
+/**
+ * Get all groups visible to user (public + user's own)
+ * GET /api/v1/groups
+ */
+export async function getAllGroupsController(req: Request, res: Response) {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { category, search } = req.query;
+        const groups = await getAllGroups(req.user.userId, {
+            category: category as GroupCategory | undefined,
+            search: search as string | undefined,
+        });
+        res.json(groups);
+    } catch (error) {
+        console.error('Get all groups error:', error);
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch groups' });
+    }
+}
+
+/**
+ * Join a PUBLIC group directly by ID
+ * POST /api/v1/groups/:id/join
+ */
+export async function joinGroupByIdController(req: Request, res: Response) {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { id } = req.params;
+        const result = await joinGroupById(id, req.user.userId);
+        res.json(result);
+    } catch (error: any) {
+        console.error('Join group by id error:', error);
+        if (error.message === 'Group not found') {
+            return res.status(404).json({ error: 'Not Found', message: error.message });
+        }
+        if (error.message === 'You are already a member of this group') {
+            return res.status(409).json({ error: 'Conflict', message: error.message });
+        }
+        if (error.message.includes('private')) {
+            return res.status(403).json({ error: 'Forbidden', message: error.message });
+        }
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to join group' });
+    }
+}
+export async function discoverGroupsController(req: Request, res: Response) {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'User not authenticated',
+            });
+        }
+
+        const { category, search } = req.query;
+
+        const groups = await discoverGroups(req.user.userId, {
+            category: category as GroupCategory | undefined,
+            search: search as string | undefined,
+        });
+
+        res.json({ groups });
+    } catch (error) {
+        console.error('Discover groups error:', error);
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: 'Failed to discover groups',
         });
     }
 }

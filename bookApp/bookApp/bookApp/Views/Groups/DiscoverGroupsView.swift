@@ -233,10 +233,10 @@ class DiscoverGroupsViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     
-    private let groupService: GroupService
+    private let refresher: AppDataRefresher
     
-    init() {
-        self.groupService = GroupService()
+    init(refresher: AppDataRefresher = .shared) {
+        self.refresher = refresher
     }
     
     var distanceLabel: String {
@@ -253,15 +253,18 @@ class DiscoverGroupsViewModel: ObservableObject {
         return "Privacy"
     }
     
-    func fetchGroups() async {
-        isLoading = true
+    func fetchGroups(forceRefresh: Bool = false) async {
+        let showSpinner = groups.isEmpty
+        if showSpinner { isLoading = true }
         errorMessage = nil
         
         do {
-            // Fetch groups from backend
-            let allGroups = try await groupService.getAllGroups()
+            let allGroups = try await refresher.refreshDiscoveredGroupsIfNeeded(
+                search: searchText.isEmpty ? nil : searchText,
+                forceRefresh: forceRefresh
+            )
             
-            // Apply local filtering for now until backend search is fully ready
+            // Apply local filters (distance filtering is client-side for now)
             var filtered = allGroups
             
             if !searchText.isEmpty {
@@ -276,7 +279,7 @@ class DiscoverGroupsViewModel: ObservableObject {
             
         } catch {
             errorMessage = error.localizedDescription
-            showError = true
+            showError = groups.isEmpty
             print("❌ Error fetching groups: \(error)")
         }
         
@@ -284,15 +287,19 @@ class DiscoverGroupsViewModel: ObservableObject {
     }
     
     func performSearch() async {
-        // Debounce could be added here
-        await fetchGroups()
+        // Searching always goes to the network to get up-to-date results
+        AppDataStore.shared.invalidateDiscoveredGroups()
+        await fetchGroups(forceRefresh: true)
     }
     
     func joinGroup(_ group: BookClub) async {
         do {
-            try await groupService.joinGroup(id: group.id)
+            try await GroupService().joinGroup(id: group.id)
             print("✅ Joined group: \(group.name)")
-            await fetchGroups()
+            // Invalidate so both discovered and my-groups caches reflect the join
+            AppDataStore.shared.invalidateDiscoveredGroups()
+            AppDataStore.shared.invalidateMyGroups()
+            await fetchGroups(forceRefresh: true)
         } catch {
             errorMessage = "Failed to join group: \(error.localizedDescription)"
             showError = true
@@ -301,9 +308,11 @@ class DiscoverGroupsViewModel: ObservableObject {
     
     func joinViaInviteCode(_ code: String) async {
         do {
-            _ = try await groupService.joinViaInvite(code: code)
+            _ = try await GroupService().joinViaInvite(code: code)
             print("✅ Joined group via invite code")
-            await fetchGroups()
+            AppDataStore.shared.invalidateDiscoveredGroups()
+            AppDataStore.shared.invalidateMyGroups()
+            await fetchGroups(forceRefresh: true)
         } catch {
             errorMessage = "Failed to join group: \(error.localizedDescription)"
             showError = true

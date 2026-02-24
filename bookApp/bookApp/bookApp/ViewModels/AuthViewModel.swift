@@ -119,6 +119,7 @@ class AuthViewModel: ObservableObject {
     // MARK: - Sign Out
     func signOut() {
         authService.logout()
+        AppDataStore.shared.invalidateAll()
         resetForm()
     }
     

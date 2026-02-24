@@ -5,7 +5,6 @@ struct HomeView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingFilterSheet = false
-    @State private var showQuickLogoutAlert = false
 
     var body: some View {
         NavigationView {
@@ -14,17 +13,6 @@ struct HomeView: View {
                 .navigationTitle("Book Club")
                 .navigationBarTitleDisplayMode(.large)
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-                .toolbar {
-                    toolbarContent
-                }
-                .alert("Quick Logout", isPresented: $showQuickLogoutAlert) {
-                    Button("Cancel", role: .cancel) { }
-                    Button("Logout", role: .destructive) {
-                        authViewModel.signOut()
-                    }
-                } message: {
-                    Text("Are you sure you want to logout?")
-                }
                 .alert("Error", isPresented: $homeViewModel.showError) {
                     Button("OK") { }
                 } message: {
@@ -158,22 +146,6 @@ struct HomeView: View {
         .padding(.horizontal, 16)
     }
     
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Menu {
-                Button("Quick Logout", role: .destructive) {
-                    showQuickLogoutAlert = true
-                }
-                Button("Profile") {
-                    // Switch to profile tab - this would need tab coordination
-                }
-            } label: {
-                Image(systemName: "person.circle")
-                    .font(.title2)
-                    .foregroundColor(AppTheme.primaryAccent)
-            }
-        }
-    }
 
     private func setupNavigationBarAppearance() {
         // Customize navigation bar appearance based on theme

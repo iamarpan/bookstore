@@ -3,145 +3,111 @@ import SwiftUI
 struct MainTabView: View {
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var myLibraryViewModel = MyLibraryViewModel()
+    @StateObject private var tabManager = TabManager()
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var showEmergencyLogoutAlert = false
-    @StateObject private var tabManager = TabManager()
     @State private var selectedTab = 0
-    
+    @State private var showEmergencyLogoutAlert = false
+
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
-                // Main Content
-                Group {
-                    switch selectedTab {
-                    case 0:
-                        HomeView()
-                            .environmentObject(homeViewModel)
-                            .environmentObject(themeManager)
-                            .environmentObject(authViewModel)
-                    case 1:
-                        AddBookView()
-                            .environmentObject(themeManager)
-                            .environmentObject(authViewModel)
-                    case 2:
-                        MyGroupsView()
-                            .environmentObject(themeManager)
-                            .environmentObject(authViewModel)
-                    case 3:
-                        MyLibraryView()
-                            .environmentObject(myLibraryViewModel)
-                            .environmentObject(themeManager)
-                    case 4:
-                        ProfileView()
-                            .environmentObject(themeManager)
-                            .environmentObject(authViewModel)
-                    default:
-                        HomeView()
-                            .environmentObject(homeViewModel)
-                            .environmentObject(themeManager)
-                            .environmentObject(authViewModel)
+        ZStack(alignment: .bottom) {
+            tabContent
+                .safeAreaInset(edge: .bottom) {
+                    if tabManager.isVisible {
+                        Color.clear.frame(height: 80)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.bottom, tabManager.isVisible ? 90 : 0)
-                
-                // Floating Dock
-                if tabManager.isVisible {
-                    FloatingDock(selectedTab: $selectedTab)
-                        .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? geometry.safeAreaInsets.bottom : 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .environmentObject(tabManager)
-            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
-            .onAppear {
-                startDataListening()
-            }
-            .onShake {
-                showEmergencyLogoutAlert = true
-            }
-            .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Logout Now", role: .destructive) {
-                    authViewModel.signOut()
-                }
-            } message: {
-                Text("Detected shake gesture. Do you want to logout immediately for security?")
+
+            if tabManager.isVisible {
+                FloatingDock(selectedTab: $selectedTab)
+                    .padding(.bottom, 8)
             }
         }
+        .environmentObject(tabManager)
+        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
+        .onAppear(perform: startDataListening)
+        .onShake { showEmergencyLogoutAlert = true }
+        .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Logout Now", role: .destructive) { authViewModel.signOut() }
+        } message: {
+            Text("Detected shake gesture. Do you want to logout immediately for security?")
+        }
     }
-    
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case 0: HomeView().environmentObject(homeViewModel).environmentObject(themeManager).environmentObject(authViewModel)
+        case 1: AddBookView().environmentObject(themeManager).environmentObject(authViewModel)
+        case 2: MyGroupsView().environmentObject(themeManager).environmentObject(authViewModel)
+        case 3: MyLibraryView().environmentObject(myLibraryViewModel).environmentObject(themeManager)
+        case 4: ProfileView().environmentObject(themeManager).environmentObject(authViewModel)
+        default: HomeView().environmentObject(homeViewModel).environmentObject(themeManager).environmentObject(authViewModel)
+        }
+    }
+
     private func startDataListening() {
-        if let user = authViewModel.currentUser {
-            let joinedIds = user.joinedGroupIds ?? []
-            let createdIds = user.createdGroupIds ?? []
-            let groupIds = joinedIds + createdIds
-            
-            Task {
-                await homeViewModel.fetchBooks(for: groupIds)
-                await myLibraryViewModel.fetchAllData(userId: user.id)
-            }
+        guard let user = authViewModel.currentUser else { return }
+        let groupIds = (user.joinedGroupIds ?? []) + (user.createdGroupIds ?? [])
+        Task {
+            await homeViewModel.fetchBooks(for: groupIds)
+            await myLibraryViewModel.fetchAllData(userId: user.id)
         }
     }
 }
 
+// MARK: - Floating Dock
+
 struct FloatingDock: View {
     @Binding var selectedTab: Int
     @EnvironmentObject var themeManager: ThemeManager
-    
-    let tabs = [
-        ("house.fill", "Home"),
-        ("plus.square.fill", "Add"),
-        ("person.3.fill", "Groups"),
+    @Namespace private var pill
+
+    private let tabs: [(icon: String, label: String)] = [
+        ("house.fill",          "Home"),
+        ("plus.square.fill",    "Add"),
+        ("person.3.fill",       "Groups"),
         ("books.vertical.fill", "Library"),
-        ("person.circle.fill", "Profile")
+        ("person.fill",         "Profile")
     ]
-    
+
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<tabs.count, id: \.self) { index in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = index
-                    }
-                }) {
-                    VStack(spacing: 4) {
-                        Image(systemName: tabs[index].0)
-                            .font(.system(size: 20, weight: selectedTab == index ? .bold : .regular))
-                        
-                        if selectedTab == index {
-                            Circle()
+        HStack(spacing: 4) {
+            ForEach(tabs.indices, id: \.self) { i in
+                let active = selectedTab == i
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) { selectedTab = i }
+                } label: {
+                    ZStack {
+                        if active {
+                            RoundedRectangle(cornerRadius: 14)
                                 .fill(AppTheme.primaryAccent)
-                                .frame(width: 4, height: 4)
-                                .matchedGeometryEffect(id: "tab_dot", in: namespace)
-                        } else {
-                            Circle()
-                                .fill(Color.clear)
-                                .frame(width: 4, height: 4)
+                                .matchedGeometryEffect(id: "pill", in: pill)
+                                .shadow(color: AppTheme.primaryAccent.opacity(0.35), radius: 6, x: 0, y: 3)
                         }
+                        VStack(spacing: 3) {
+                            Image(systemName: tabs[i].icon)
+                                .font(.system(size: 20, weight: active ? .semibold : .regular))
+                                .symbolRenderingMode(.hierarchical)
+                            Text(tabs[i].label)
+                                .font(.system(size: 10, weight: active ? .semibold : .regular))
+                        }
+                        .foregroundColor(active ? .white : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     }
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(selectedTab == index ? AppTheme.primaryAccent : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                    .padding(.vertical, 12)
                 }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
-                .fill(AppTheme.colorGlassBackground(for: themeManager.isDarkMode))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
-                .stroke(Color.white.opacity(themeManager.isDarkMode ? 0.1 : 0.2), lineWidth: 1)
-        )
-        .shadow(color: AppTheme.shadowFloating, radius: 20, x: 0, y: 10)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 26).fill(.ultraThinMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 26).stroke(Color.white.opacity(themeManager.isDarkMode ? 0.14 : 0.4), lineWidth: 1))
+        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 6)
+        .padding(.horizontal, 20)
+        .fixedSize(horizontal: false, vertical: true)
     }
-    
-    @Namespace private var namespace
 }
 
 // Shake gesture detection

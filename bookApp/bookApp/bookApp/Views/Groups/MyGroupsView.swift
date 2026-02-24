@@ -230,37 +230,43 @@ class GroupViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     
-    private let groupService: GroupService
+    private let refresher: AppDataRefresher
     
-    init() {
-        self.groupService = GroupService()
+    init(refresher: AppDataRefresher = .shared) {
+        self.refresher = refresher
     }
     
-    /// Fetch user's groups from API
+    /// Fetch user's groups — shows disk-cached data instantly, refreshes in background.
     func fetchUserGroups(userId: String) async {
-        isLoading = true
         errorMessage = nil
-        
+
+        // Show stale disk data immediately — no spinner if we have something
+        if let cached = AppDataStore.shared.cachedMyGroups(ttl: .infinity) {
+            joinedGroups  = cached
+            createdGroups = cached.filter { $0.isCreatedByUser(userId: userId) }
+        }
+        if joinedGroups.isEmpty { isLoading = true }
+
         do {
-            let groups = try await groupService.fetchMyGroups()
-            
-            // Split into joined vs created
-            // Show ALL groups in Joined tab (creators are full members of their own groups too)
-            joinedGroups = groups
+            let groups = try await refresher.refreshMyGroupsIfNeeded(forceRefresh: true)
+            joinedGroups  = groups
             createdGroups = groups.filter { $0.isCreatedByUser(userId: userId) }
-            
         } catch {
-            errorMessage = error.localizedDescription
-            showError = true
+            if joinedGroups.isEmpty {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
             print("❌ Error fetching groups: \(error)")
         }
-        
+
         isLoading = false
     }
     
-    /// Refresh groups
+    /// Force-refresh (pull-to-refresh).
     func refreshGroups() async {
         if let user = User.loadFromUserDefaults() {
+            // Invalidate so next fetch bypasses cache
+            AppDataStore.shared.invalidateMyGroups()
             await fetchUserGroups(userId: user.id)
         } else {
             isLoading = false

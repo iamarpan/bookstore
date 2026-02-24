@@ -92,7 +92,7 @@ class GroupService: ObservableObject {
     
     // MARK: - Create Group
     
-    /// Fetch all groups (for discovery)
+    /// Fetch all groups visible to user (public + own)
     func getAllGroups() async throws -> [BookClub] {
         return try await apiClient.get("/groups")
     }
@@ -150,7 +150,8 @@ class GroupService: ObservableObject {
     
     // MARK: - Join/Leave Groups
     
-    /// Join a public group or request to join private
+    /// Join a public group directly by group ID.
+    /// For private groups, use joinViaInvite(code:) instead.
     func joinGroup(id: String) async throws {
         isLoading = true
         error = nil
@@ -158,22 +159,16 @@ class GroupService: ObservableObject {
         defer { isLoading = false }
         
         struct JoinResponse: Codable {
-            let status: String  // "JOINED" or "PENDING_APPROVAL"
+            let status: String  // "JOINED"
         }
         
         do {
-            let response: JoinResponse = try await apiClient.post(
+            let _: JoinResponse = try await apiClient.post(
                 "/groups/\(id)/join",
                 body: EmptyRequest()
             )
-            
-            if response.status == "JOINED" {
-                print("✅ Joined group successfully")
-                // Refresh my groups
-                _ = try await fetchMyGroups()
-            } else {
-                print("⏳ Join request pending approval")
-            }
+            print("✅ Joined group successfully")
+            _ = try await fetchMyGroups()
         } catch {
             self.error = error.localizedDescription
             throw error
@@ -442,7 +437,7 @@ class GroupService: ObservableObject {
         ]
         
         if let availability = availability {
-            queryParams["availability"] = availability
+            queryParams["availability"] = availability ? "AVAILABLE" : "NOT_AVAILABLE"
         }
         if let genre = genre {
             queryParams["genre"] = genre

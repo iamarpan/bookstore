@@ -154,6 +154,142 @@ export async function getUserGroups(userId: string, category?: GroupCategory) {
 }
 
 /**
+ * Get all groups visible to user:
+ * - All PUBLIC groups
+ * - All groups the user is a member of (PUBLIC or PRIVATE)
+ * Supports optional category + search filters.
+ */
+export async function getAllGroups(userId: string, params?: {
+    category?: GroupCategory;
+    search?: string;
+}) {
+    const { category, search } = params ?? {};
+
+    const where: any = {
+        OR: [
+            { privacy: 'PUBLIC' },
+            { members: { some: { userId } } },
+        ],
+    };
+
+    if (category) {
+        where.category = category;
+    }
+
+    if (search) {
+        // Wrap search in AND so it combines with OR above
+        where.AND = [
+            {
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } },
+                ],
+            },
+        ];
+    }
+
+    const groups = await prisma.group.findMany({
+        where,
+        include: {
+            creator: {
+                select: { id: true, name: true, profileImageUrl: true },
+            },
+            members: {
+                where: { userId },
+                select: { role: true, joinedAt: true },
+            },
+        },
+        orderBy: { memberCount: 'desc' },
+    });
+
+    return groups.map(g => {
+        const membership = g.members[0];
+        return {
+            ...g,
+            role: membership?.role ?? null,
+            isMember: !!membership,
+            joinedAt: membership?.joinedAt ?? null,
+            members: undefined,
+        };
+    });
+}
+
+/**
+ * Join a PUBLIC group directly by its ID (no invite code required)
+ */
+export async function joinGroupById(groupId: string, userId: string) {
+    const group = await prisma.group.findUnique({ where: { id: groupId } });
+
+    if (!group) throw new Error('Group not found');
+    if (group.privacy !== 'PUBLIC') {
+        throw new Error('This group is private — use an invite code to join');
+    }
+
+    // Already a member?
+    const existing = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId, userId } },
+    });
+    if (existing) throw new Error('You are already a member of this group');
+
+    await prisma.groupMember.create({
+        data: { groupId, userId, role: MemberRole.MEMBER },
+    });
+
+    await prisma.group.update({
+        where: { id: groupId },
+        data: { memberCount: { increment: 1 } },
+    });
+
+    return { status: 'JOINED' };
+}
+
+/**
+ * Discover public groups (not already joined by the user)
+ */
+export async function discoverGroups(userId: string, params: {
+    category?: GroupCategory;
+    search?: string;
+}) {
+    const { category, search } = params;
+
+    const where: any = {
+        privacy: 'PUBLIC',
+        // Exclude groups the user is already a member of
+        members: {
+            none: { userId },
+        },
+    };
+
+    if (category) {
+        where.category = category;
+    }
+
+    if (search) {
+        where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+        ];
+    }
+
+    const groups = await prisma.group.findMany({
+        where,
+        include: {
+            creator: {
+                select: { id: true, name: true, profileImageUrl: true },
+            },
+        },
+        orderBy: { memberCount: 'desc' },
+        take: 50,
+    });
+
+    return groups.map(g => ({
+        ...g,
+        role: null,
+        isMember: false,
+    }));
+}
+
+/**
  * Get group members
  */
 export async function getGroupMembers(groupId: string, userId: string, roleFilter?: MemberRole) {

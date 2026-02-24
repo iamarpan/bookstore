@@ -33,9 +33,9 @@ enum TransactionStatus: String, Codable {
 
 // MARK: - Borrow Duration Enum
 enum BorrowDuration: String, Codable {
-    case oneWeek = "1_WEEK"
-    case twoWeeks = "2_WEEKS"
-    case oneMonth = "1_MONTH"
+    case oneWeek = "ONE_WEEK"
+    case twoWeeks = "TWO_WEEKS"
+    case oneMonth = "ONE_MONTH"
     case custom = "CUSTOM"
     
     var displayName: String {

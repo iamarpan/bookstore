@@ -99,3 +99,53 @@ export const confirmReturn = async (req: Request, res: Response) => {
         res.status(400).json({ error: 'Bad Request', message: error.message });
     }
 };
+
+export const markPayment = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { id } = req.params;
+        const { role } = req.body;
+
+        if (!role || !['BORROWER', 'OWNER'].includes(role)) {
+            return res.status(400).json({ error: 'Bad Request', message: 'role must be BORROWER or OWNER' });
+        }
+
+        const transaction = await transactionService.markPaymentComplete(id, userId, role);
+        res.json(transaction);
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
+    }
+};
+
+export const rateTransaction = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { id } = req.params;
+        const { rating, comment, bookConditionRating } = req.body;
+
+        if (rating === undefined || rating === null) {
+            return res.status(400).json({ error: 'Bad Request', message: 'rating is required' });
+        }
+
+        const transaction = await transactionService.rateTransaction(id, userId, {
+            rating: parseInt(rating),
+            comment,
+            bookConditionRating: bookConditionRating !== undefined ? parseInt(bookConditionRating) : undefined,
+        });
+        res.json(transaction);
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
+    }
+};

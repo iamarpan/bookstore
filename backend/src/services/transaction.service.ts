@@ -246,4 +246,112 @@ export class TransactionService {
             bookConditionRating: t.bookConditionRating
         };
     }
+
+    /**
+     * Mark payment as confirmed by one party (offline payment flow).
+     * Both borrower and owner must confirm before the payment is fully complete.
+     */
+    async markPaymentComplete(id: string, userId: string, role: 'BORROWER' | 'OWNER') {
+        const transaction = await prisma.transaction.findUnique({
+            where: { id },
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        if (!transaction) throw new Error('Transaction not found');
+        if (transaction.status !== 'RETURNED') {
+            throw new Error('Payment can only be confirmed after the book has been returned');
+        }
+
+        // Verify the caller matches the declared role
+        if (role === 'BORROWER' && transaction.borrowerId !== userId) {
+            throw new Error('Unauthorized: only the borrower can confirm as BORROWER');
+        }
+        if (role === 'OWNER' && transaction.ownerId !== userId) {
+            throw new Error('Unauthorized: only the owner can confirm as OWNER');
+        }
+
+        const updateData: any =
+            role === 'BORROWER'
+                ? { borrowerPaymentConfirmed: true }
+                : { ownerPaymentConfirmed: true };
+
+        const updated = await prisma.transaction.update({
+            where: { id },
+            data: updateData,
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        return this.mapTransaction(updated);
+    }
+
+    /**
+     * Rate a completed transaction.
+     * - Borrower rates the owner (and optionally leaves a comment).
+     * - Owner rates the borrower and can add a book-condition rating.
+     */
+    async rateTransaction(id: string, userId: string, data: {
+        rating: number;
+        comment?: string;
+        bookConditionRating?: number;
+    }) {
+        const transaction = await prisma.transaction.findUnique({
+            where: { id },
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        if (!transaction) throw new Error('Transaction not found');
+        if (transaction.status !== 'RETURNED') {
+            throw new Error('Transaction must be completed (RETURNED) before rating');
+        }
+
+        const isBorrower = transaction.borrowerId === userId;
+        const isOwner = transaction.ownerId === userId;
+
+        if (!isBorrower && !isOwner) {
+            throw new Error('Unauthorized: you are not a party to this transaction');
+        }
+
+        const { rating, comment, bookConditionRating } = data;
+
+        if (rating < 1 || rating > 5) throw new Error('Rating must be between 1 and 5');
+
+        const updateData: any = {};
+        if (isBorrower) {
+            updateData.borrowerRating = rating;
+            updateData.borrowerComment = comment ?? null;
+        } else {
+            updateData.ownerRating = rating;
+            updateData.ownerComment = comment ?? null;
+            if (bookConditionRating !== undefined) {
+                if (bookConditionRating < 1 || bookConditionRating > 5) {
+                    throw new Error('bookConditionRating must be between 1 and 5');
+                }
+                updateData.bookConditionRating = bookConditionRating;
+            }
+        }
+
+        const updated = await prisma.transaction.update({
+            where: { id },
+            data: updateData,
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        return this.mapTransaction(updated);
+    }
 }

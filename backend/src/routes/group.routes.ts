@@ -3,10 +3,13 @@ import { authenticate } from '../middleware/auth';
 import {
     createGroupController,
     getMyGroupsController,
+    getAllGroupsController,
+    discoverGroupsController,
     getGroupDetailsController,
     getGroupMembersController,
     getGroupBooksController,
     joinGroupController,
+    joinGroupByIdController,
     leaveGroupController,
     updateGroupController,
     deleteGroupController,
@@ -73,6 +76,33 @@ router.post('/', authenticate, createGroupController);
 
 /**
  * @swagger
+ * /groups:
+ *   get:
+ *     tags: [Groups]
+ *     summary: Get all visible groups
+ *     description: Returns all PUBLIC groups plus any groups the authenticated user belongs to. Supports optional category and search filtering.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [FRIENDS, OFFICE, NEIGHBORHOOD, BOOK_CLUB, SCHOOL]
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of groups
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.get('/', authenticate, getAllGroupsController);
+
+/**
+ * @swagger
  * /groups/my-groups:
  *   get:
  *     tags: [Groups]
@@ -136,11 +166,38 @@ router.post('/join', authenticate, joinGroupController);
 
 /**
  * @swagger
+ * /groups/discover:
+ *   get:
+ *     tags: [Groups]
+ *     summary: Discover public groups
+ *     description: Returns PUBLIC groups the authenticated user has not yet joined. Supports optional category and search filters.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [FRIENDS, OFFICE, NEIGHBORHOOD, BOOK_CLUB, SCHOOL]
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of discoverable groups wrapped in { groups: [...] }
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.get('/discover', authenticate, discoverGroupsController);
+
+/**
+ * @swagger
  * /groups/{id}:
  *   get:
  *     tags: [Groups]
  *     summary: Get group details
- *     description: Get detailed information about a specific group
+ *     description: Get detailed information about a specific group. Requires authentication. Private groups return 404 for non-members.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -247,6 +304,36 @@ router.delete('/:id', authenticate, deleteGroupController);
 
 /**
  * @swagger
+ * /groups/{id}/join:
+ *   post:
+ *     tags: [Groups]
+ *     summary: Join a public group by ID
+ *     description: Join a PUBLIC group directly without an invite code. For PRIVATE groups use POST /groups/join with an invite code.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: '{ status: "JOINED" }'
+ *       403:
+ *         description: Group is private — use invite code
+ *       404:
+ *         description: Group not found
+ *       409:
+ *         description: Already a member
+ *       500:
+ *         description: Server error
+ */
+router.post('/:id/join', authenticate, joinGroupByIdController);
+
+/**
+ * @swagger
  * /groups/{id}/members:
  *   get:
  *     tags: [Groups]
@@ -315,7 +402,8 @@ router.get('/:id/members', authenticate, getGroupMembersController);
  *               role:
  *                 type: string
  *                 enum: [MEMBER, MODERATOR, ADMIN]
- *                 example: "MODERATOR"
+ *                 description: MODERATOR role exists in DB but does not grant elevated service permissions (only ADMIN/CREATOR can perform privileged actions)
+ *                 example: "ADMIN"
  *     responses:
  *       200:
  *         description: Member role updated successfully

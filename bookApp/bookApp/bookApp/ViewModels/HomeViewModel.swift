@@ -12,7 +12,7 @@ class HomeViewModel: ObservableObject {
     @Published var showError: Bool = false
     @Published var errorMessage: String? = nil
     
-    private let bookService: BookService
+    private let refresher: AppDataRefresher
     private var selectedGroupIds: [String] = []
     
     // MARK: - Computed Properties
@@ -59,37 +59,77 @@ class HomeViewModel: ObservableObject {
     
     // MARK: - Initialization
     
-    init(bookService: BookService? = nil) {
-        self.bookService = bookService ?? BookService()
+    init(refresher: AppDataRefresher = .shared) {
+        self.refresher = refresher
     }
     
     // MARK: - Methods
     
-    /// Fetch books for selected groups
+    /// Fetch books — shows cached data instantly, then refreshes in background.
     func fetchBooks(for groupIds: [String]) async {
-        isLoading = true
-        errorMessage = nil
         selectedGroupIds = groupIds
-        
+        errorMessage = nil
+
+        let availability = selectedAvailability == "Available" ? "AVAILABLE" : nil
+        let genres       = selectedGenre != nil ? [selectedGenre!] : nil
+        let search       = searchText.isEmpty ? nil : searchText
+        let key          = AppDataStore.booksFeedKey(
+            groupIds: groupIds.isEmpty ? nil : groupIds,
+            availability: availability, genres: genres, sortBy: "RECENT", search: search
+        )
+
+        // 1. Serve from disk immediately (even if stale) — no spinner
+        if let cached = AppDataStore.shared.cachedBooks(forKey: key, ttl: .infinity) {
+            books = cached
+        }
+
+        // 2. Only show a spinner if we have nothing to show yet
+        if books.isEmpty { isLoading = true }
+
+        // 3. Always fetch fresh data from the API
         do {
-            books = try await bookService.fetchBooks(
+            let result = try await refresher.refreshBooksIfNeeded(
                 groupIds: groupIds.isEmpty ? nil : groupIds,
-                availability: selectedAvailability == "Available" ? "AVAILABLE" : nil,
-                genres: selectedGenre != nil ? [selectedGenre!] : nil,
+                availability: availability,
+                genres: genres,
                 sortBy: "RECENT",
-                search: searchText.isEmpty ? nil : searchText
+                search: search,
+                forceRefresh: true   // always go to network; AppDataRefresher writes to disk
             )
-            isLoading = false
+            books = result
+        } catch {
+            // Network failed — if we already showed cached data, stay silent
+            if books.isEmpty {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+        isLoading = false
+    }
+
+    /// Pull-to-refresh — force network, then update.
+    func refreshBooks() async {
+        isLoading = false  // pull-to-refresh has its own spinner
+        errorMessage = nil
+
+        let availability = selectedAvailability == "Available" ? "AVAILABLE" : nil
+        let genres       = selectedGenre != nil ? [selectedGenre!] : nil
+        let search       = searchText.isEmpty ? nil : searchText
+
+        do {
+            let result = try await refresher.refreshBooksIfNeeded(
+                groupIds: selectedGroupIds.isEmpty ? nil : selectedGroupIds,
+                availability: availability,
+                genres: genres,
+                sortBy: "RECENT",
+                search: search,
+                forceRefresh: true
+            )
+            books = result
         } catch {
             errorMessage = error.localizedDescription
             showError = true
-            isLoading = false
         }
-    }
-    
-    /// Refresh books with current filters
-    func refreshBooks() async {
-        await fetchBooks(for: selectedGroupIds)
     }
     
     /// Clear all filters and reload
@@ -105,7 +145,6 @@ class HomeViewModel: ObservableObject {
     
     /// Load mock data for development
     func loadMockBooks() {
-        bookService.loadMockBooks()
-        books = bookService.books
+        books = Book.mockBooks
     }
 }

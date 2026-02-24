@@ -9,7 +9,7 @@ const router = Router();
  *   post:
  *     tags: [Authentication]
  *     summary: Send OTP to phone number
- *     description: Sends a 6-digit OTP code to the provided phone number via SMS
+ *     description: Sends a 6-digit OTP code to the provided phone number via WhatsApp
  *     requestBody:
  *       required: true
  *       content:
