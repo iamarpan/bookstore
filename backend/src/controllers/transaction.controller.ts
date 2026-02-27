@@ -149,3 +149,20 @@ export const rateTransaction = async (req: Request, res: Response) => {
         res.status(status).json({ error: 'Bad Request', message: error.message });
     }
 };
+
+export const cancelRequest = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { id } = req.params;
+        const transaction = await transactionService.cancelTransaction(id, userId);
+        res.json(transaction);
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
+    }
+};

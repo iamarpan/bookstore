@@ -206,7 +206,7 @@ struct MyBookRowView: View {
             
             VStack(spacing: 8) {
                 HStack {
-                    Text("Added: \(Date().formatted(date: .abbreviated, time: .omitted))")
+                    Text("Added: \(book.createdAt.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
                         .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                     

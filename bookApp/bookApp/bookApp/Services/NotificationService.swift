@@ -5,6 +5,10 @@ import UIKit
 /// Service for managing notifications and APNs integration
 @MainActor
 class NotificationService: ObservableObject {
+    
+    // MARK: - Singleton
+    static let shared = NotificationService()
+    
     // MARK: - Published Properties
     @Published var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
     @Published var notifications: [BookNotification] = []
@@ -12,15 +16,12 @@ class NotificationService: ObservableObject {
     
     // MARK: - Private Properties
     private let notificationCenter = UNUserNotificationCenter.current()
-    
-    // TODO: Inject API service when created
-    // private let apiService: APIClient
+    private let apiClient: APIClient
     
     // MARK: - Initialization
     
-    nonisolated init() {
-        // Initialize notification center
-        // Permission check and mock data loading will be done lazily
+    nonisolated init(apiClient: APIClient = .shared) {
+        self.apiClient = apiClient
     }
     
     // MARK: - Permission Management
@@ -46,7 +47,6 @@ class NotificationService: ObservableObject {
             }
             
             if granted {
-                // Register for remote notifications (done in AppDelegate)
                 Task { @MainActor in
                     UIApplication.shared.registerForRemoteNotifications()
                 }
@@ -62,131 +62,178 @@ class NotificationService: ObservableObject {
     // MARK: - Device Token Management
     
     /// Register device token with backend
-    func registerDeviceToken(_ token: String, userId: String) async {
-        // TODO: Implement API call
-        // POST /notifications/register
-        // Body: { "deviceToken": token, "platform": "IOS" }
+    func registerDeviceToken(_ token: String) async {
+        struct DeviceTokenRequest: Codable {
+            let deviceToken: String
+        }
         
-        print("📲 Would register device token for user \(userId): \(token)")
-        
-        // Example implementation:
-        /*
         do {
-            try await apiService.post(
-                "/notifications/register",
-                body: [
-                    "deviceToken": token,
-                    "platform": "IOS"
-                ]
+            let _: [String: String] = try await apiClient.post(
+                "/users/me/device-token",
+                body: DeviceTokenRequest(deviceToken: token)
             )
             print("✅ Device token registered successfully")
         } catch {
-            print("❌ Failed to register device token: \(error)")
+            print("❌ Failed to register device token: \(error.localizedDescription)")
         }
-        */
     }
     
     // MARK: - Fetch Notifications
     
+    /// Response model from GET /notifications
+    private struct NotificationsResponse: Codable {
+        let notifications: [BookNotification]
+        let unreadCount: Int
+    }
+    
     /// Fetch notifications from backend
-    func fetchNotifications(userId: String, unreadOnly: Bool = false) async {
-        // TODO: Implement API call
-        // GET /notifications?unreadOnly=true
-        
-        print("📬 Fetching notifications for user: \(userId)")
-        
-        // Example implementation:
-        /*
+    func fetchNotifications(unreadOnly: Bool = false) async {
         do {
-            let params: [String: Any] = unreadOnly ? ["unreadOnly": true] : [:]
-            let response: NotificationResponse = try await apiService.get(
+            var queryParams: [String: Any] = [:]
+            if unreadOnly {
+                queryParams["unreadOnly"] = "true"
+            }
+            
+            let response: NotificationsResponse = try await apiClient.get(
                 "/notifications",
-                queryParams: params
+                queryParams: queryParams
             )
             
-            await MainActor.run {
-                self.notifications = response.notifications
-                self.updateUnreadCount()
-            }
+            self.notifications = response.notifications
+            self.unreadCount = response.unreadCount
+            print("✅ Fetched \(response.notifications.count) notifications")
         } catch {
-            print("❌ Failed to fetch notifications: \(error)")
+            print("❌ Failed to fetch notifications: \(error.localizedDescription)")
+            // Fall back to local state, don't clear existing data
         }
-        */
-        
-        // For now, load mock data
-        loadMockNotifications()
-    }
-    
-    /// Load mock notifications for testing
-    func loadMockNotifications() {
-        notifications = BookNotification.mockNotifications
-        updateUnreadCount()
-    }
-    
-    /// Update unread count
-    private func updateUnreadCount() {
-        unreadCount = notifications.filter { !$0.isRead }.count
     }
     
     // MARK: - Notification Actions
     
     /// Mark a notification as read
     func markAsRead(_ notification: BookNotification) async {
-        // TODO: Implement API call
-        // PUT /notifications/:id/read
-        
-        print("✅ Marking notification as read: \(notification.id)")
-        
         // Optimistic update
         if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
             notifications[index].isRead = true
             updateUnreadCount()
         }
         
-        // Example implementation:
-        /*
         do {
-            try await apiService.put("/notifications/\(notification.id)/read")
+            let _: [String: String] = try await apiClient.put(
+                "/notifications/\(notification.id)/read",
+                body: EmptyBody()
+            )
         } catch {
-            print("❌ Failed to mark notification as read: \(error)")
+            print("❌ Failed to mark notification as read: \(error.localizedDescription)")
             // Revert optimistic update
             if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
                 notifications[index].isRead = false
                 updateUnreadCount()
             }
         }
-        */
     }
     
     /// Mark all notifications as read
-    func markAllAsRead(userId: String) async {
-        print("✅ Marking all notifications as read for user: \(userId)")
-        
+    func markAllAsRead() async {
         // Optimistic update
         for index in notifications.indices {
             notifications[index].isRead = true
         }
         updateUnreadCount()
         
-        // TODO: Implement API call
-        // PUT /notifications/mark-all-read
+        do {
+            let _: [String: String] = try await apiClient.put(
+                "/notifications/mark-all-read",
+                body: EmptyBody()
+            )
+        } catch {
+            print("❌ Failed to mark all as read: \(error.localizedDescription)")
+            // Refresh from server to restore correct state
+            await fetchNotifications()
+        }
     }
     
     /// Delete a notification
     func deleteNotification(_ notification: BookNotification) async {
-        print("🗑️ Deleting notification: \(notification.id)")
-        
         // Optimistic removal
         notifications.removeAll { $0.id == notification.id }
         updateUnreadCount()
         
-        // TODO: Implement API call
-        // DELETE /notifications/:id
+        do {
+            try await apiClient.delete("/notifications/\(notification.id)")
+        } catch {
+            print("❌ Failed to delete notification: \(error.localizedDescription)")
+            // Re-fetch to restore correct state
+            await fetchNotifications()
+        }
+    }
+    
+    // MARK: - Unread Count
+    
+    private func updateUnreadCount() {
+        unreadCount = notifications.filter { !$0.isRead }.count
+    }
+    
+    // MARK: - Badge Management
+    
+    func updateBadgeCount() {
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(unreadCount)
+        }
+    }
+    
+    func clearBadge() {
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(0)
+        }
+    }
+    
+    // MARK: - Remote Notification Handling
+    
+    /// Handle notification received from APNs
+    func handleRemoteNotification(userInfo: [AnyHashable: Any]) {
+        print("📨 Handling remote notification: \(userInfo)")
+        
+        guard let type = userInfo["type"] as? String,
+              let notificationType = NotificationType(rawValue: type) else {
+            print("⚠️ Invalid notification type")
+            return
+        }
+        
+        let notification = BookNotification(
+            id: userInfo["id"] as? String ?? UUID().uuidString,
+            type: notificationType,
+            title: userInfo["title"] as? String ?? "",
+            message: userInfo["message"] as? String ?? "",
+            data: extractNotificationData(from: userInfo)
+        )
+        
+        notifications.insert(notification, at: 0)
+        updateUnreadCount()
+        updateBadgeCount()
+    }
+    
+    private func extractNotificationData(from userInfo: [AnyHashable: Any]) -> NotificationData? {
+        var data = NotificationData()
+        
+        if let transactionId = userInfo["transactionId"] as? String {
+            data.transactionId = transactionId
+        }
+        if let bookId = userInfo["bookId"] as? String {
+            data.bookId = bookId
+        }
+        if let groupId = userInfo["groupId"] as? String {
+            data.groupId = groupId
+        }
+        if let userId = userInfo["userId"] as? String {
+            data.userId = userId
+        }
+        
+        return data
     }
     
     // MARK: - Local Notifications (for testing)
     
-    /// Schedule a local notification (for testing/development)
     func scheduleLocalNotification(
         title: String,
         body: String,
@@ -216,89 +263,21 @@ class NotificationService: ObservableObject {
         }
     }
     
-    // MARK: - Badge Management
-    
-    /// Update app badge count
-    func updateBadgeCount() {
-        Task {
-            try? await UNUserNotificationCenter.current().setBadgeCount(unreadCount)
-        }
-    }
-    
-    /// Clear app badge
-    func clearBadge() {
-        Task {
-            try? await UNUserNotificationCenter.current().setBadgeCount(0)
-        }
-    }
-    
-    // MARK: - Notification Handling from Push
-    
-    /// Handle notification received from APNs
-    func handleRemoteNotification(userInfo: [AnyHashable: Any]) {
-        print("📨 Handling remote notification: \(userInfo)")
-        
-        // Extract notification data
-        guard let type = userInfo["type"] as? String,
-              let notificationType = NotificationType(rawValue: type) else {
-            print("⚠️ Invalid notification type")
-            return
-        }
-        
-        // Create notification object from push payload
-        let notification = BookNotification(
-            id: userInfo["id"] as? String ?? UUID().uuidString,
-            type: notificationType,
-            title: userInfo["title"] as? String ?? "",
-            message: userInfo["message"] as? String ?? "",
-            data: extractNotificationData(from: userInfo)
-        )
-        
-        // Add to local list
-        notifications.insert(notification, at: 0)
-        updateUnreadCount()
-        updateBadgeCount()
-    }
-    
-    /// Extract notification data from push payload
-    private func extractNotificationData(from userInfo: [AnyHashable: Any]) -> NotificationData? {
-        var data = NotificationData()
-        
-        if let transactionId = userInfo["transactionId"] as? String {
-            data.transactionId = transactionId
-        }
-        if let bookId = userInfo["bookId"] as? String {
-            data.bookId = bookId
-        }
-        if let groupId = userInfo["groupId"] as? String {
-            data.groupId = groupId
-        }
-        if let userId = userInfo["userId"] as? String {
-            data.userId = userId
-        }
-        
-        return data
-    }
-    
     // MARK: - Do Not Disturb
     
-    /// Check if notifications should be sent based on time
     func shouldSendNotification(at date: Date = Date()) -> Bool {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: date)
-        
-        // Don't send notifications between 10 PM and 8 AM
-        if hour >= 22 || hour < 8 {
-            return false
-        }
-        
-        return true
+        return !(hour >= 22 || hour < 8)
     }
 }
 
-// MARK: - Response Models (for API integration)
+// MARK: - Private Helpers
 
-/// Response structure for fetching notifications
+private struct EmptyBody: Codable {}
+
+// MARK: - Response Models
+
 struct NotificationResponse: Codable {
     let notifications: [BookNotification]
 }

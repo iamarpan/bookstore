@@ -372,10 +372,37 @@ class TransactionService: ObservableObject {
         UserDefaults.standard.removeObject(forKey: key)
     }
     
+    // MARK: - Cancel Request
+    
+    /// Cancel a pending or approved borrow request (borrower only)
+    func cancelTransaction(id: String) async throws -> Transaction {
+        isLoading = true
+        error = nil
+        
+        defer { isLoading = false }
+        
+        do {
+            let transaction: Transaction = try await apiClient.post(
+                "/transactions/\(id)/cancel",
+                body: EmptyRequest()
+            )
+            
+            // Update in local list
+            updateLocalTransaction(transaction)
+            
+            print("✅ Transaction cancelled: \(id)")
+            return transaction
+        } catch {
+            self.error = error.localizedDescription
+            throw error
+        }
+    }
+    
     // MARK: - Mock Data (for development)
     
     /// Load mock transactions
     func loadMockTransactions() {
+
         transactions = Transaction.mockTransactions
         updateActiveTransactions()
         print("✅ Loaded \(transactions.count) mock transactions")

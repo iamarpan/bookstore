@@ -22,7 +22,7 @@ class BookDetailViewModel: ObservableObject {
         
         isLoading = true
         
-        // Get current user (use mock for now)
+        // Get current user from UserDefaults
         _ = User.loadFromUserDefaults() ?? User.mockUser
         
         // Create a borrow request
@@ -47,14 +47,12 @@ class BookDetailViewModel: ObservableObject {
     }
     
     func cancelRequest() async {
-        guard hasRequestedBook, let _ = existingTransaction else { return }
+        guard hasRequestedBook, let transaction = existingTransaction else { return }
         
         isLoading = true
         
-        // TODO: Add cancel request API endpoint
-        // For now, just update local state
         do {
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            _ = try await transactionService.cancelTransaction(id: transaction.id)
             
             // Update state
             existingTransaction = nil

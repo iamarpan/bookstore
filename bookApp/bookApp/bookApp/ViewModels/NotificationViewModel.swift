@@ -48,10 +48,7 @@ class NotificationViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        await notificationService.fetchNotifications(
-            userId: userId,
-            unreadOnly: unreadOnly
-        )
+        await notificationService.fetchNotifications(unreadOnly: unreadOnly)
         
         isLoading = false
     }
@@ -70,7 +67,7 @@ class NotificationViewModel: ObservableObject {
     
     /// Mark all notifications as read
     func markAllAsRead(userId: String) async {
-        await notificationService.markAllAsRead(userId: userId)
+        await notificationService.markAllAsRead()
     }
     
     /// Delete a notification
@@ -93,13 +90,5 @@ class NotificationViewModel: ObservableObject {
     /// Check permission status
     func checkPermissions() {
         notificationService.checkNotificationPermission()
-    }
-    
-    // MARK: - Mock Data
-    
-    /// Load mock notifications for development
-    func loadMockNotifications() {
-        notificationService.loadMockNotifications()
-        print("✅ Loaded mock notifications")
     }
 }

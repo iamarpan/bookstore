@@ -192,7 +192,7 @@ struct AppCardStyle: ViewModifier {
         content
             .background(AppTheme.cardBackground)
             .cornerRadius(AppTheme.cardRadius)
-            .shadow(color: AppTheme.shadowCard, radius: 20, x: 0, y: 10)
+            .shadow(color: AppTheme.shadowCard, radius: 6, x: 0, y: 3)
     }
 }
 

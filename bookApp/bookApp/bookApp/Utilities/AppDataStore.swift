@@ -1,8 +1,7 @@
 // Utilities/AppDataStore.swift
 // Centralised cache for all API-fetched data with DISK persistence.
-// Each bucket is stored as a JSON file in the app's Caches directory so
-// the data survives app restarts.  In-memory lookups are fast; disk I/O
-// happens in the background on every write and synchronously on first read.
+// In-memory lookups are O(1) and never block. Disk writes are background-dispatched.
+// Disk reads on first-launch are performed asynchronously to avoid main-thread I/O stalls.
 
 import Foundation
 
@@ -15,8 +14,9 @@ private struct PersistedEntry<T: Codable>: Codable {
 
 // MARK: - AppDataStore
 
-@MainActor
-final class AppDataStore: ObservableObject {
+/// NOT @MainActor — disk I/O helpers run on the calling task's context (background).
+/// Published properties are updated explicitly on the main actor where needed.
+final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     // MARK: Singleton
     static let shared = AppDataStore()
@@ -24,6 +24,13 @@ final class AppDataStore: ObservableObject {
 
     // MARK: - TTL
     static let defaultTTL: TimeInterval = 5 * 60   // 5 minutes
+
+    // MARK: - In-memory cache (avoids repeated disk reads)
+    // The memory cache holds the decoded Swift values keyed by filename.
+    // It's accessed only from background Tasks that hold the actor hop,
+    // so we protect it with a simple lock.
+    private var memoryCache: [String: Any] = [:]
+    private let memoryCacheLock = NSLock()
 
     // MARK: - Caches directory
     private static let cachesURL: URL = {
@@ -34,12 +41,60 @@ final class AppDataStore: ObservableObject {
     }()
 
     // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Generic Disk Helpers
+    // MARK: - Generic Async Disk Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// Write an encodable value + timestamp to disk under `filename`.
-    private func persist<T: Codable>(_ value: T, filename: String) {
+    /// Async disk read — runs on the calling context (should be a background Task).
+    /// Returns nil if missing, corrupt, or stale. Populates in-memory cache on success.
+    func load<T: Codable>(_ type: T.Type, filename: String, ttl: TimeInterval) async -> T? {
+        // 1. Check memory cache first (no I/O)
+        memoryCacheLock.lock()
+        if let entry = memoryCache[filename] as? PersistedEntry<T> {
+            memoryCacheLock.unlock()
+            guard !isStale(entry.cachedAt, ttl: ttl) else { return nil }
+            return entry.value
+        }
+        memoryCacheLock.unlock()
+
+        // 2. Background disk read
+        return await Task.detached(priority: .userInitiated) { [weak self] () -> T? in
+            guard let self else { return nil }
+            let url = Self.cachesURL.appendingPathComponent(filename)
+            guard
+                let data  = try? Data(contentsOf: url),
+                let entry = try? JSONDecoder().decode(PersistedEntry<T>.self, from: data),
+                !self.isStale(entry.cachedAt, ttl: ttl)
+            else { return nil }
+
+            // Warm in-memory cache
+            self.memoryCacheLock.lock()
+            self.memoryCache[filename] = entry
+            self.memoryCacheLock.unlock()
+
+            return entry.value
+        }.value
+    }
+
+    /// Synchronous memory-only read (no disk I/O). Use only when you know the cache
+    /// has already been warmed (e.g., after a previous `load` or `persist`).
+    func loadFromMemory<T: Codable>(_ type: T.Type, filename: String, ttl: TimeInterval) -> T? {
+        memoryCacheLock.lock()
+        defer { memoryCacheLock.unlock() }
+        guard let entry = memoryCache[filename] as? PersistedEntry<T>,
+              !isStale(entry.cachedAt, ttl: ttl) else { return nil }
+        return entry.value
+    }
+
+    /// Write an encodable value + timestamp to disk (background) and memory (immediate).
+    func persist<T: Codable>(_ value: T, filename: String) {
         let entry = PersistedEntry(value: value, cachedAt: Date())
+
+        // Update memory cache immediately so subsequent reads hit memory
+        memoryCacheLock.lock()
+        memoryCache[filename] = entry
+        memoryCacheLock.unlock()
+
+        // Write to disk in the background
         Task.detached(priority: .background) {
             let url = Self.cachesURL.appendingPathComponent(filename)
             if let data = try? JSONEncoder().encode(entry) {
@@ -48,33 +103,15 @@ final class AppDataStore: ObservableObject {
         }
     }
 
-    /// Load a previously persisted entry from disk; returns nil if missing, corrupt, or stale.
-    private func load<T: Codable>(_ type: T.Type, filename: String, ttl: TimeInterval) -> T? {
-        let url = Self.cachesURL.appendingPathComponent(filename)
-        guard
-            let data  = try? Data(contentsOf: url),
-            let entry = try? JSONDecoder().decode(PersistedEntry<T>.self, from: data),
-            !isStale(entry.cachedAt, ttl: ttl)
-        else { return nil }
-        return entry.value
-    }
+    /// Delete a single cache file from memory + disk.
+    func deleteDisk(filename: String) {
+        memoryCacheLock.lock()
+        memoryCache.removeValue(forKey: filename)
+        memoryCacheLock.unlock()
 
-    /// Delete a single cache file.
-    private func deleteDisk(filename: String) {
         Task.detached(priority: .background) {
             let url = Self.cachesURL.appendingPathComponent(filename)
             try? FileManager.default.removeItem(at: url)
-        }
-    }
-
-    /// Delete all files in the AppDataStore cache directory.
-    private func deleteAllDisk() {
-        Task.detached(priority: .background) {
-            let items = (try? FileManager.default.contentsOfDirectory(
-                at: Self.cachesURL,
-                includingPropertiesForKeys: nil
-            )) ?? []
-            for url in items { try? FileManager.default.removeItem(at: url) }
         }
     }
 
@@ -84,11 +121,15 @@ final class AppDataStore: ObservableObject {
 
     // ──────────────────────────────────────────────────────────────────────────
     // MARK: - Books Feed
-    // Key: deterministic string from query params
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedBooks(forKey key: String, ttl: TimeInterval = defaultTTL) -> [Book]? {
-        load([Book].self, filename: "books_\(key.safeFilename).json", ttl: ttl)
+    func cachedBooks(forKey key: String, ttl: TimeInterval = defaultTTL) async -> [Book]? {
+        await load([Book].self, filename: "books_\(key.safeFilename).json", ttl: ttl)
+    }
+
+    /// Memory-only read for instant display (no async needed).
+    func cachedBooksInMemory(forKey key: String, ttl: TimeInterval = defaultTTL) -> [Book]? {
+        loadFromMemory([Book].self, filename: "books_\(key.safeFilename).json", ttl: ttl)
     }
 
     func storeBooks(_ books: [Book], forKey key: String) {
@@ -101,8 +142,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Book Detail
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedBookDetail(id: String, ttl: TimeInterval = defaultTTL) -> Book? {
-        load(Book.self, filename: "book_\(id).json", ttl: ttl)
+    func cachedBookDetail(id: String, ttl: TimeInterval = defaultTTL) async -> Book? {
+        await load(Book.self, filename: "book_\(id).json", ttl: ttl)
     }
 
     func storeBookDetail(_ book: Book) {
@@ -115,8 +156,12 @@ final class AppDataStore: ObservableObject {
     // MARK: - My Groups
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedMyGroups(ttl: TimeInterval = defaultTTL) -> [BookClub]? {
-        load([BookClub].self, filename: "my_groups.json", ttl: ttl)
+    func cachedMyGroups(ttl: TimeInterval = defaultTTL) async -> [BookClub]? {
+        await load([BookClub].self, filename: "my_groups.json", ttl: ttl)
+    }
+
+    func cachedMyGroupsInMemory(ttl: TimeInterval = defaultTTL) -> [BookClub]? {
+        loadFromMemory([BookClub].self, filename: "my_groups.json", ttl: ttl)
     }
 
     func storeMyGroups(_ groups: [BookClub]) {
@@ -129,8 +174,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Discovered Groups
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedDiscoveredGroups(forKey key: String, ttl: TimeInterval = defaultTTL) -> [BookClub]? {
-        load([BookClub].self, filename: "discover_\(key.safeFilename).json", ttl: ttl)
+    func cachedDiscoveredGroups(forKey key: String, ttl: TimeInterval = defaultTTL) async -> [BookClub]? {
+        await load([BookClub].self, filename: "discover_\(key.safeFilename).json", ttl: ttl)
     }
 
     func storeDiscoveredGroups(_ groups: [BookClub], forKey key: String) {
@@ -143,8 +188,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Group Detail
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedGroupDetail(id: String, ttl: TimeInterval = defaultTTL) -> BookClub? {
-        load(BookClub.self, filename: "group_\(id).json", ttl: ttl)
+    func cachedGroupDetail(id: String, ttl: TimeInterval = defaultTTL) async -> BookClub? {
+        await load(BookClub.self, filename: "group_\(id).json", ttl: ttl)
     }
 
     func storeGroupDetail(_ group: BookClub) {
@@ -157,8 +202,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Group Members
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedGroupMembers(groupId: String, ttl: TimeInterval = defaultTTL) -> [GroupMember]? {
-        load([GroupMember].self, filename: "members_\(groupId).json", ttl: ttl)
+    func cachedGroupMembers(groupId: String, ttl: TimeInterval = defaultTTL) async -> [GroupMember]? {
+        await load([GroupMember].self, filename: "members_\(groupId).json", ttl: ttl)
     }
 
     func storeGroupMembers(_ members: [GroupMember], groupId: String) {
@@ -171,8 +216,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Group Books
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedGroupBooks(groupId: String, ttl: TimeInterval = defaultTTL) -> [Book]? {
-        load([Book].self, filename: "group_books_\(groupId).json", ttl: ttl)
+    func cachedGroupBooks(groupId: String, ttl: TimeInterval = defaultTTL) async -> [Book]? {
+        await load([Book].self, filename: "group_books_\(groupId).json", ttl: ttl)
     }
 
     func storeGroupBooks(_ books: [Book], groupId: String) {
@@ -185,8 +230,12 @@ final class AppDataStore: ObservableObject {
     // MARK: - My Owned Books
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedMyBooks(ttl: TimeInterval = defaultTTL) -> [Book]? {
-        load([Book].self, filename: "my_books.json", ttl: ttl)
+    func cachedMyBooks(ttl: TimeInterval = defaultTTL) async -> [Book]? {
+        await load([Book].self, filename: "my_books.json", ttl: ttl)
+    }
+
+    func cachedMyBooksInMemory(ttl: TimeInterval = defaultTTL) -> [Book]? {
+        loadFromMemory([Book].self, filename: "my_books.json", ttl: ttl)
     }
 
     func storeMyBooks(_ books: [Book]) { persist(books, filename: "my_books.json") }
@@ -197,8 +246,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Transactions — Borrower
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedBorrowerTransactions(ttl: TimeInterval = defaultTTL) -> [Transaction]? {
-        load([Transaction].self, filename: "txn_borrower.json", ttl: ttl)
+    func cachedBorrowerTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
+        await load([Transaction].self, filename: "txn_borrower.json", ttl: ttl)
     }
 
     func storeBorrowerTransactions(_ txns: [Transaction]) {
@@ -211,8 +260,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Transactions — Owner
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedOwnerTransactions(ttl: TimeInterval = defaultTTL) -> [Transaction]? {
-        load([Transaction].self, filename: "txn_owner.json", ttl: ttl)
+    func cachedOwnerTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
+        await load([Transaction].self, filename: "txn_owner.json", ttl: ttl)
     }
 
     func storeOwnerTransactions(_ txns: [Transaction]) {
@@ -225,8 +274,8 @@ final class AppDataStore: ObservableObject {
     // MARK: - Transactions — History
     // ──────────────────────────────────────────────────────────────────────────
 
-    func cachedHistoryTransactions(ttl: TimeInterval = defaultTTL) -> [Transaction]? {
-        load([Transaction].self, filename: "txn_history.json", ttl: ttl)
+    func cachedHistoryTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
+        await load([Transaction].self, filename: "txn_history.json", ttl: ttl)
     }
 
     func storeHistoryTransactions(_ txns: [Transaction]) {
@@ -239,7 +288,12 @@ final class AppDataStore: ObservableObject {
     // MARK: - Global Invalidation
     // ──────────────────────────────────────────────────────────────────────────
 
-    func invalidateAll() { deleteAllDisk() }
+    func invalidateAll() {
+        memoryCacheLock.lock()
+        memoryCache.removeAll()
+        memoryCacheLock.unlock()
+        deleteAllDisk()
+    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // MARK: - Cache Key Helpers
@@ -270,6 +324,17 @@ final class AppDataStore: ObservableObject {
 
     /// Delete all files in cachesURL whose name begins with `prefix`.
     private func deleteAllDisk(prefix: String = "") {
+        // Clear matching memory cache entries first
+        memoryCacheLock.lock()
+        if prefix.isEmpty {
+            memoryCache.removeAll()
+        } else {
+            for key in memoryCache.keys where key.hasPrefix(prefix) {
+                memoryCache.removeValue(forKey: key)
+            }
+        }
+        memoryCacheLock.unlock()
+
         Task.detached(priority: .background) {
             let items = (try? FileManager.default.contentsOfDirectory(
                 at: Self.cachesURL,

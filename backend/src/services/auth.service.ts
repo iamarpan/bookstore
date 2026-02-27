@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { generateTokenPair } from '../utils/jwt';
+import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { generateOTP, storeOTP, sendOTPViaWhatsApp, checkOTP, consumeOTP } from './otp.service';
 import { formatUserResponse } from '../utils/user.utils';
 
@@ -114,6 +114,13 @@ export async function verifyOTPService(
  * Refresh access token using refresh token
  */
 export async function refreshTokenService(refreshToken: string) {
+    // Verify JWT signature first — reject tampered/wrong-secret tokens early
+    try {
+        verifyRefreshToken(refreshToken);
+    } catch {
+        throw new Error('Invalid refresh token');
+    }
+
     // Find refresh token in database
     const tokenRecord = await prisma.refreshToken.findUnique({
         where: { token: refreshToken },
@@ -132,6 +139,7 @@ export async function refreshTokenService(refreshToken: string) {
         });
         throw new Error('Refresh token expired');
     }
+
 
     // Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = generateTokenPair({

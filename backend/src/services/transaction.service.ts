@@ -354,4 +354,46 @@ export class TransactionService {
 
         return this.mapTransaction(updated);
     }
+
+    /**
+     * Cancel a pending borrow request (borrower only).
+     */
+    async cancelTransaction(id: string, userId: string) {
+        const transaction = await prisma.transaction.findUnique({
+            where: { id },
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        if (!transaction) throw new Error('Transaction not found');
+        if (transaction.borrowerId !== userId) {
+            throw new Error('Unauthorized: only the borrower can cancel a request');
+        }
+        if (!['PENDING', 'APPROVED'].includes(transaction.status)) {
+            throw new Error('Only PENDING or APPROVED transactions can be cancelled');
+        }
+
+        const updated = await prisma.transaction.update({
+            where: { id },
+            data: { status: 'CANCELLED' },
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } },
+            },
+        });
+
+        // If APPROVED, also re-mark the book as available
+        if (transaction.status === 'APPROVED') {
+            await prisma.book.update({
+                where: { id: transaction.bookId },
+                data: { isAvailable: true, currentTransactionId: null },
+            });
+        }
+
+        return this.mapTransaction(updated);
+    }
 }

@@ -13,6 +13,8 @@ import userRoutes from './routes/user.routes';
 import bookRoutes from './routes/book.routes';
 import transactionRoutes from './routes/transaction.routes';
 import groupRoutes from './routes/group.routes';
+import notificationRoutes from './routes/notification.routes';
+import uploadRoutes from './routes/upload.routes';
 
 // Load environment variables
 dotenv.config();
@@ -141,6 +143,7 @@ app.get('/api/v1', (req: Request, res: Response) => {
             books: '/api/v1/books',
             transactions: '/api/v1/transactions',
             groups: '/api/v1/groups',
+            notifications: '/api/v1/notifications',
         },
         documentation: '/api-docs',
     });
@@ -152,6 +155,8 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/books', bookRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/groups', groupRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

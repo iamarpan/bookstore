@@ -236,19 +236,29 @@ class GroupViewModel: ObservableObject {
         self.refresher = refresher
     }
     
-    /// Fetch user's groups — shows disk-cached data instantly, refreshes in background.
+    /// Fetch user's groups — shows cached data instantly, refreshes only if stale.
     func fetchUserGroups(userId: String) async {
         errorMessage = nil
 
-        // Show stale disk data immediately — no spinner if we have something
-        if let cached = AppDataStore.shared.cachedMyGroups(ttl: .infinity) {
+        // 1. Memory cache — instant display, zero I/O
+        if let cached = AppDataStore.shared.cachedMyGroupsInMemory(ttl: .infinity) {
             joinedGroups  = cached
             createdGroups = cached.filter { $0.isCreatedByUser(userId: userId) }
         }
+
         if joinedGroups.isEmpty { isLoading = true }
 
+        // 2. Async disk read if memory was cold
+        if joinedGroups.isEmpty,
+           let cached = await AppDataStore.shared.cachedMyGroups(ttl: .infinity) {
+            joinedGroups  = cached
+            createdGroups = cached.filter { $0.isCreatedByUser(userId: userId) }
+            isLoading = false
+        }
+
+        // 3. Network refresh (respects TTL — won't re-fetch if cache is fresh)
         do {
-            let groups = try await refresher.refreshMyGroupsIfNeeded(forceRefresh: true)
+            let groups = try await refresher.refreshMyGroupsIfNeeded(forceRefresh: false)
             joinedGroups  = groups
             createdGroups = groups.filter { $0.isCreatedByUser(userId: userId) }
         } catch {

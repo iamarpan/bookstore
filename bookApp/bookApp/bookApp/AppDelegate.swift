@@ -35,8 +35,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let token = tokenParts.joined()
         print("Device Token: \(token)")
         
-        // TODO: Send token to backend API
-        // POST /notifications/register with { "deviceToken": token, "platform": "IOS" }
+        // Send device token to backend for push notifications
+        Task { @MainActor in
+            await NotificationService.shared.registerDeviceToken(token)
+        }
     }
     
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

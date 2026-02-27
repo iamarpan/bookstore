@@ -35,15 +35,42 @@ struct MainTabView: View {
         }
     }
 
+    // MARK: - Tab Content
+    // Uses ZStack + opacity instead of a switch-case to preserve view state across tab switches.
+    // This keeps views alive in memory so scroll position, loaded data, and local @State survive.
     @ViewBuilder
     private var tabContent: some View {
-        switch selectedTab {
-        case 0: HomeView().environmentObject(homeViewModel).environmentObject(themeManager).environmentObject(authViewModel)
-        case 1: AddBookView().environmentObject(themeManager).environmentObject(authViewModel)
-        case 2: MyGroupsView().environmentObject(themeManager).environmentObject(authViewModel)
-        case 3: MyLibraryView().environmentObject(myLibraryViewModel).environmentObject(themeManager)
-        case 4: ProfileView().environmentObject(themeManager).environmentObject(authViewModel)
-        default: HomeView().environmentObject(homeViewModel).environmentObject(themeManager).environmentObject(authViewModel)
+        ZStack {
+            HomeView()
+                .environmentObject(homeViewModel)
+                .environmentObject(themeManager)
+                .environmentObject(authViewModel)
+                .opacity(selectedTab == 0 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 0)
+
+            AddBookView()
+                .environmentObject(themeManager)
+                .environmentObject(authViewModel)
+                .opacity(selectedTab == 1 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 1)
+
+            MyGroupsView()
+                .environmentObject(themeManager)
+                .environmentObject(authViewModel)
+                .opacity(selectedTab == 2 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 2)
+
+            MyLibraryView()
+                .environmentObject(myLibraryViewModel)
+                .environmentObject(themeManager)
+                .opacity(selectedTab == 3 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 3)
+
+            ProfileView()
+                .environmentObject(themeManager)
+                .environmentObject(authViewModel)
+                .opacity(selectedTab == 4 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 4)
         }
     }
 
@@ -51,8 +78,10 @@ struct MainTabView: View {
         guard let user = authViewModel.currentUser else { return }
         let groupIds = (user.joinedGroupIds ?? []) + (user.createdGroupIds ?? [])
         Task {
-            await homeViewModel.fetchBooks(for: groupIds)
-            await myLibraryViewModel.fetchAllData(userId: user.id)
+            // Fetch home books and library data concurrently instead of sequentially
+            async let booksTask: Void = homeViewModel.fetchBooks(for: groupIds)
+            async let libraryTask: Void = myLibraryViewModel.fetchAllData(userId: user.id)
+            _ = await (booksTask, libraryTask)
         }
     }
 }
@@ -125,7 +154,7 @@ extension UIWindow {
 
 struct DeviceShakeViewModifier: ViewModifier {
     let action: () -> Void
-    
+
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) { _ in
@@ -146,4 +175,4 @@ struct MainTabView_Previews: PreviewProvider {
             .environmentObject(ThemeManager())
             .environmentObject(AuthViewModel())
     }
-} 
+}

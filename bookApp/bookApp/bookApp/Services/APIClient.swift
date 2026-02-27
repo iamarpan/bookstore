@@ -71,43 +71,46 @@ class APIClient {
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     
+    // MARK: - Shared Date Formatters (static to avoid per-call allocation)
+    private static let isoWithFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandard: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     private init() {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = APIConfiguration.shared.requestTimeout
         configuration.timeoutIntervalForResource = APIConfiguration.shared.resourceTimeout
-        
+
+        // Enable URLCache for image/asset responses (64 MB memory, 512 MB disk)
+        let cache = URLCache(memoryCapacity: 64 * 1024 * 1024, diskCapacity: 512 * 1024 * 1024)
+        configuration.urlCache = cache
+        configuration.requestCachePolicy = .useProtocolCachePolicy
+
         self.session = URLSession(configuration: configuration)
         self.config = APIConfiguration.shared
         self.keychainManager = KeychainManager.shared
-        
-        // Configure JSON decoder for ISO8601 dates
-        // Configure JSON decoder to handle ISO8601 with fractional seconds (milliseconds)
+
+        // Configure JSON decoder — reuse static formatters instead of creating one per Date field
         self.decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            
-            let formatter = ISO8601DateFormatter()
-            
-            // 1. Try with fractional seconds (e.g., "2023-11-20T12:00:00.000Z")
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
-            
-            // 2. Fallback to standard internet date time (e.g., "2023-11-20T12:00:00Z")
-            formatter.formatOptions = [.withInternetDateTime]
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
-            
+            if let date = APIClient.isoWithFractional.date(from: dateString) { return date }
+            if let date = APIClient.isoStandard.date(from: dateString) { return date }
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Cannot decode date string: \(dateString)"
             )
         }
         decoder.keyDecodingStrategy = .useDefaultKeys
-        
+
         // Configure JSON encoder
         self.encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -347,37 +350,55 @@ class APIClient {
     
     // MARK: - Token Management
     
-    /// Refresh access token using refresh token
+    /// Refresh access token using refresh token.
+    /// Uses a raw URLSession call to avoid going through `request()`,
+    /// which would recursively call this method again on a 401 response.
     private func refreshAccessToken() async throws {
         guard let refreshToken = keychainManager.getRefreshToken() else {
             throw APIError.unauthorized
         }
-        
+
         struct RefreshRequest: Codable {
             let refreshToken: String
         }
-        
+
         struct RefreshResponse: Codable {
             let accessToken: String
             let refreshToken: String
         }
-        
-        let request = RefreshRequest(refreshToken: refreshToken)
-        
+
+        guard let url = URL(string: config.baseURL + "/auth/refresh") else {
+            throw APIError.invalidURL
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = try encoder.encode(RefreshRequest(refreshToken: refreshToken))
+
         do {
-            let response: RefreshResponse = try await post(
-                "/auth/refresh",
-                body: request,
-                requiresAuth: false
-            )
-            
-            // Save new tokens
-            _ = keychainManager.saveAccessToken(response.accessToken)
-            _ = keychainManager.saveRefreshToken(response.refreshToken)
-            
+            let (data, response) = try await session.data(for: urlRequest)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                keychainManager.clearTokens()
+                throw APIError.tokenExpired
+            }
+
+            guard httpResponse.statusCode == 200 else {
+                // Non-200 means the refresh token is invalid/expired — clear and force re-login
+                keychainManager.clearTokens()
+                throw APIError.tokenExpired
+            }
+
+            let refreshResponse = try decoder.decode(RefreshResponse.self, from: data)
+            _ = keychainManager.saveAccessToken(refreshResponse.accessToken)
+            _ = keychainManager.saveRefreshToken(refreshResponse.refreshToken)
+
             print("✅ Access token refreshed successfully")
+        } catch let error as APIError {
+            throw error
         } catch {
-            // Clear tokens on refresh failure
             keychainManager.clearTokens()
             throw APIError.tokenExpired
         }
@@ -402,41 +423,51 @@ class APIClient {
     // MARK: - Logging
     
     private func logRequest<B: Encodable>(_ request: URLRequest, body: B?) {
+        #if DEBUG
         guard config.loggingEnabled else { return }
-        
-        print("📤 API Request")
-        print("   Method: \(request.httpMethod ?? "UNKNOWN")")
-        print("   URL: \(request.url?.absoluteString ?? "UNKNOWN")")
-        
-        if let headers = request.allHTTPHeaderFields {
-            print("   Headers: \(headers)")
+
+        let method = request.httpMethod ?? "UNKNOWN"
+        let urlString = request.url?.absoluteString ?? "UNKNOWN"
+        let headers = request.allHTTPHeaderFields
+
+        // Move heavy JSON pretty-printing off the main thread
+        Task.detached(priority: .background) { [body] in
+            print("📤 API Request")
+            print("   Method: \(method)")
+            print("   URL: \(urlString)")
+            if let headers { print("   Headers: \(headers)") }
+            if let body,
+               let data = try? JSONEncoder().encode(body),
+               let json = try? JSONSerialization.jsonObject(with: data),
+               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+               let prettyString = String(data: prettyData, encoding: .utf8) {
+                print("   Body: \(prettyString)")
+            }
         }
-        
-        if let body = body,
-           let data = try? encoder.encode(body),
-           let json = try? JSONSerialization.jsonObject(with: data),
-           let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-           let prettyString = String(data: prettyData, encoding: .utf8) {
-            print("   Body: \(prettyString)")
-        }
+        #endif
     }
     
     private func logResponse(_ response: URLResponse, data: Data) {
+        #if DEBUG
         guard config.loggingEnabled else { return }
-        
         guard let httpResponse = response as? HTTPURLResponse else { return }
-        
+
         let statusEmoji = (200...299).contains(httpResponse.statusCode) ? "✅" : "❌"
-        
-        print("\(statusEmoji) API Response")
-        print("   Status: \(httpResponse.statusCode)")
-        print("   URL: \(httpResponse.url?.absoluteString ?? "UNKNOWN")")
-        
-        if let json = try? JSONSerialization.jsonObject(with: data),
-           let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-           let prettyString = String(data: prettyData, encoding: .utf8) {
-            print("   Body: \(prettyString)")
+        let statusCode = httpResponse.statusCode
+        let urlString = httpResponse.url?.absoluteString ?? "UNKNOWN"
+
+        // Move heavy JSON pretty-printing off the main thread
+        Task.detached(priority: .background) {
+            print("\(statusEmoji) API Response")
+            print("   Status: \(statusCode)")
+            print("   URL: \(urlString)")
+            if let json = try? JSONSerialization.jsonObject(with: data),
+               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+               let prettyString = String(data: prettyData, encoding: .utf8) {
+                print("   Body: \(prettyString)")
+            }
         }
+        #endif
     }
 }
 

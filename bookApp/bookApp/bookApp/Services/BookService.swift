@@ -1,25 +1,20 @@
 import Foundation
 
-/// Service for book operations
-@MainActor
-class BookService: ObservableObject {
-    // MARK: - Published Properties
-    @Published var books: [Book] = []
-    @Published var isLoading = false
-    @Published var error: String?
-    
+/// Service for book operations.
+/// NOT @MainActor — JSON decoding runs on the calling task's context (background).
+class BookService {
     // MARK: - Private Properties
     private let apiClient: APIClient
-    
+
     // MARK: - Initialization
-    
+
     init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
     }
-    
+
     // MARK: - Fetch Books
-    
-    /// Fetch books feed with filters
+
+    /// Fetch books feed with optional filters
     func fetchBooks(
         groupIds: [String]? = nil,
         availability: String? = nil,
@@ -31,203 +26,113 @@ class BookService: ObservableObject {
         page: Int = 1,
         limit: Int = 20
     ) async throws -> [Book] {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
         var queryParams: [String: Any] = [
             "page": page,
             "limit": limit
         ]
-        
+
         if let groupIds = groupIds, !groupIds.isEmpty {
             queryParams["groupIds"] = groupIds.joined(separator: ",")
         }
-        if let availability = availability {
-            queryParams["availability"] = availability
-        }
-        if let genres = genres, !genres.isEmpty {
-            queryParams["genres"] = genres.joined(separator: ",")
-        }
-        if let minPrice = minPrice {
-            queryParams["minPrice"] = minPrice
-        }
-        if let maxPrice = maxPrice {
-            queryParams["maxPrice"] = maxPrice
-        }
-        if let sortBy = sortBy {
-            queryParams["sortBy"] = sortBy
-        }
-        if let search = search {
-            queryParams["search"] = search
-        }
-        
+        if let availability = availability { queryParams["availability"] = availability }
+        if let genres = genres, !genres.isEmpty { queryParams["genres"] = genres.joined(separator: ",") }
+        if let minPrice = minPrice { queryParams["minPrice"] = minPrice }
+        if let maxPrice = maxPrice { queryParams["maxPrice"] = maxPrice }
+        if let sortBy = sortBy { queryParams["sortBy"] = sortBy }
+        if let search = search { queryParams["search"] = search }
+
         struct BooksResponse: Codable {
             let books: [Book]
         }
-        
-        do {
-            let response: BooksResponse = try await apiClient.get(
-                "/books/feed",
-                queryParams: queryParams
-            )
-            
-            books = response.books
-            return response.books
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+
+        let response: BooksResponse = try await apiClient.get("/books/feed", queryParams: queryParams)
+        return response.books
     }
-    
-    /// Fetch book details
+
+    /// Fetch book details by ID
     func fetchBook(id: String) async throws -> Book {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        do {
-            let book: Book = try await apiClient.get("/books/\(id)")
-            return book
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+        try await apiClient.get("/books/\(id)")
     }
-    
-    /// Fetch current user's books
+
+    /// Fetch the current user's books via /users/me/books
     func fetchMyBooks() async throws -> [Book] {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        do {
-            let books: [Book] = try await apiClient.get("/users/me/books")
-            return books
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+        try await apiClient.get("/users/me/books")
     }
-    
-    // MARK: - Create/Update Books
-    
-    /// Create a new book
+
+    // MARK: - Create/Update/Delete
+
     func createBook(_ book: Book) async throws -> Book {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        do {
-            let createdBook: Book = try await apiClient.post("/books", body: book)
-            
-            // Add to local list
-            books.insert(createdBook, at: 0)
-            
-            print("✅ Book created: \(createdBook.title)")
-            return createdBook
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+        let createdBook: Book = try await apiClient.post("/books", body: book)
+        print("✅ Book created: \(createdBook.title)")
+        return createdBook
     }
-    
-    /// Update a book
+
     func updateBook(_ book: Book) async throws -> Book {
-        guard !book.id.isEmpty else {
-            throw APIError.invalidURL
-        }
-        
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        do {
-            let updatedBook: Book = try await apiClient.put("/books/\(book.id)", body: book)
-            
-            // Update in local list
-            if let index = books.firstIndex(where: { $0.id == book.id }) {
-                books[index] = updatedBook
-            }
-            
-            print("✅ Book updated: \(updatedBook.title)")
-            return updatedBook
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+        guard !book.id.isEmpty else { throw APIError.invalidURL }
+        let updatedBook: Book = try await apiClient.put("/books/\(book.id)", body: book)
+        print("✅ Book updated: \(updatedBook.title)")
+        return updatedBook
     }
-    
-    /// Delete a book
+
     func deleteBook(id: String) async throws {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        do {
-            try await apiClient.delete("/books/\(id)")
-            
-            // Remove from local list
-            books.removeAll { $0.id == id }
-            
-            print("✅ Book deleted")
-        } catch {
-            self.error = error.localizedDescription
-            throw error
-        }
+        try await apiClient.delete("/books/\(id)")
+        print("✅ Book deleted")
     }
-    
+
     // MARK: - ISBN Lookup
-    
-    /// Lookup book by ISBN (from backend or external API)
+
     func lookupISBN(_ isbn: String) async throws -> Book? {
-        isLoading = true
-        error = nil
-        
-        defer { isLoading = false }
-        
-        struct ISBNRequest: Codable {
-            let isbn: String
-        }
-        
+        struct ISBNRequest: Codable { let isbn: String }
         do {
-            let request = ISBNRequest(isbn: isbn)
-            let book: Book = try await apiClient.post("/books/scan-isbn", body: request)
-            
+            let book: Book = try await apiClient.post("/books/scan-isbn", body: ISBNRequest(isbn: isbn))
             print("✅ Book found via ISBN: \(book.title)")
             return book
         } catch {
-            self.error = error.localizedDescription
             return nil
         }
     }
-    
+
     // MARK: - Image Upload
-    
-    /// Upload book cover image
+
     func uploadBookImage(_ imageData: Data) async throws -> String {
-        // TODO: Implement multipart/form-data upload
-        // For now, return a placeholder
+        guard let url = URL(string: APIConfiguration.shared.baseURL + "/upload") else {
+            throw APIError.invalidURL
+        }
         
-        print("📸 Would upload image (\(imageData.count) bytes)")
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
-        // This would be implemented with multipart upload
-        // let imageUrl: String = try await apiClient.uploadImage(imageData, to: "/books/upload-image")
+        // Attach auth token
+        if let token = KeychainManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
-        return "https://placeholder.com/book-cover.jpg"
+        // Build multipart body
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"book.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw APIError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        struct UploadResponse: Decodable { let url: String }
+        let decoded = try JSONDecoder().decode(UploadResponse.self, from: data)
+        print("✅ Image uploaded: \(decoded.url)")
+        return decoded.url
     }
-    
-    // MARK: - Mock Data (for development)
-    
-    /// Load mock books for UI development
+
+    // MARK: - Mock Data
+
     func loadMockBooks() {
-        books = Book.mockBooks
-        print("✅ Loaded \(books.count) mock books")
+        // Retained for API compatibility; callers can use Book.mockBooks directly.
+        print("✅ Loaded \(Book.mockBooks.count) mock books")
     }
 }

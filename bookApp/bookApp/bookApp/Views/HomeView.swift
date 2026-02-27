@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingFilterSheet = false
+    @State private var hasConfiguredNavBar = false
 
     var body: some View {
         NavigationView {
@@ -23,7 +24,8 @@ struct HomeView: View {
                         .environmentObject(homeViewModel)
                 }
                 .onAppear {
-                    setupNavigationBarAppearance()
+                    // Configure once — appearance proxy is global, no need to call on every appear
+                    if !hasConfiguredNavBar { setupNavigationBarAppearance() }
                 }
                 .onChange(of: themeManager.isDarkMode) { _, _ in
                     setupNavigationBarAppearance()
@@ -148,13 +150,13 @@ struct HomeView: View {
     
 
     private func setupNavigationBarAppearance() {
-        // Customize navigation bar appearance based on theme
+        hasConfiguredNavBar = true
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
         appearance.titleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
-        
+
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
@@ -300,10 +302,10 @@ struct BookTileView: View {
                             .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
                     )
             }
-            .frame(height: 200) // Taller cover
+            .frame(height: 200)
             .frame(maxWidth: .infinity)
             .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4) // Cover shadow
+            // Removed redundant shadow — AppCardStyle (.appCardStyle) already applies a card shadow
             
             VStack(alignment: .leading, spacing: 6) {
                 // Title (Serif)

@@ -9,6 +9,7 @@ import {
     confirmReturn,
     markPayment,
     rateTransaction,
+    cancelRequest,
 } from '../controllers/transaction.controller';
 
 const router = Router();
@@ -281,5 +282,32 @@ router.post('/:id/mark-payment', authenticate, markPayment);
  *         description: Not a party to this transaction
  */
 router.post('/:id/rate', authenticate, rateTransaction);
+
+/**
+ * @swagger
+ * /transactions/{id}/cancel:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Cancel a borrow request
+ *     description: Borrower cancels a PENDING or APPROVED borrow request
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Transaction cancelled
+ *       400:
+ *         description: Invalid transaction state
+ *       403:
+ *         description: Only the borrower can cancel
+ *       404:
+ *         description: Transaction not found
+ */
+router.post('/:id/cancel', authenticate, cancelRequest);
 
 export default router;

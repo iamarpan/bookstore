@@ -111,11 +111,11 @@ struct BookDetailView: View {
 
 struct ParallaxHeader: View {
     let book: Book
-    
+
     var body: some View {
         GeometryReader { geometry in
             let minY = geometry.frame(in: .global).minY
-            
+
             ZStack {
                 AsyncImage(url: URL(string: book.imageUrl)) { image in
                     image
@@ -124,12 +124,12 @@ struct ParallaxHeader: View {
                         .frame(width: geometry.size.width, height: geometry.size.height + (minY > 0 ? minY : 0))
                         .clipped()
                         .offset(y: (minY > 0 ? -minY : 0))
-                        .blur(radius: minY < 0 ? abs(minY) / 20 : 0) // Blur on scroll up
+                    // Removed per-frame .blur() — was recalculating on every scroll event at 60-120fps
                 } placeholder: {
                     Rectangle()
                         .fill(Color.gray.opacity(0.3))
                 }
-                
+
                 // Gradient Overlay
                 LinearGradient(
                     gradient: Gradient(colors: [.black.opacity(0.6), .clear]),
