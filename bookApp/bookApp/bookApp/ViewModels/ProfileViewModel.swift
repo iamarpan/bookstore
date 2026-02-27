@@ -36,7 +36,7 @@ class ProfileViewModel: ObservableObject {
             booksLentCount = lentTransactions.filter { $0.status == .returned || $0.status == .active }.count
             
             // Use real rating from user model
-            reputationScore = user?.averageRating ?? 0.0
+            reputationScore = user?.stats.averageRating ?? 0.0
             
         } catch {
             print("Error fetching stats: \(error)")
