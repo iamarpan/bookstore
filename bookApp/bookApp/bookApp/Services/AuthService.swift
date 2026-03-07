@@ -20,6 +20,17 @@ class AuthService: ObservableObject {
         // Load user from local storage
         self.currentUser = User.loadFromUserDefaults()
         self.isAuthenticated = currentUser != nil && apiClient.isAuthenticated()
+        
+        // Force logout if the refresh token is rejected mid-session
+        // (secret mismatch, token revoked, or backend env change)
+        NotificationCenter.default.addObserver(
+            forName: APIClient.sessionExpiredNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("⚠️ AuthService: session expired, forcing logout")
+            self?.logout()
+        }
     }
     
     // MARK: - Phone OTP Authentication

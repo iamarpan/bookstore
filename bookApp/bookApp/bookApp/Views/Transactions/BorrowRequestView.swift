@@ -87,7 +87,7 @@ struct BorrowRequestView: View {
                         .font(.caption)
                         .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     
-                    Text("Owner: \(book.ownerId)") // In real app, resolve owner name
+                    Text("Owner: \(book.ownerName)") // In real app, resolve owner name
                         .font(.caption)
                         .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
@@ -169,7 +169,7 @@ struct BorrowRequestView: View {
     private var actionButton: some View {
         Button {
             Task {
-                await viewModel.sendRequest(bookId: book.id, ownerId: book.ownerId, borrowerId: authViewModel.currentUser?.id ?? "")
+                await viewModel.sendRequest(bookId: book.id)
             }
         } label: {
             HStack {
@@ -202,23 +202,24 @@ class BorrowRequestViewModel: ObservableObject {
         self.transactionService = TransactionService()
     }
     
-    func sendRequest(bookId: String, ownerId: String, borrowerId: String) async {
+    func sendRequest(bookId: String) async {
         isLoading = true
         errorMessage = nil
         
+        let duration: BorrowDuration
+        switch selectedDurationWeeks {
+        case 1:  duration = .oneWeek
+        case 4:  duration = .oneMonth
+        default: duration = .twoWeeks
+        }
+        
         do {
-            // In a real app, we'd calculate the due date based on duration
-            // let dueDate = Calendar.current.date(byAdding: .weekOfYear, value: selectedDurationWeeks, to: Date())
-            
-            // Call service
-            // try await transactionService.createTransaction(...)
-            
-            // For now, simulate success
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            
+            _ = try await transactionService.createBorrowRequest(
+                bookId: bookId,
+                duration: duration,
+                message: message.isEmpty ? nil : message
+            )
             showSuccess = true
-            print("✅ Request sent for book: \(bookId)")
-            
         } catch {
             errorMessage = error.localizedDescription
             showError = true

@@ -350,6 +350,10 @@ class APIClient {
     
     // MARK: - Token Management
     
+    /// Posted when the refresh token is rejected by the server (secret mismatch / expired / revoked).
+    /// Observers should log the user out immediately.
+    static let sessionExpiredNotification = Notification.Name("APIClientSessionExpired")
+    
     /// Refresh access token using refresh token.
     /// Uses a raw URLSession call to avoid going through `request()`,
     /// which would recursively call this method again on a 401 response.
@@ -382,12 +386,14 @@ class APIClient {
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 keychainManager.clearTokens()
+                notifySessionExpired()
                 throw APIError.tokenExpired
             }
 
             guard httpResponse.statusCode == 200 else {
-                // Non-200 means the refresh token is invalid/expired — clear and force re-login
+                // Non-200 means the refresh token is invalid/expired/wrong secret — force re-login
                 keychainManager.clearTokens()
+                notifySessionExpired()
                 throw APIError.tokenExpired
             }
 
@@ -400,7 +406,15 @@ class APIClient {
             throw error
         } catch {
             keychainManager.clearTokens()
+            notifySessionExpired()
             throw APIError.tokenExpired
+        }
+    }
+    
+    private func notifySessionExpired() {
+        print("⚠️ Session expired — broadcasting sessionExpired notification")
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: APIClient.sessionExpiredNotification, object: nil)
         }
     }
     

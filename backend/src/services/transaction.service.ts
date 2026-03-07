@@ -140,7 +140,7 @@ export class TransactionService {
         const groupId = book.bookGroups[0]?.groupId;
         if (!groupId) throw new Error('Book must belong to at least one group');
 
-        return await prisma.transaction.create({
+        const created = await prisma.transaction.create({
             data: {
                 bookId: data.bookId as string,
                 borrowerId: data.borrowerId,
@@ -152,8 +152,15 @@ export class TransactionService {
                 lendingFee: book.lendingPricePerWeek,
                 requestMessage: data.message,
                 requestedAt: new Date()
+            },
+            include: {
+                book: true,
+                borrower: { select: { id: true, name: true, profileImageUrl: true } },
+                owner: { select: { id: true, name: true, profileImageUrl: true } }
             }
         });
+
+        return this.mapTransaction(created);
     }
 
     async updateStatus(id: string, userId: string, status: TransactionStatus, data?: any) {
