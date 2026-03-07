@@ -491,13 +491,6 @@ class GroupService: ObservableObject {
         }
     }
     
-    // MARK: - Mock Data (for development)
-    
-    /// Load mock groups
-    func loadMockGroups() {
-        myGroups = BookClub.mockClubs
-        print("✅ Loaded \(myGroups.count) mock groups")
-    }
 }
 
 // MARK: - Helper Types

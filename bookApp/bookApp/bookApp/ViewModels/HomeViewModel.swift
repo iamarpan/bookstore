@@ -154,8 +154,4 @@ class HomeViewModel: ObservableObject {
         }
     }
 
-    /// Load mock data for development
-    func loadMockBooks() {
-        books = Book.mockBooks
-    }
 }

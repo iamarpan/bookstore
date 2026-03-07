@@ -189,19 +189,5 @@ class MyLibraryViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Mock Data
-
-    func loadMockData() {
-        bookService.loadMockBooks()
-        // Mock data uses fetchMyBooks which now returns directly
-        transactionService.loadMockTransactions()
-        borrowedBooks = transactionService.transactions.filter {
-            $0.borrowerId == "usr_demo" && $0.status == .active
-        }
-        lentBooks = transactionService.transactions.filter {
-            $0.ownerId == "usr_demo"
-        }
-        bookHistory = transactionService.transactions.filter { $0.status == .returned }
-        print("✅ Loaded mock library data")
-    }
 }
+

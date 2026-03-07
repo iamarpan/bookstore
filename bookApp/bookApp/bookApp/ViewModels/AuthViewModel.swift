@@ -141,10 +141,4 @@ class AuthViewModel: ObservableObject {
         return phonePredicate.evaluate(with: phoneNumber)
     }
     
-    // MARK: - Mock Login (for development)
-    func mockLogin() {
-        authService.mockLogin()
-        needsRegistration = false
-        showRegistrationForm = false
-    }
 }

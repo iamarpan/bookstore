@@ -14,13 +14,15 @@ struct MainTabView: View {
             tabContent
                 .safeAreaInset(edge: .bottom) {
                     if tabManager.isVisible {
-                        Color.clear.frame(height: 80)
+                        // Reduced from 80 → 66 to minimize the gap above the dock
+                        Color.clear.frame(height: 66)
                     }
                 }
 
             if tabManager.isVisible {
                 FloatingDock(selectedTab: $selectedTab)
-                    .padding(.bottom, 8)
+                    // Reduced from 8 → 2 so the dock sits closer to the home indicator
+                    .padding(.bottom, 2)
             }
         }
         .environmentObject(tabManager)
@@ -129,8 +131,6 @@ struct FloatingDock: View {
                 .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 26).fill(.ultraThinMaterial))
         .overlay(RoundedRectangle(cornerRadius: 26).stroke(Color.white.opacity(themeManager.isDarkMode ? 0.14 : 0.4), lineWidth: 1))
         .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 6)

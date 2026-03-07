@@ -398,15 +398,6 @@ class TransactionService: ObservableObject {
         }
     }
     
-    // MARK: - Mock Data (for development)
-    
-    /// Load mock transactions
-    func loadMockTransactions() {
-
-        transactions = Transaction.mockTransactions
-        updateActiveTransactions()
-        print("✅ Loaded \(transactions.count) mock transactions")
-    }
 }
 
 // MARK: - Helper Types

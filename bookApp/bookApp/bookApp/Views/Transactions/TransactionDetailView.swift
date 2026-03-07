@@ -83,24 +83,30 @@ struct TransactionDetailView: View {
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
             
             HStack(spacing: 16) {
-                // Book Cover Placeholder
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
+                // Book Cover
+                if let imageUrl = viewModel.transaction.bookImageUrl, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(Image(systemName: "book.fill").foregroundColor(.gray))
+                    }
                     .frame(width: 60, height: 90)
                     .cornerRadius(8)
-                    .overlay(
-                        Image(systemName: "book.fill")
-                            .foregroundColor(.gray)
-                    )
+                    .clipped()
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 60, height: 90)
+                        .cornerRadius(8)
+                        .overlay(Image(systemName: "book.fill").foregroundColor(.gray))
+                }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Book Title Placeholder") // In real app, fetch book details
+                    Text(viewModel.transaction.bookTitle)
                         .font(.headline)
                         .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-                    
-                    Text("Author Name")
-                        .font(.subheadline)
-                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
                 
                 Spacer()
@@ -123,7 +129,7 @@ struct TransactionDetailView: View {
                     .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.otherPartyName)
+                    Text(viewModel.otherPartyName(currentUserId: authViewModel.currentUser?.id ?? ""))
                         .font(.headline)
                         .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                     
@@ -291,9 +297,8 @@ class TransactionDetailViewModel: ObservableObject {
         return transaction.ownerId == userId
     }
     
-    var otherPartyName: String {
-        // In real app, resolve name from ID
-        return isOwner(userId: User.mockUser.id) ? transaction.borrowerName : transaction.ownerName
+    func otherPartyName(currentUserId: String) -> String {
+        return isOwner(userId: currentUserId) ? transaction.borrowerName : transaction.ownerName
     }
     
     // Action Logic
@@ -312,21 +317,25 @@ class TransactionDetailViewModel: ObservableObject {
     
     func approveRequest() async {
         isLoading = true
-        // Call API
-        // transaction = try await transactionService.updateStatus(...)
-        // Mock update
-        var updated = transaction
-        updated.status = .approved
-        transaction = updated
+        do {
+            let updated = try await transactionService.approveRequest(id: transaction.id)
+            transaction = updated
+        } catch {
+            print("❌ Failed to approve request: \(error.localizedDescription)")
+        }
         isLoading = false
     }
     
     func rejectRequest() async {
         isLoading = true
-        // Call API
-        var updated = transaction
-        updated.status = .rejected
-        transaction = updated
+        do {
+            try await transactionService.rejectRequest(id: transaction.id)
+            var updated = transaction
+            updated.status = .rejected
+            transaction = updated
+        } catch {
+            print("❌ Failed to reject request: \(error.localizedDescription)")
+        }
         isLoading = false
     }
 }

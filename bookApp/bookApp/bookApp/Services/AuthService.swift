@@ -189,24 +189,5 @@ class AuthService: ObservableObject {
         print("✅ User logged out")
     }
     
-    #if DEBUG
-    // MARK: - Mock Authentication (for development only)
-    
-    /// Mock login for testing UI without backend
-    /// ⚠️ This function is only available in DEBUG builds
-    func mockLogin() {
-        let mockUser = User.mockUser
-        currentUser = mockUser
-        mockUser.saveToUserDefaults()
-        isAuthenticated = true
-        
-        // Save mock tokens
-        apiClient.saveTokens(
-            accessToken: "mock_access_token",
-            refreshToken: "mock_refresh_token"
-        )
-        
-        print("✅ Mock user logged in: \(mockUser.name)")
-    }
-    #endif
 }
+

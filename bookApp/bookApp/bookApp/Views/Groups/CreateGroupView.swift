@@ -41,12 +41,20 @@ struct CreateGroupView: View {
                         locationSection
                     }
                     .padding()
+                    
+                    // Extra bottom padding so the last form field is not hidden
+                    // behind the sticky Create button when scrolled to the bottom.
+                    Color.clear.frame(height: 8)
                 }
             }
             
-            // Create Button
+            // Create Button — pinned at bottom, outside the scroll view
             createButton
-                .padding()
+                .padding(.horizontal)
+                // Add top padding for visual breathing room and bottom padding to
+                // sit above the FloatingDock (≈66 pt safe-area + 8 pt breathing room).
+                .padding(.top, 12)
+                .padding(.bottom, 12)
                 .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
         }
         .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())

@@ -129,10 +129,4 @@ class BookService {
         return decoded.url
     }
 
-    // MARK: - Mock Data
-
-    func loadMockBooks() {
-        // Retained for API compatibility; callers can use Book.mockBooks directly.
-        print("✅ Loaded \(Book.mockBooks.count) mock books")
-    }
 }

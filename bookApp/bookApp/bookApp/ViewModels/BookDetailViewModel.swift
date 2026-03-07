@@ -22,9 +22,7 @@ class BookDetailViewModel: ObservableObject {
         
         isLoading = true
         
-        // Get current user from UserDefaults
-        _ = User.loadFromUserDefaults() ?? User.mockUser
-        
+        // No need to load user here — transactionService uses the authenticated token
         // Create a borrow request
         do {
             let transaction = try await transactionService.createBorrowRequest(
@@ -74,18 +72,18 @@ class BookDetailViewModel: ObservableObject {
     }
     
     var canRequestBook: Bool {
-        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
+        let currentUserId = User.loadFromUserDefaults()?.id ?? ""
         return book.isAvailable &&
                !hasRequestedBook &&
-               book.ownerId != currentUser.id
+               book.ownerId != currentUserId
     }
     
     var requestButtonTitle: String {
-        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
+        let currentUserId = User.loadFromUserDefaults()?.id ?? ""
         
         if !book.isAvailable {
             return "Not Available"
-        } else if book.ownerId == currentUser.id {
+        } else if book.ownerId == currentUserId {
             return "Your Book"
         } else if hasRequestedBook {
             return "Request Sent"
@@ -95,9 +93,9 @@ class BookDetailViewModel: ObservableObject {
     }
     
     var requestStatus: RequestStatus? {
-        let currentUser = User.loadFromUserDefaults() ?? User.mockUser
+        let currentUserId = User.loadFromUserDefaults()?.id ?? ""
         
-        if book.ownerId == currentUser.id {
+        if book.ownerId == currentUserId {
             return .ownBook
         }
         

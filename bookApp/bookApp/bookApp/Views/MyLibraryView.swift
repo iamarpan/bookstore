@@ -320,11 +320,11 @@ struct RequestRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("The Great Gatsby") // Mock book title
+                    Text(request.bookTitle)
                         .font(.headline)
                         .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                     
-                    Text(showActions ? "Requested by: \(request.borrowerName)" : "Lent by: John Smith")
+                    Text(showActions ? "Requested by: \(request.borrowerName)" : "Lent by: \(request.ownerName)")
                         .font(.subheadline)
                         .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                     
