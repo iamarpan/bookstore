@@ -26,6 +26,23 @@ export const getMyTransactions = async (req: Request, res: Response) => {
     }
 };
 
+export const getTransactionById = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+        }
+        const { id } = req.params;
+        const transaction = await transactionService.getTransactionById(id, userId);
+        res.json(transaction);
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 500;
+        res.status(status).json({ error: 'Error', message: error.message });
+    }
+};
+
 export const createBorrowRequest = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.userId;
@@ -76,15 +93,51 @@ export const rejectRequest = async (req: Request, res: Response) => {
     }
 };
 
+export const generateHandoverOTP = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId as string;
+        const { id } = req.params;
+        const otp = await transactionService.generateHandoverOTP(id, userId);
+        res.json({ otp });
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
+    }
+};
+
+export const generateReturnOTP = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId as string;
+        const { id } = req.params;
+        const otp = await transactionService.generateReturnOTP(id, userId);
+        res.json({ otp });
+    } catch (error: any) {
+        const status = error.message.includes('Unauthorized') ? 403
+            : error.message.includes('not found') ? 404
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
+    }
+};
+
 export const confirmHandover = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.userId as string;
         const { id } = req.params;
-        const { otp } = req.body; // In a real app we'd verify OTP here
-        const transaction = await transactionService.updateStatus(id, userId, 'ACTIVE');
+        const { otp } = req.body;
+
+        if (!otp) {
+            return res.status(400).json({ error: 'Bad Request', message: 'otp is required' });
+        }
+
+        const transaction = await transactionService.updateStatus(id, userId, 'ACTIVE', { otp });
         res.json(transactionService.mapTransaction(transaction));
     } catch (error: any) {
-        res.status(400).json({ error: 'Bad Request', message: error.message });
+        const status = error.message.toLowerCase().includes('unauthorized') ? 403
+            : error.message.toLowerCase().includes('otp') ? 400
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
     }
 };
 
@@ -93,10 +146,18 @@ export const confirmReturn = async (req: Request, res: Response) => {
         const userId = req.user?.userId as string;
         const { id } = req.params;
         const { otp } = req.body;
-        const transaction = await transactionService.updateStatus(id, userId, 'RETURNED');
+
+        if (!otp) {
+            return res.status(400).json({ error: 'Bad Request', message: 'otp is required' });
+        }
+
+        const transaction = await transactionService.updateStatus(id, userId, 'RETURNED', { otp });
         res.json(transactionService.mapTransaction(transaction));
     } catch (error: any) {
-        res.status(400).json({ error: 'Bad Request', message: error.message });
+        const status = error.message.toLowerCase().includes('unauthorized') ? 403
+            : error.message.toLowerCase().includes('otp') ? 400
+                : 400;
+        res.status(status).json({ error: 'Bad Request', message: error.message });
     }
 };
 

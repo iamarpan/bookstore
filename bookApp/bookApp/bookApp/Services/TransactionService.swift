@@ -114,6 +114,43 @@ class TransactionService: ObservableObject {
         }
     }
     
+    // MARK: - Fetch Single Transaction
+    
+    /// Fetch a transaction by ID (either party can call this)
+    func fetchTransactionById(id: String) async throws -> Transaction {
+        struct TransactionWrapper: Codable {
+            // The endpoint returns a flat transaction object, not wrapped
+        }
+        let transaction: Transaction = try await apiClient.get("/transactions/\(id)")
+        return transaction
+    }
+    
+    // MARK: - Generate OTPs
+    
+    struct OTPResponse: Codable {
+        let otp: String
+    }
+    
+    /// Generate a handover OTP (owner only). Returns the 6-digit OTP to display on screen.
+    func generateHandoverOTP(id: String) async throws -> String {
+        struct Empty: Codable {}
+        let response: OTPResponse = try await apiClient.post(
+            "/transactions/\(id)/generate-handover-otp",
+            body: Empty()
+        )
+        return response.otp
+    }
+    
+    /// Generate a return OTP (owner only). Returns the 6-digit OTP to display to the borrower.
+    func generateReturnOTP(id: String) async throws -> String {
+        struct Empty: Codable {}
+        let response: OTPResponse = try await apiClient.post(
+            "/transactions/\(id)/generate-return-otp",
+            body: Empty()
+        )
+        return response.otp
+    }
+    
     // MARK: - Approve/Reject Requests
     
     /// Approve a borrow request (owner only)

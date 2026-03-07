@@ -2,9 +2,12 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import {
     getMyTransactions,
+    getTransactionById,
     createBorrowRequest,
     approveRequest,
     rejectRequest,
+    generateHandoverOTP,
+    generateReturnOTP,
     confirmHandover,
     confirmReturn,
     markPayment,
@@ -43,6 +46,23 @@ const router = Router();
  *           type: integer
  */
 router.get('/my', authenticate, getMyTransactions);
+
+/**
+ * @swagger
+ * /transactions/{id}:
+ *   get:
+ *     tags: [Transactions]
+ *     summary: Get a single transaction by ID
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+router.get('/:id', authenticate, getTransactionById);
 
 /**
  * @swagger
@@ -166,6 +186,35 @@ router.post('/:id/reject', authenticate, rejectRequest);
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
+/**
+ * @swagger
+ * /transactions/{id}/generate-handover-otp:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Generate a handover OTP (owner only)
+ *     description: Generates a 6-digit OTP stored in the transaction for 10 minutes. Owner shows this to the borrower in person to confirm handover.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OTP generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 otp:
+ *                   type: string
+ *                   example: "382910"
+ */
+router.post('/:id/generate-handover-otp', authenticate, generateHandoverOTP);
+
 router.post('/:id/confirm-handover', authenticate, confirmHandover);
 
 /**
@@ -201,6 +250,35 @@ router.post('/:id/confirm-handover', authenticate, confirmHandover);
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
+/**
+ * @swagger
+ * /transactions/{id}/generate-return-otp:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Generate a return OTP (owner only)
+ *     description: Generates a 6-digit OTP stored in the transaction for 10 minutes. Owner shows this to the borrower so the borrower can confirm the return.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OTP generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 otp:
+ *                   type: string
+ *                   example: "748291"
+ */
+router.post('/:id/generate-return-otp', authenticate, generateReturnOTP);
+
 router.post('/:id/confirm-return', authenticate, confirmReturn);
 
 /**

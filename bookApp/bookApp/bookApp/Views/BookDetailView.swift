@@ -28,9 +28,6 @@ struct BookDetailView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         BookInfoSection(book: viewModel.book, isDarkMode: themeManager.isDarkMode)
                         
-                        Divider()
-                            .background(AppTheme.separatorColor)
-                        
                         BookDescriptionView(book: viewModel.book)
                         
                         OwnerInfoView(book: viewModel.book)

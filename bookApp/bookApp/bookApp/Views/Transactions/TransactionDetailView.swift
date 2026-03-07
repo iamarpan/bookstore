@@ -290,7 +290,14 @@ class TransactionDetailViewModel: ObservableObject {
     }
     
     func loadDetails() {
-        // Fetch updated transaction details if needed
+        Task {
+            do {
+                let refreshed = try await transactionService.fetchTransactionById(id: transaction.id)
+                self.transaction = refreshed
+            } catch {
+                print("⚠️ TransactionDetailView: could not refresh transaction — \(error.localizedDescription)")
+            }
+        }
     }
     
     func isOwner(userId: String) -> Bool {

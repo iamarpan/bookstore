@@ -65,10 +65,29 @@ class BookDetailViewModel: ObservableObject {
     }
     
     private func checkExistingRequest() {
-        // Check if user has already requested this book
-        // In a real app, this would be an API call
-        // For now, simulate with mock data
-        hasRequestedBook = false
+        // Kick off a background task — init() cannot be async
+        Task {
+            await fetchExistingRequest()
+        }
+    }
+    
+    private func fetchExistingRequest() async {
+        do {
+            // Fetch all transactions where the current user is the borrower
+            let allTransactions = try await transactionService.fetchTransactions(role: "BORROWER")
+            
+            // Find an active-ish transaction for this specific book
+            if let match = allTransactions.first(where: {
+                $0.bookId == book.id &&
+                ($0.status == .pending || $0.status == .approved || $0.status == .active)
+            }) {
+                existingTransaction = match
+                hasRequestedBook = true
+            }
+        } catch {
+            // If the fetch fails (e.g. network issue), default to showing "Request This Book"
+            print("⚠️ BookDetailViewModel: could not check existing request — \(error.localizedDescription)")
+        }
     }
     
     var canRequestBook: Bool {
