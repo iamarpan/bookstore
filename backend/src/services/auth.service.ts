@@ -133,8 +133,8 @@ export async function refreshTokenService(refreshToken: string) {
 
     // Check if token is expired
     if (tokenRecord.expiresAt < new Date()) {
-        // Delete expired token
-        await prisma.refreshToken.delete({
+        // Delete expired token (use deleteMany to avoid error if already deleted by a concurrent request)
+        await prisma.refreshToken.deleteMany({
             where: { id: tokenRecord.id },
         });
         throw new Error('Refresh token expired');
@@ -147,8 +147,8 @@ export async function refreshTokenService(refreshToken: string) {
         phoneNumber: tokenRecord.user.phoneNumber,
     });
 
-    // Delete old refresh token and create new one
-    await prisma.refreshToken.delete({
+    // Delete old refresh token (use deleteMany to avoid error if already deleted)
+    await prisma.refreshToken.deleteMany({
         where: { id: tokenRecord.id },
     });
 

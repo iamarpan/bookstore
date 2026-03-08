@@ -6,6 +6,8 @@ import {
     updatePrivacySettings,
     updateDeviceToken,
     getUserBooks,
+    getPublicUserProfile,
+    getPublicUserBooks,
 } from '../services/user.service';
 
 /**
@@ -221,6 +223,50 @@ export async function getCurrentUserBooks(req: Request, res: Response) {
         res.json(books);
     } catch (error) {
         console.error('Get current user books error:', error);
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: 'Failed to fetch user books',
+        });
+    }
+}
+
+/**
+ * Get public profile of any user
+ * GET /api/v1/users/:id
+ */
+export async function getPublicUser(req: Request, res: Response) {
+    try {
+        const { id } = req.params;
+        const profile = await getPublicUserProfile(id);
+
+        if (!profile) {
+            return res.status(404).json({
+                error: 'Not Found',
+                message: 'User not found',
+            });
+        }
+
+        res.json(profile);
+    } catch (error) {
+        console.error('Get public user error:', error);
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: 'Failed to fetch user profile',
+        });
+    }
+}
+
+/**
+ * Get public books of any user
+ * GET /api/v1/users/:id/books
+ */
+export async function getPublicUserBooksController(req: Request, res: Response) {
+    try {
+        const { id } = req.params;
+        const books = await getPublicUserBooks(id);
+        res.json(books);
+    } catch (error) {
+        console.error('Get public user books error:', error);
         res.status(500).json({
             error: 'Internal Server Error',
             message: 'Failed to fetch user books',

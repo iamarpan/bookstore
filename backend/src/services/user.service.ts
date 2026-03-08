@@ -2,6 +2,21 @@ import prisma from '../config/database';
 import { User } from '@prisma/client';
 import { FormattedUser, formatUserResponse } from '../utils/user.utils';
 
+// Public-safe subset of a user profile (no phone, email, device tokens, etc.)
+export interface PublicUserProfile {
+    id: string;
+    name: string;
+    bio: string | null;
+    profileImageUrl: string | null;
+    createdAt: Date;
+    stats: {
+        booksShared: number;
+        successfulLends: number;
+        booksBorrowed: number;
+        averageRating: number;
+    };
+}
+
 /**
  * Get user by ID
  */
@@ -152,4 +167,69 @@ export async function getUserStats(userId: string) {
     });
 
     return user;
+}
+
+/**
+ * Get public profile for any user (safe fields only — no phone, email, device token)
+ */
+export async function getPublicUserProfile(userId: string): Promise<PublicUserProfile | null> {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            name: true,
+            bio: true,
+            profileImageUrl: true,
+            createdAt: true,
+            booksShared: true,
+            successfulLends: true,
+            booksBorrowed: true,
+            averageRating: true,
+            isActive: true,
+        },
+    });
+
+    if (!user || !user.isActive) return null;
+
+    return {
+        id: user.id,
+        name: user.name,
+        bio: user.bio,
+        profileImageUrl: user.profileImageUrl,
+        createdAt: user.createdAt,
+        stats: {
+            booksShared: user.booksShared,
+            successfulLends: user.successfulLends,
+            booksBorrowed: user.booksBorrowed,
+            averageRating: Number(user.averageRating),
+        },
+    };
+}
+
+/**
+ * Get books listed by any user (for public profile)
+ */
+export async function getPublicUserBooks(userId: string) {
+    return await prisma.book.findMany({
+        where: { ownerId: userId },
+        include: {
+            owner: {
+                select: {
+                    id: true,
+                    name: true,
+                    averageRating: true,
+                    booksShared: true,
+                    profileImageUrl: true,
+                },
+            },
+            bookGroups: {
+                include: {
+                    group: {
+                        select: { id: true, name: true },
+                    },
+                },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
 }

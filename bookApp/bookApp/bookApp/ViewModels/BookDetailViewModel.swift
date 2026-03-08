@@ -72,21 +72,38 @@ class BookDetailViewModel: ObservableObject {
     }
     
     private func fetchExistingRequest() async {
+        // 1. Try to load from cache first for instant UI response
+        if let cached = await AppDataStore.shared.cachedBorrowerTransactions() {
+            updateStateWithTransactions(cached)
+        }
+
+        // 2. Fetch fresh from API
         do {
-            // Fetch all transactions where the current user is the borrower
             let allTransactions = try await transactionService.fetchTransactions(role: "BORROWER")
             
-            // Find an active-ish transaction for this specific book
-            if let match = allTransactions.first(where: {
-                $0.bookId == book.id &&
-                ($0.status == .pending || $0.status == .approved || $0.status == .active)
-            }) {
-                existingTransaction = match
-                hasRequestedBook = true
-            }
+            // 3. Update cache
+            AppDataStore.shared.storeBorrowerTransactions(allTransactions)
+            
+            // 4. Update state with fresh data
+            updateStateWithTransactions(allTransactions)
         } catch {
-            // If the fetch fails (e.g. network issue), default to showing "Request This Book"
             print("⚠️ BookDetailViewModel: could not check existing request — \(error.localizedDescription)")
+        }
+    }
+
+    private func updateStateWithTransactions(_ transactions: [Transaction]) {
+        if let match = transactions.first(where: {
+            $0.bookId == book.id &&
+            ($0.status == .pending || $0.status == .approved || $0.status == .active)
+        }) {
+            existingTransaction = match
+            hasRequestedBook = true
+        } else {
+            // Only clear if we were previously showing a request (prevents flickering)
+            if hasRequestedBook {
+                existingTransaction = nil
+                hasRequestedBook = false
+            }
         }
     }
     

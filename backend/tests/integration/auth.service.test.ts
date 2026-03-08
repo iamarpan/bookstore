@@ -1,6 +1,15 @@
 // Mock the Prisma client used by auth.service.ts
 jest.mock('../../src/config/database', () => require('../__mocks__/prisma').default);
 
+// Mock the JWT utils
+jest.mock('../../src/utils/jwt', () => ({
+    generateTokenPair: () => ({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+    }),
+    verifyRefreshToken: () => ({ userId: 'user-1' }),
+}));
+
 // Mock the OTP service to avoid real Twilio calls
 jest.mock('../../src/services/otp.service', () => ({
     generateOTP: jest.fn().mockReturnValue('123456'),
@@ -111,7 +120,7 @@ describe('refreshTokenService', () => {
         (prismaMock.refreshToken.delete as jest.Mock).mockResolvedValue({});
 
         await expect(refreshTokenService('old-token')).rejects.toThrow('Refresh token expired');
-        expect(prismaMock.refreshToken.delete).toHaveBeenCalledWith({ where: { id: 'rt-1' } });
+        expect(prismaMock.refreshToken.deleteMany).toHaveBeenCalledWith({ where: { id: 'rt-1' } });
     });
 
     it('returns new access and refresh tokens on success', async () => {
@@ -124,7 +133,7 @@ describe('refreshTokenService', () => {
             expiresAt: futureDate,
             user: baseUser,
         });
-        (prismaMock.refreshToken.delete as jest.Mock).mockResolvedValue({});
+        (prismaMock.refreshToken.deleteMany as jest.Mock).mockResolvedValue({ count: 1 });
         (prismaMock.refreshToken.create as jest.Mock).mockResolvedValue({});
 
         const result = await refreshTokenService('valid-token');

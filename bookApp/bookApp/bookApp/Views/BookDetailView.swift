@@ -260,21 +260,12 @@ struct OwnerInfoView: View {
             
             Spacer()
             
-            Button(action: {
-                // View Profile action
-            }) {
+            NavigationLink(destination: PublicProfileView(userId: book.ownerId)) {
                 Text("View Profile")
-                    .font(AppTheme.bodyFont(size: 14, weight: .medium))
-                    .foregroundColor(AppTheme.primaryAccent)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(AppTheme.primaryAccent.opacity(0.1))
-                    .cornerRadius(AppTheme.buttonRadius)
             }
+            .buttonStyle(SecondaryButtonStyle())
+            .frame(width: 120) // Give it some defined width
         }
-        .padding()
-        .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
-        .cornerRadius(AppTheme.cardRadius)
     }
 }
 
@@ -346,7 +337,7 @@ struct RequestButtonView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding()
+            .padding(.vertical, 16)
             .background(buttonColor)
             .foregroundColor(.white)
             .cornerRadius(12)

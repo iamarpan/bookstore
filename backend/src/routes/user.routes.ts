@@ -7,6 +7,8 @@ import {
     updatePrivacy,
     registerDeviceToken,
     getCurrentUserBooks,
+    getPublicUser,
+    getPublicUserBooksController,
 } from '../controllers/user.controller';
 
 const router = Router();
@@ -224,5 +226,10 @@ router.post('/me/device-token', registerDeviceToken);
  *         description: Server error
  */
 router.get('/me/books', getCurrentUserBooks);
+
+// Public profile routes (still requires auth — viewer must be logged in)
+// Placed AFTER /me routes to avoid :id matching "me"
+router.get('/:id', getPublicUser);
+router.get('/:id/books', getPublicUserBooksController);
 
 export default router;
