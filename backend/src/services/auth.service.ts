@@ -114,14 +114,13 @@ export async function verifyOTPService(
  * Refresh access token using refresh token
  */
 export async function refreshTokenService(refreshToken: string) {
-    // Verify JWT signature first — reject tampered/wrong-secret tokens early
+    // Verify JWT signature first
     try {
         verifyRefreshToken(refreshToken);
     } catch {
         throw new Error('Invalid refresh token');
     }
 
-    // Find refresh token in database
     const tokenRecord = await prisma.refreshToken.findUnique({
         where: { token: refreshToken },
         include: { user: true },
@@ -131,42 +130,36 @@ export async function refreshTokenService(refreshToken: string) {
         throw new Error('Invalid refresh token');
     }
 
-    // Check if token is expired
     if (tokenRecord.expiresAt < new Date()) {
-        // Delete expired token (use deleteMany to avoid error if already deleted by a concurrent request)
-        await prisma.refreshToken.deleteMany({
-            where: { id: tokenRecord.id },
-        });
+        await prisma.refreshToken.deleteMany({ where: { id: tokenRecord.id } });
         throw new Error('Refresh token expired');
     }
 
-
-    // Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = generateTokenPair({
         userId: tokenRecord.user.id,
         phoneNumber: tokenRecord.user.phoneNumber,
     });
 
-    // Delete old refresh token (use deleteMany to avoid error if already deleted)
-    await prisma.refreshToken.deleteMany({
-        where: { id: tokenRecord.id },
-    });
-
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await prisma.refreshToken.create({
-        data: {
-            userId: tokenRecord.user.id,
-            token: newRefreshToken,
-            expiresAt,
-        },
-    });
+    // Atomically delete old token and create new one.
+    // If a concurrent request already rotated this token (P2002), we still
+    // return the new tokens — both map to the same user and the iOS client
+    // will store whichever it receives last.
+    try {
+        await prisma.$transaction(async (tx) => {
+            await tx.refreshToken.deleteMany({ where: { id: tokenRecord.id } });
+            await tx.refreshToken.create({
+                data: { userId: tokenRecord.user.id, token: newRefreshToken, expiresAt },
+            });
+        });
+    } catch (err: any) {
+        if (err?.code !== 'P2002') throw err;
+        console.warn('⚠️ Concurrent refresh token rotation — returning tokens anyway');
+    }
 
-    return {
-        accessToken,
-        refreshToken: newRefreshToken,
-    };
+    return { accessToken, refreshToken: newRefreshToken };
 }
 
 /**
