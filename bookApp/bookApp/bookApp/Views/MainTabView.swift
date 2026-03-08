@@ -1,12 +1,46 @@
 import SwiftUI
 
+// MARK: - AppTab Enum
+// Replaces fragile raw integers with a type-safe, self-documenting enum.
+
+enum AppTab: Int, CaseIterable, Identifiable {
+    case home, add, groups, library, profile
+
+    var id: Int { rawValue }
+
+    var icon: String {
+        switch self {
+        case .home:    return "house.fill"
+        case .add:     return "plus.square.fill"
+        case .groups:  return "person.3.fill"
+        case .library: return "books.vertical.fill"
+        case .profile: return "person.fill"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .home:    return "Home"
+        case .add:     return "Add"
+        case .groups:  return "Groups"
+        case .library: return "Library"
+        case .profile: return "Profile"
+        }
+    }
+}
+
+// MARK: - MainTabView
+
 struct MainTabView: View {
-    @StateObject private var homeViewModel = HomeViewModel()
-    @StateObject private var myLibraryViewModel = MyLibraryViewModel()
-    @StateObject private var tabManager = TabManager()
+    @StateObject private var homeViewModel    = HomeViewModel()
+    @StateObject private var libraryViewModel = MyLibraryViewModel()
+    @StateObject private var tabManager       = TabManager()
+
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var selectedTab = 0
+
+    @State private var selectedTab: AppTab = .home
+    @State private var visitedTabs: Set<AppTab> = [.home]   // lazy init tracker
     @State private var showEmergencyLogoutAlert = false
 
     var body: some View {
@@ -14,76 +48,83 @@ struct MainTabView: View {
             tabContent
                 .safeAreaInset(edge: .bottom) {
                     if tabManager.isVisible {
-                        // Reduced from 80 → 66 to minimize the gap above the dock
-                        Color.clear.frame(height: 66)
+                        Color.clear.frame(height: 70)
                     }
                 }
 
             if tabManager.isVisible {
                 FloatingDock(selectedTab: $selectedTab)
-                    // Reduced from 8 → 2 so the dock sits closer to the home indicator
-                    .padding(.bottom, 2)
+                    .padding(.bottom, 8)
             }
         }
         .environmentObject(tabManager)
-        .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
+        .background(
+            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
+                .ignoresSafeArea()
+        )
         .onAppear(perform: startDataListening)
         .onShake { showEmergencyLogoutAlert = true }
         .alert("Emergency Logout", isPresented: $showEmergencyLogoutAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Logout Now", role: .destructive) { authViewModel.signOut() }
         } message: {
-            Text("Detected shake gesture. Do you want to logout immediately for security?")
+            Text("Shake gesture detected. Do you want to log out immediately for security?")
         }
     }
 
     // MARK: - Tab Content
-    // Uses ZStack + opacity instead of a switch-case to preserve view state across tab switches.
-    // This keeps views alive in memory so scroll position, loaded data, and local @State survive.
+    //
+    // Uses a ZStack + opacity approach to preserve scroll position and @State across switches.
+    // Views are only created once they've been visited (lazy via `visitedTabs`), reducing
+    // the upfront memory cost of keeping all 5 views alive simultaneously.
+
     @ViewBuilder
     private var tabContent: some View {
         ZStack {
-            HomeView()
-                .environmentObject(homeViewModel)
-                .environmentObject(themeManager)
-                .environmentObject(authViewModel)
-                .opacity(selectedTab == 0 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 0)
-
-            AddBookView()
-                .environmentObject(themeManager)
-                .environmentObject(authViewModel)
-                .opacity(selectedTab == 1 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 1)
-
-            MyGroupsView()
-                .environmentObject(themeManager)
-                .environmentObject(authViewModel)
-                .opacity(selectedTab == 2 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 2)
-
-            MyLibraryView()
-                .environmentObject(myLibraryViewModel)
-                .environmentObject(themeManager)
-                .opacity(selectedTab == 3 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 3)
-
-            ProfileView()
-                .environmentObject(themeManager)
-                .environmentObject(authViewModel)
-                .opacity(selectedTab == 4 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 4)
+            ForEach(AppTab.allCases) { tab in
+                if visitedTabs.contains(tab) {
+                    view(for: tab)
+                        .opacity(selectedTab == tab ? 1 : 0)
+                        .allowsHitTesting(selectedTab == tab)
+                }
+            }
+        }
+        .onChange(of: selectedTab) { newTab in
+            visitedTabs.insert(newTab)
         }
     }
+
+    @ViewBuilder
+    private func view(for tab: AppTab) -> some View {
+        switch tab {
+        case .home:
+            HomeView()
+                .environmentObject(homeViewModel)
+        case .add:
+            AddBookView()
+        case .groups:
+            MyGroupsView()
+        case .library:
+            MyLibraryView()
+                .environmentObject(libraryViewModel)
+        case .profile:
+            ProfileView()
+        }
+    }
+
+    // MARK: - Data Loading
+    //
+    // Fetches initial data concurrently. Kept here since it coordinates
+    // two separate ViewModels; could be moved to a coordinator if this grows.
 
     private func startDataListening() {
         guard let user = authViewModel.currentUser else { return }
         let groupIds = (user.joinedGroupIds ?? []) + (user.createdGroupIds ?? [])
+
         Task {
-            // Fetch home books and library data concurrently instead of sequentially
-            async let booksTask: Void = homeViewModel.fetchBooks(for: groupIds)
-            async let libraryTask: Void = myLibraryViewModel.fetchAllData(userId: user.id)
-            _ = await (booksTask, libraryTask)
+            async let books: Void   = homeViewModel.fetchBooks(for: groupIds)
+            async let library: Void = libraryViewModel.fetchAllData(userId: user.id)
+            _ = await (books, library)
         }
     }
 }
@@ -91,88 +132,121 @@ struct MainTabView: View {
 // MARK: - Floating Dock
 
 struct FloatingDock: View {
-    @Binding var selectedTab: Int
+    @Binding var selectedTab: AppTab
     @EnvironmentObject var themeManager: ThemeManager
     @Namespace private var pill
 
-    private let tabs: [(icon: String, label: String)] = [
-        ("house.fill",          "Home"),
-        ("plus.square.fill",    "Add"),
-        ("person.3.fill",       "Groups"),
-        ("books.vertical.fill", "Library"),
-        ("person.fill",         "Profile")
-    ]
-
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(tabs.indices, id: \.self) { i in
-                let active = selectedTab == i
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) { selectedTab = i }
-                } label: {
-                    ZStack {
-                        if active {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(AppTheme.primaryAccent)
-                                .matchedGeometryEffect(id: "pill", in: pill)
-                                .shadow(color: AppTheme.primaryAccent.opacity(0.35), radius: 6, x: 0, y: 3)
-                        }
-                        VStack(spacing: 3) {
-                            Image(systemName: tabs[i].icon)
-                                .font(.system(size: 20, weight: active ? .semibold : .regular))
-                                .symbolRenderingMode(.hierarchical)
-                            Text(tabs[i].label)
-                                .font(.system(size: 10, weight: active ? .semibold : .regular))
-                        }
-                        .foregroundColor(active ? .white : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+            ForEach(AppTab.allCases) { tab in
+                DockButton(
+                    tab: tab,
+                    isActive: selectedTab == tab,
+                    namespace: pill
+                ) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) {
+                        selectedTab = tab
                     }
                 }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58)
             }
         }
-        .background(RoundedRectangle(cornerRadius: 26).fill(.ultraThinMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 26).stroke(Color.white.opacity(themeManager.isDarkMode ? 0.14 : 0.4), lineWidth: 1))
-        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 6)
         .padding(.horizontal, 20)
+        .background(dockBackground)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var dockBackground: some View {
+        RoundedRectangle(cornerRadius: 26)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 26)
+                    .stroke(
+                        Color.white.opacity(themeManager.isDarkMode ? 0.14 : 0.4),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 6)
     }
 }
 
-// Shake gesture detection
+// MARK: - Dock Button
+// Extracted from FloatingDock to keep each piece small and focused.
+
+private struct DockButton: View {
+    let tab: AppTab
+    let isActive: Bool
+    let namespace: Namespace.ID
+    let action: () -> Void
+
+    @EnvironmentObject var themeManager: ThemeManager
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isActive {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(AppTheme.primaryAccent)
+                        .matchedGeometryEffect(id: "pill", in: namespace)
+                        .shadow(
+                            color: AppTheme.primaryAccent.opacity(0.35),
+                            radius: 6, x: 0, y: 3
+                        )
+                }
+
+                VStack(spacing: 3) {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 20, weight: isActive ? .semibold : .regular))
+                        .symbolRenderingMode(.hierarchical)
+
+                    Text(tab.label)
+                        .font(.system(size: 10, weight: isActive ? .semibold : .regular))
+                }
+                .foregroundColor(
+                    isActive
+                        ? .white
+                        : AppTheme.colorTertiaryText(for: themeManager.isDarkMode)
+                )
+            }
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58)
+        .accessibilityLabel(tab.label)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
+    }
+}
+
+// MARK: - Shake Gesture
+
 extension UIDevice {
-    static let deviceDidShakeNotification = Notification.Name(rawValue: "deviceDidShakeNotification")
+    static let deviceDidShakeNotification = Notification.Name("deviceDidShakeNotification")
 }
 
 extension UIWindow {
     override open func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        if motion == .motionShake {
-            NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
-        }
+        guard motion == .motionShake else { return }
+        NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
     }
 }
 
-struct DeviceShakeViewModifier: ViewModifier {
+private struct DeviceShakeViewModifier: ViewModifier {
     let action: () -> Void
 
     func body(content: Content) -> some View {
-        content
-            .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) { _ in
-                action()
-            }
+        content.onReceive(
+            NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)
+        ) { _ in action() }
     }
 }
 
 extension View {
     func onShake(perform action: @escaping () -> Void) -> some View {
-        self.modifier(DeviceShakeViewModifier(action: action))
+        modifier(DeviceShakeViewModifier(action: action))
     }
 }
 
-struct MainTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainTabView()
-            .environmentObject(ThemeManager())
-            .environmentObject(AuthViewModel())
-    }
+// MARK: - Preview
+
+#Preview {
+    MainTabView()
+        .environmentObject(ThemeManager()) // use a mock to get a meaningful preview
 }
