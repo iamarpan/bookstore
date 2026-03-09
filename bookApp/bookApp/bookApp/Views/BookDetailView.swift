@@ -48,8 +48,21 @@ struct BookDetailView: View {
             
             // Floating Action Bar
             if viewModel.canRequestBook || viewModel.hasRequestedBook {
-                VStack {
-                    Spacer()
+                // No Spacer() here — ZStack(alignment: .bottom) already pins this to the bottom.
+                // A Spacer() would grow this VStack to full screen height, blocking the ScrollView.
+                VStack(spacing: 0) {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0),
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0.9),
+                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 40)
+                    .allowsHitTesting(false) // purely decorative — never block touches
+                    
                     RequestButtonView(
                         title: viewModel.requestButtonTitle,
                         canRequest: viewModel.canRequestBook,
@@ -66,19 +79,8 @@ struct BookDetailView: View {
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 20)
+                    .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
                 }
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0),
-                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).opacity(0.9),
-                            AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode)
-                        ]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 120)
-                )
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -262,9 +264,14 @@ struct OwnerInfoView: View {
             
             NavigationLink(destination: PublicProfileView(userId: book.ownerId)) {
                 Text("View Profile")
+                    .foregroundColor(AppTheme.primaryAccent)
+                    .font(AppTheme.bodyFont(size: 15, weight: .medium))
+                    .frame(width: 120)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.primaryAccent.opacity(0.1))
+                    .cornerRadius(12)
             }
-            .buttonStyle(SecondaryButtonStyle())
-            .frame(width: 120) // Give it some defined width
+            .buttonStyle(.plain)
         }
     }
 }
@@ -342,6 +349,7 @@ struct RequestButtonView: View {
             .foregroundColor(.white)
             .cornerRadius(12)
         }
+        .buttonStyle(.plain) // suppress SwiftUI's default button chrome (the second rectangle)
         .disabled(!canRequest && !hasRequested || isLoading)
     }
     

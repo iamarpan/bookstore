@@ -176,6 +176,7 @@ struct Book: Identifiable, Codable {
         try container.encode("\(Int(lendingPricePerWeek))", forKey: .lendingPricePerWeek)
         try container.encode(isAvailable, forKey: .isAvailable)
         try container.encode(ownerId, forKey: .ownerId)
+        try container.encode(ownerName, forKey: .ownerName)
         try container.encode(visibleInGroups, forKey: .visibleInGroups)
         try container.encode(currentTransactionId, forKey: .currentTransactionId)
         try container.encode(createdAt, forKey: .createdAt)
