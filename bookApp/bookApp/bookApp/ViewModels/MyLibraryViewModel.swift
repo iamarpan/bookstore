@@ -57,11 +57,50 @@ class MyLibraryViewModel: ObservableObject {
     }
 
     func updateRequestStatus(_ transaction: Transaction, newStatus: TransactionStatus) {
-        print("Would update transaction \(transaction.id) to status: \(newStatus)")
+        Task {
+            isLoading = true
+            errorMessage = nil
+            do {
+                if newStatus == .approved {
+                    _ = try await transactionService.approveRequest(id: transaction.id)
+                } else if newStatus == .rejected {
+                    // Reason parameter can be passed if needed, here we just reject without reason.
+                    _ = try await transactionService.rejectRequest(id: transaction.id)
+                } else {
+                    print("Unsupported status update from MyLibrary: \(newStatus)")
+                    isLoading = false
+                    return
+                }
+                
+                // Refresh data to reflect the new state securely
+                await fetchLentBooks()
+                await fetchBorrowedBooks()
+                await fetchHistory()
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+            isLoading = false
+        }
     }
 
     func toggleBookAvailability(_ book: Book) {
-        print("Would toggle availability for book: \(book.title)")
+        Task {
+            isLoading = true
+            errorMessage = nil
+            do {
+                var updatedBook = book
+                updatedBook.isAvailable.toggle()
+                _ = try await bookService.updateBook(updatedBook)
+                
+                // Refresh specific cache or all data
+                await fetchMyBooks()
+            } catch {
+                errorMessage = "Failed to update book availability: \(error.localizedDescription)"
+                showError = true
+            }
+            isLoading = false
+        }
     }
 
     // MARK: - Fetch Methods

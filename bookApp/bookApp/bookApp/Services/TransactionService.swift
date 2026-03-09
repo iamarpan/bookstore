@@ -106,6 +106,10 @@ class TransactionService: ObservableObject {
             // Add to local list
             transactions.insert(transaction, at: 0)
             
+            // Invalidate global caches
+            AppDataStore.shared.invalidateBorrowerTransactions()
+            AppDataStore.shared.invalidateOwnerTransactions()
+            
             print("✅ Borrow request created: \(transaction.id)")
             return transaction
         } catch {
@@ -178,7 +182,7 @@ class TransactionService: ObservableObject {
     }
     
     /// Reject a borrow request (owner only)
-    func rejectRequest(id: String, reason: String? = nil) async throws {
+    func rejectRequest(id: String, reason: String? = nil) async throws -> Transaction {
         isLoading = true
         error = nil
         
@@ -199,6 +203,7 @@ class TransactionService: ObservableObject {
             updateLocalTransaction(transaction)
             
             print("✅ Request rejected: \(id)")
+            return transaction
         } catch {
             self.error = error.localizedDescription
             throw error
@@ -348,11 +353,16 @@ class TransactionService: ObservableObject {
     
     // MARK: - Helper Methods
     
-    /// Update transaction in local list
+    /// Update transaction in local list and global caches
     private func updateLocalTransaction(_ transaction: Transaction) {
         if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
             transactions[index] = transaction
         }
+        
+        // Invalidate global caches so UI fetches fresh data
+        AppDataStore.shared.invalidateOwnerTransactions()
+        AppDataStore.shared.invalidateBorrowerTransactions()
+        AppDataStore.shared.invalidateHistoryTransactions()
     }
     
     /// Get transactions by role and status

@@ -54,6 +54,17 @@ struct TransactionDetailView: View {
                 }
             }
         }
+        .alert("Reject Request", isPresented: $viewModel.showRejectPrompt) {
+            TextField("Reason (Optional)", text: $viewModel.rejectReason)
+            Button("Cancel", role: .cancel) {
+                viewModel.rejectReason = ""
+            }
+            Button("Reject", role: .destructive) {
+                Task { await viewModel.rejectRequest() }
+            }
+        } message: {
+            Text("Are you sure you want to reject this request? You can provide an optional reason.")
+        }
     }
     
     // MARK: - Sections
@@ -212,7 +223,7 @@ struct TransactionDetailView: View {
                 }
                 
                 actionButton(title: "Reject Request", icon: "xmark.circle.fill", color: .red) {
-                    Task { await viewModel.rejectRequest() }
+                    viewModel.showRejectPrompt = true
                 }
             }
             
@@ -277,6 +288,8 @@ class TransactionDetailViewModel: ObservableObject {
     @Published var transaction: Transaction
     @Published var activeSheet: SheetType?
     @Published var isLoading = false
+    @Published var showRejectPrompt = false
+    @Published var rejectReason = ""
     
     enum SheetType: Identifiable {
         case handover, returnBook
@@ -327,6 +340,8 @@ class TransactionDetailViewModel: ObservableObject {
         do {
             let updated = try await transactionService.approveRequest(id: transaction.id)
             transaction = updated
+            AppDataStore.shared.invalidateOwnerTransactions()
+            AppDataStore.shared.invalidateBorrowerTransactions()
         } catch {
             print("❌ Failed to approve request: \(error.localizedDescription)")
         }
@@ -336,10 +351,13 @@ class TransactionDetailViewModel: ObservableObject {
     func rejectRequest() async {
         isLoading = true
         do {
-            try await transactionService.rejectRequest(id: transaction.id)
-            var updated = transaction
-            updated.status = .rejected
+            let reason = rejectReason.trimmingCharacters(in: .whitespacesAndNewlines)
+            let finalReason = reason.isEmpty ? nil : reason
+            let updated = try await transactionService.rejectRequest(id: transaction.id, reason: finalReason)
             transaction = updated
+            AppDataStore.shared.invalidateOwnerTransactions()
+            AppDataStore.shared.invalidateBorrowerTransactions()
+            rejectReason = ""
         } catch {
             print("❌ Failed to reject request: \(error.localizedDescription)")
         }
