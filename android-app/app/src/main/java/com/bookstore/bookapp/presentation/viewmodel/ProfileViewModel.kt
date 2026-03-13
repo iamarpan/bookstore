@@ -3,7 +3,10 @@ package com.bookstore.bookapp.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bookstore.bookapp.domain.model.User
+import com.bookstore.bookapp.domain.model.TransactionStatus
 import com.bookstore.bookapp.domain.repository.AuthRepository
+import com.bookstore.bookapp.domain.repository.BookRepository
+import com.bookstore.bookapp.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,12 +21,20 @@ data class ProfileState(
     val error: String? = null,
     val isEditing: Boolean = false,
     val editName: String = "",
-    val editBio: String = ""
+    val editBio: String = "",
+    val booksAddedCount: Int = 0,
+    val booksBorrowedCount: Int = 0,
+    val booksLentCount: Int = 0,
+    val reputationScore: Double = 0.0,
+    val isNotificationsEnabled: Boolean = true,
+    val isDarkMode: Boolean = false
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val bookRepository: BookRepository,
+    private val transactionRepository: TransactionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileState())
@@ -41,7 +52,38 @@ class ProfileViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 authRepository.fetchCurrentUser()
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                val user = currentUser.value
+                
+                var booksAdded = 0
+                var booksBorrowed = 0
+                var booksLent = 0
+                var reputation = 0.0
+                
+                if (user != null) {
+                    try {
+                        val books = bookRepository.fetchBooks()
+                        booksAdded = books.filter { it.ownerId == user.id }.size
+                        
+                        val borrowedTransactions = transactionRepository.fetchTransactions(role = "BORROWER")
+                        booksBorrowed = borrowedTransactions.count { it.status == TransactionStatus.RETURNED || it.status == TransactionStatus.ACTIVE }
+                        
+                        val lentTransactions = transactionRepository.fetchTransactions(role = "OWNER")
+                        booksLent = lentTransactions.count { it.status == TransactionStatus.RETURNED || it.status == TransactionStatus.ACTIVE }
+                        
+                        reputation = user.stats.averageRating
+                    } catch (e: Exception) {
+                        // Keep values at 0 if stats fail to fetch, but don't fail the whole profile fetch
+                        e.printStackTrace()
+                    }
+                }
+                
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    booksAddedCount = booksAdded,
+                    booksBorrowedCount = booksBorrowed,
+                    booksLentCount = booksLent,
+                    reputationScore = reputation
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
@@ -91,5 +133,15 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.logout()
         }
+    }
+    
+    fun toggleNotifications(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isNotificationsEnabled = enabled)
+        // In a real app, update settings repository/preferences
+    }
+    
+    fun toggleDarkMode(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isDarkMode = enabled)
+        // In a real app, update theme repository/preferences
     }
 }

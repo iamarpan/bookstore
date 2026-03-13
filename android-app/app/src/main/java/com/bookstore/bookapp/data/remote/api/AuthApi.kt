@@ -14,12 +14,18 @@ data class AuthResponse(val accessToken: String, val refreshToken: String, val u
 
 data class UpdateProfileRequest(val name: String?, val bio: String?, val profileImageUrl: String?)
 
+data class RefreshRequest(val refreshToken: String)
+data class RefreshResponse(val accessToken: String, val refreshToken: String)
+
 interface AuthApi {
     @POST("auth/send-otp")
     suspend fun sendOTP(@Body request: OTPRequest): AuthOTPResponse
 
     @POST("auth/verify-otp")
     suspend fun verifyOTP(@Body request: VerifyOTPRequest): AuthResponse
+
+    @POST("auth/refresh")
+    suspend fun refreshToken(@Body request: RefreshRequest): RefreshResponse
 
     @GET("users/me")
     suspend fun fetchCurrentUser(): User

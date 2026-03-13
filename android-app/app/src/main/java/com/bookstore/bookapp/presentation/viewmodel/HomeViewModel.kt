@@ -45,17 +45,18 @@ class HomeViewModel @Inject constructor(
 
             try {
                 // Fetch groups and recent feed books concurrently
-                val groupsDeferred = async { 
-                    groupRepository.fetchMyGroups() // updates local DB
-                    groupRepository.getMyGroups() // we get flow but can just collect one if needed
-                }
-                
-                val feedBooksDeferred = async {
-                    bookRepository.fetchBooks(limit = 10, sortBy = "RECENT")
-                }
+                val (groupsDummy, feedBooks) = kotlinx.coroutines.coroutineScope {
+                    val groupsDeferred = async { 
+                        groupRepository.fetchMyGroups() // updates local DB
+                        groupRepository.getMyGroups() // we get flow but can just collect one if needed
+                    }
+                    
+                    val feedBooksDeferred = async {
+                        bookRepository.fetchBooks(limit = 10, sortBy = "RECENT")
+                    }
 
-                val groupsDummy = groupsDeferred.await() // actually fetchMyGroups returns unit, but bookRepository.fetchBooks returns list
-                val feedBooks = feedBooksDeferred.await()
+                    Pair(groupsDeferred.await(), feedBooksDeferred.await())
+                }
                 
                 // For active groups, we might need a separate call or just read from dao flow.
                 // We'll just set the books for now and rely on Flows in Compose for groups.

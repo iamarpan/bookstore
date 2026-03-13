@@ -37,6 +37,10 @@ class UserPreferences(private val context: Context) {
         preferences[ACCESS_TOKEN_KEY]
     }
 
+    val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[REFRESH_TOKEN_KEY]
+    }
+
     suspend fun saveUser(user: User) {
         context.dataStore.edit { preferences ->
             preferences[CURRENT_USER_KEY] = gson.toJson(user)

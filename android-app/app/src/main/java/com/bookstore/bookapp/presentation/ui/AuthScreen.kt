@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -24,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -66,14 +71,33 @@ fun AuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    Icon(
+                        imageVector = Icons.Filled.MenuBook,
+                        contentDescription = "App Logo",
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    
                     Text(
-                        text = "BookShare",
+                        text = "Book Club",
                         style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Create or join clubs to share books",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(48.dp))
                     
                     Text(
                         text = if (!uiState.isOtpSent) "Enter your phone number to continue" else "Enter the OTP sent to ${uiState.phoneNumber}",
@@ -82,7 +106,7 @@ fun AuthScreen(
                         textAlign = TextAlign.Center
                     )
                     
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     if (!uiState.isOtpSent) {
                         OutlinedTextField(

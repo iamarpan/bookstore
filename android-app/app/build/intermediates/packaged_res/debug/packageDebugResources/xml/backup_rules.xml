@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample custom backup rules. The backup rule file allows you to include/exclude
-   specific files/directories from standard backups. See Android Developer documentation for
-   more details: https://developer.android.com/guide/topics/data/autobackup.
-   -->
-<full-backup-content>
-    <!-- <exclude domain="file" path="my_path" /> -->
-</full-backup-content>
