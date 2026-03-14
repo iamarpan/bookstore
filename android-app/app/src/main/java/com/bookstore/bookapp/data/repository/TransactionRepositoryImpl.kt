@@ -49,12 +49,18 @@ class TransactionRepositoryImpl(
         // Update local cache
         when (role) {
             "BORROWER" -> {
-                if (page == 1) transactionDao.clearBorrowerTransactions()
-                transactionDao.insertTransactions(transactions.map { it.toEntity(isBorrowerTxn = true) })
+                if (page == 1) {
+                    transactionDao.replaceBorrowerTransactions(transactions.map { it.toEntity(isBorrowerTxn = true) })
+                } else {
+                    transactionDao.insertTransactions(transactions.map { it.toEntity(isBorrowerTxn = true) })
+                }
             }
             "OWNER" -> {
-                if (page == 1) transactionDao.clearOwnerTransactions()
-                transactionDao.insertTransactions(transactions.map { it.toEntity(isOwnerTxn = true) })
+                if (page == 1) {
+                    transactionDao.replaceOwnerTransactions(transactions.map { it.toEntity(isOwnerTxn = true) })
+                } else {
+                    transactionDao.insertTransactions(transactions.map { it.toEntity(isOwnerTxn = true) })
+                }
             }
             else -> {
                 // Not caching unstructured lists for now

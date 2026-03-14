@@ -102,8 +102,8 @@ fun HomeScreen(
 
                     // Group books for different sections to demonstrate the redesign
                     // In a real scenario, the ViewModel would provide these specific lists
-                    val continueReading = uiState.featuredBooks.take(2)
-                    val availableNearYou = uiState.featuredBooks.filter { it.isAvailable }
+                    val continueReading = remember(uiState.featuredBooks) { uiState.featuredBooks.take(2) }
+                    val availableNearYou = remember(uiState.featuredBooks) { uiState.featuredBooks.filter { it.isAvailable } }
                     val recentlyAdded = uiState.featuredBooks
 
                     // 2. Continue Reading Section

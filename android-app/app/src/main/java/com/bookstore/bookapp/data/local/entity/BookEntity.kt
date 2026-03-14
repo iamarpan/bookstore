@@ -6,7 +6,13 @@ import com.bookstore.bookapp.domain.model.Book
 import com.bookstore.bookapp.domain.model.BookCondition
 import java.util.Date
 
-@Entity(tableName = "books")
+@Entity(
+    tableName = "books",
+    indices = [
+        androidx.room.Index(value = ["isAvailable"]),
+        androidx.room.Index(value = ["isMyBook"])
+    ]
+)
 data class BookEntity(
     @PrimaryKey val id: String,
     val title: String,

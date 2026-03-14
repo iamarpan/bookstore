@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -35,10 +36,18 @@ fun CameraPreview(
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor: ExecutorService = remember { Executors.newSingleThreadExecutor() }
+    
+    val barcodeScanner = remember {
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .build()
+        BarcodeScanning.getClient(options)
+    }
 
     DisposableEffect(Unit) {
         onDispose {
             cameraExecutor.shutdown()
+            barcodeScanner.close()
         }
     }
 
@@ -65,7 +74,7 @@ fun CameraPreview(
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                     .also {
-                        it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcode ->
+                        it.setAnalyzer(cameraExecutor, BarcodeAnalyzer(barcodeScanner) { barcode ->
                             onBarcodeScanned(barcode)
                         })
                     }
@@ -91,13 +100,10 @@ fun CameraPreview(
     )
 }
 
-private class BarcodeAnalyzer(private val onBarcodeDetected: (String) -> Unit) : ImageAnalysis.Analyzer {
-
-    private val options = BarcodeScannerOptions.Builder()
-        .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-        .build()
-
-    private val scanner = BarcodeScanning.getClient(options)
+private class BarcodeAnalyzer(
+    private val scanner: BarcodeScanner,
+    private val onBarcodeDetected: (String) -> Unit
+) : ImageAnalysis.Analyzer {
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {

@@ -30,8 +30,7 @@ class GroupRepositoryImpl(
 
     override suspend fun fetchMyGroups() {
         val remoteGroups = groupApi.fetchMyGroups()
-        bookClubDao.clearMyGroups()
-        bookClubDao.insertGroups(remoteGroups.map { it.toEntity(isMyGroup = true) })
+        bookClubDao.replaceMyGroups(remoteGroups.map { it.toEntity(isMyGroup = true) })
     }
 
     override suspend fun discoverGroups(category: GroupCategory?, search: String?): List<BookClub> {

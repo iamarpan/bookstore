@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,7 +27,8 @@ data class MyLibraryState(
 @HiltViewModel
 class MyLibraryViewModel @Inject constructor(
     private val bookRepository: BookRepository,
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val authRepository: com.bookstore.bookapp.domain.repository.AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MyLibraryState(isLoading = true))
@@ -57,15 +59,20 @@ class MyLibraryViewModel @Inject constructor(
 
     private fun observeTransactions() {
         viewModelScope.launch {
-            transactionRepository.activeTransactions
-                .collect { txs ->
-                    val borrowed = txs.filter { it.isBorrower("CURRENT_USER_ID") } // Ideally check actual user id
-                    val lent = txs.filter { it.isOwner("CURRENT_USER_ID") }
-                    _uiState.value = _uiState.value.copy(
-                        borrowedBooks = borrowed,
-                        lentBooks = lent
-                    )
-                }
+            combine(
+                transactionRepository.activeTransactions,
+                authRepository.currentUser
+            ) { txs, user ->
+                val userId = user?.id ?: return@combine Pair(emptyList(), emptyList())
+                val borrowed = txs.filter { it.isBorrower(userId) }
+                val lent = txs.filter { it.isOwner(userId) }
+                Pair(borrowed, lent)
+            }.collect { (borrowed, lent) ->
+                _uiState.value = _uiState.value.copy(
+                    borrowedBooks = borrowed,
+                    lentBooks = lent
+                )
+            }
         }
     }
 

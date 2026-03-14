@@ -24,8 +24,7 @@ class BookRepositoryImpl(
 
     override suspend fun fetchMyBooks() {
         val remoteBooks = bookApi.fetchMyBooks()
-        bookDao.clearMyBooks()
-        bookDao.insertBooks(remoteBooks.map { it.toEntity(isMyBook = true) })
+        bookDao.replaceMyBooks(remoteBooks.map { it.toEntity(isMyBook = true) })
     }
 
     override suspend fun fetchBooks(

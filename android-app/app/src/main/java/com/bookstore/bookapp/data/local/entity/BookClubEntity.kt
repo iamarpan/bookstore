@@ -8,7 +8,12 @@ import com.bookstore.bookapp.domain.model.MemberRole
 import com.bookstore.bookapp.domain.model.PrivacySetting
 import java.util.Date
 
-@Entity(tableName = "book_clubs")
+@Entity(
+    tableName = "book_clubs",
+    indices = [
+        androidx.room.Index(value = ["isMyGroup"])
+    ]
+)
 data class BookClubEntity(
     @PrimaryKey val id: String,
     val name: String,

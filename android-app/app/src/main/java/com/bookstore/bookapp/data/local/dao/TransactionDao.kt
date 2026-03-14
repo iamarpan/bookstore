@@ -22,6 +22,24 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransactions(transactions: List<TransactionEntity>)
 
+    @androidx.room.Transaction
+    suspend fun replaceBorrowerTransactions(transactions: List<TransactionEntity>) {
+        clearBorrowerTransactions()
+        insertTransactions(transactions)
+    }
+
+    @androidx.room.Transaction
+    suspend fun replaceOwnerTransactions(transactions: List<TransactionEntity>) {
+        clearOwnerTransactions()
+        insertTransactions(transactions)
+    }
+
+    @androidx.room.Transaction
+    suspend fun replaceHistoryTransactions(transactions: List<TransactionEntity>) {
+        clearHistoryTransactions()
+        insertTransactions(transactions)
+    }
+
     @Query("DELETE FROM transactions WHERE isBorrowerTxn = 1")
     suspend fun clearBorrowerTransactions()
 

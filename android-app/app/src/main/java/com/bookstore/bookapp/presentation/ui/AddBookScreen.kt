@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,6 +56,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.bookstore.bookapp.domain.model.BookClub
 import com.bookstore.bookapp.domain.model.BookCondition
 import com.bookstore.bookapp.presentation.viewmodel.AddBookViewModel
 
@@ -63,6 +67,9 @@ fun AddBookScreen(
     viewModel: AddBookViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    var genreExpanded by remember { mutableStateOf(false) }
+    var conditionExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
@@ -182,7 +189,6 @@ fun AddBookScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val genres = listOf("Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery", "Other")
-                    var genreExpanded by remember { mutableStateOf(false) }
 
                     ExposedDropdownMenuBox(
                         expanded = genreExpanded,
@@ -240,7 +246,6 @@ fun AddBookScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val conditions = BookCondition.entries.toTypedArray()
-                    var conditionExpanded by remember { mutableStateOf(false) }
 
                     ExposedDropdownMenuBox(
                         expanded = conditionExpanded,
@@ -301,19 +306,26 @@ fun AddBookScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        uiState.userGroups.forEach { group ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { viewModel.toggleGroupSelection(group.id) }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(group.name, modifier = Modifier.weight(1f))
-                                Checkbox(
-                                    checked = uiState.selectedGroupIds.contains(group.id),
-                                    onCheckedChange = { viewModel.toggleGroupSelection(group.id) }
-                                )
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            items(
+                                items = uiState.userGroups,
+                                key = { it.id }
+                            ) { group ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { viewModel.toggleGroupSelection(group.id) }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(group.name, modifier = Modifier.weight(1f))
+                                    Checkbox(
+                                        checked = uiState.selectedGroupIds.contains(group.id),
+                                        onCheckedChange = { viewModel.toggleGroupSelection(group.id) }
+                                    )
+                                }
                             }
                         }
                     }

@@ -9,7 +9,14 @@ import com.bookstore.bookapp.domain.model.Transaction
 import com.bookstore.bookapp.domain.model.TransactionStatus
 import java.util.Date
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [
+        androidx.room.Index(value = ["borrowerId"]),
+        androidx.room.Index(value = ["ownerId"]),
+        androidx.room.Index(value = ["status"])
+    ]
+)
 data class TransactionEntity(
     @PrimaryKey val id: String,
     val bookId: String,

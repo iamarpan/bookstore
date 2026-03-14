@@ -14,37 +14,46 @@ import javax.inject.Provider
 
 class TokenAuthenticator @Inject constructor(
     private val userPreferences: UserPreferences,
-    private val authApiProvider: Provider<AuthApi>
+    private val authApiProvider: Provider<AuthApi>,
+    private val tokenHolder: TokenHolder
 ) : Authenticator {
 
     override fun authenticate(route: Route?, response: Response): Request? {
         // Prevent infinite loops if the refresh call itself gets a 401
         if (response.request.url.encodedPath.endsWith("auth/refresh")) {
+            tokenHolder.clearTokens()
             runBlocking { userPreferences.clearTokens() }
             return null
         }
 
         synchronized(this) {
-            return runBlocking {
-                val refreshToken = userPreferences.refreshTokenFlow.firstOrNull()
-                
-                if (refreshToken == null) {
-                    return@runBlocking null
+            // Read from in-memory cache first (non-blocking)
+            val currentRefreshToken = tokenHolder.refreshToken
+            
+            if (currentRefreshToken == null) {
+                return null
+            }
+
+            return try {
+                val authApi = authApiProvider.get()
+                // This network call is expected to block, that's OK
+                val refreshResponse = runBlocking {
+                    authApi.refreshToken(RefreshRequest(currentRefreshToken))
                 }
-                
-                try {
-                    val authApi = authApiProvider.get()
-                    val refreshResponse = authApi.refreshToken(RefreshRequest(refreshToken))
-                    
+
+                // Update both in-memory cache and persistent storage
+                tokenHolder.updateTokens(refreshResponse.accessToken, refreshResponse.refreshToken)
+                runBlocking {
                     userPreferences.saveTokens(refreshResponse.accessToken, refreshResponse.refreshToken)
-                    
-                    response.request.newBuilder()
-                        .header("Authorization", "Bearer ${refreshResponse.accessToken}")
-                        .build()
-                } catch (e: Exception) {
-                    userPreferences.clearTokens()
-                    null
                 }
+
+                response.request.newBuilder()
+                    .header("Authorization", "Bearer ${refreshResponse.accessToken}")
+                    .build()
+            } catch (e: Exception) {
+                tokenHolder.clearTokens()
+                runBlocking { userPreferences.clearTokens() }
+                null
             }
         }
     }

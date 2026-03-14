@@ -106,7 +106,6 @@ fun DiscoverGroupsScreen(
                     query = uiState.searchQuery,
                     onQueryChange = { 
                         viewModel.onSearchQueryChanged(it)
-                        viewModel.searchGroups()
                     },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )

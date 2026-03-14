@@ -6,9 +6,14 @@ import com.bookstore.bookapp.domain.model.BookClub
 import com.bookstore.bookapp.domain.model.GroupCategory
 import com.bookstore.bookapp.domain.repository.GroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +27,7 @@ data class DiscoverGroupsState(
     val selectedCategory: GroupCategory? = null
 )
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class DiscoverGroupsViewModel @Inject constructor(
     private val groupRepository: GroupRepository
@@ -30,9 +36,23 @@ class DiscoverGroupsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DiscoverGroupsState(isLoading = true))
     val uiState: StateFlow<DiscoverGroupsState> = _uiState.asStateFlow()
 
+    private val searchQueryFlow = MutableStateFlow("")
+
     init {
         observeMyGroups()
+        setupSearchDebounce()
         searchGroups()
+    }
+
+    private fun setupSearchDebounce() {
+        searchQueryFlow
+            .debounce(300)
+            .distinctUntilChanged()
+            .onEach { query ->
+                _uiState.value = _uiState.value.copy(searchQuery = query)
+                searchGroups()
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun observeMyGroups() {
@@ -45,7 +65,7 @@ class DiscoverGroupsViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
-        // Optionally debounce and search here
+        searchQueryFlow.value = query
     }
 
     fun onCategorySelected(category: GroupCategory?) {

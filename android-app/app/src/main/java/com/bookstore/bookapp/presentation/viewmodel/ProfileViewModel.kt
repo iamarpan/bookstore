@@ -51,17 +51,18 @@ class ProfileViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 authRepository.fetchCurrentUser()
-                val user = currentUser.value
+                // Use the returned user rather than trusting the flow has updated synchronously 
+                val userToUse = currentUser.value
                 
                 var booksAdded = 0
                 var booksBorrowed = 0
                 var booksLent = 0
                 var reputation = 0.0
                 
-                if (user != null) {
+                if (userToUse != null) {
                     try {
                         val books = bookRepository.fetchBooks()
-                        booksAdded = books.filter { it.ownerId == user.id }.size
+                        booksAdded = books.filter { it.ownerId == userToUse.id }.size
                         
                         val borrowedTransactions = transactionRepository.fetchTransactions(role = "BORROWER")
                         booksBorrowed = borrowedTransactions.count { it.status == TransactionStatus.RETURNED || it.status == TransactionStatus.ACTIVE }
@@ -69,7 +70,7 @@ class ProfileViewModel @Inject constructor(
                         val lentTransactions = transactionRepository.fetchTransactions(role = "OWNER")
                         booksLent = lentTransactions.count { it.status == TransactionStatus.RETURNED || it.status == TransactionStatus.ACTIVE }
                         
-                        reputation = user.stats.averageRating
+                        reputation = userToUse.stats?.averageRating ?: 0.0
                     } catch (e: Exception) {
                         // Keep values at 0 if stats fail to fetch, but don't fail the whole profile fetch
                         e.printStackTrace()

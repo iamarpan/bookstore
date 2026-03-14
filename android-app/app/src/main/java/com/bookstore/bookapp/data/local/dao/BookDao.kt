@@ -25,6 +25,12 @@ interface BookDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBook(book: BookEntity)
 
+    @androidx.room.Transaction
+    suspend fun replaceMyBooks(books: List<BookEntity>) {
+        clearMyBooks()
+        insertBooks(books)
+    }
+
     @Query("DELETE FROM books WHERE isMyBook = 1")
     suspend fun clearMyBooks()
 

@@ -19,9 +19,9 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
-
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -31,14 +31,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAuthInterceptor(userPreferences: UserPreferences): Interceptor {
+    fun provideTokenHolder(userPreferences: UserPreferences): TokenHolder {
+        return TokenHolder(userPreferences)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthInterceptor(tokenHolder: TokenHolder): Interceptor {
         return Interceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
-            // Provide auth token asynchronously? 
-            // Interceptors run synchronously, so we must use runBlocking or get a snapshot.
-            val token = runBlocking {
-                userPreferences.accessTokenFlow.firstOrNull()
-            }
+            
+            // Read from in-memory cache
+            val token = tokenHolder.accessToken
+            
             if (!token.isNullOrEmpty()) {
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }
@@ -53,9 +58,21 @@ object NetworkModule {
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (com.bookstore.bookapp.BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+            redactHeader("Authorization")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
         }
+        
         return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(60, TimeUnit.SECONDS)
             .authenticator(tokenAuthenticator)
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)

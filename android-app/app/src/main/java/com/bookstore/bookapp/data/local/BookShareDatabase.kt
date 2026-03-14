@@ -16,7 +16,7 @@ import com.bookstore.bookapp.data.local.entity.TransactionEntity
         BookClubEntity::class,
         TransactionEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

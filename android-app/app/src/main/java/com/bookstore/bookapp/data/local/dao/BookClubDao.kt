@@ -25,6 +25,18 @@ interface BookClubDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: BookClubEntity)
 
+    @androidx.room.Transaction
+    suspend fun replaceMyGroups(groups: List<BookClubEntity>) {
+        clearMyGroups()
+        insertGroups(groups)
+    }
+
+    @androidx.room.Transaction
+    suspend fun replaceDiscoveredGroups(groups: List<BookClubEntity>) {
+        clearDiscoveredGroups()
+        insertGroups(groups)
+    }
+
     @Query("DELETE FROM book_clubs WHERE isMyGroup = 1")
     suspend fun clearMyGroups()
 
