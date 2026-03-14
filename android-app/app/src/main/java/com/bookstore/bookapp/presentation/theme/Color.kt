@@ -1,6 +1,9 @@
 package com.bookstore.bookapp.presentation.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 
 // Light Theme Colors
 val primaryLight = Color(0xFFC2410C) // Burnt Orange/Terracotta
@@ -46,9 +49,64 @@ val outlineDark = Color(0xFF3A3A3C)
 
 // Custom App Colors matching iOS AppTheme
 object AppColors {
-    val successColor = Color(0xFF059669) // Emerald
-    val successBg = Color(0xFFECFDF5) // Light Emerald
-    val warningColor = Color(0xFFD97706) // Amber
+    // Redesign System Colors
+    val Primary: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) primaryDark else primaryLight
+        
+    val PrimaryVariant: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFFFF8A50) else Color(0xFFE85D04)
+        
+    val Accent: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFF34D399) else Color(0xFF059669)
+        
+    val SurfaceElevated: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) surfaceDark else Color(0xFFFFFBF5)
+    
+    // Semantic Colors
+    val Available: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFF0D946A) else Color(0xFF059669)
+        
+    val Borrowed: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFFB46506) else Color(0xFFD97706)
+        
+    val Unavailable: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFF6B7280) else Color(0xFF9CA3AF)
+        
+    val Overdue: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) errorDark else errorLight
+
+    // Existing AppColors
+    val successColor: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = Available
+        
+    val successBg: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (isSystemInDarkTheme()) Color(0xFF064E3B) else Color(0xFFECFDF5)
+        
+    val warningColor: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = Borrowed
+
     val tertiaryTextLight = Color(0xFF8A8A8A)
     val tertiaryTextDark = Color(0xFF636366)
 }

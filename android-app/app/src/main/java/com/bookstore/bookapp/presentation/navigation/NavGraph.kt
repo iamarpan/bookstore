@@ -12,6 +12,8 @@ import androidx.navigation.compose.composable
 import com.bookstore.bookapp.presentation.ui.AddBookScreen
 import com.bookstore.bookapp.presentation.ui.AuthScreen
 import com.bookstore.bookapp.presentation.ui.BookDetailScreen
+import com.bookstore.bookapp.presentation.ui.OnboardingScreen
+import com.bookstore.bookapp.presentation.ui.GroupDetailScreen
 import com.bookstore.bookapp.presentation.ui.MainScreen
 
 @Composable
@@ -23,6 +25,16 @@ fun AppNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onFinishOnboarding = {
+                    navController.navigate(Screen.Auth.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
         composable(Screen.Auth.route) {
             AuthScreen(
                 onNavigateToMain = {
@@ -61,7 +73,12 @@ fun AppNavGraph(
 
         composable(Screen.GroupDetail.route) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId")
-            PlaceholderScreen("Group Detail: $groupId")
+            if (groupId != null) {
+                GroupDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onBookClick = { bookId -> navController.navigate(Screen.BookDetail.createRoute(bookId)) }
+                )
+            }
         }
     }
 }

@@ -81,7 +81,7 @@ fun AuthScreen(
                     )
                     
                     Text(
-                        text = "Book Club",
+                        text = "BookShare",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,

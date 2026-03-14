@@ -8,6 +8,12 @@ import androidx.compose.ui.unit.sp
 
 // We stick to default font family as requested in AppTheme.swift: "Using system fonts for now"
 val Typography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 36.sp,
+        letterSpacing = (-0.5).sp
+    ),
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Serif, // Mapping 'design: .serif' from AppTheme.headerFont
         fontWeight = FontWeight.Bold,

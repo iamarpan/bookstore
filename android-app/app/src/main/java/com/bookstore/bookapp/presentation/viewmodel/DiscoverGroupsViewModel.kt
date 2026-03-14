@@ -53,9 +53,15 @@ class DiscoverGroupsViewModel @Inject constructor(
         searchGroups()
     }
 
-    fun searchGroups() {
+    fun searchGroups(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            if (isRefresh) {
+                _uiState.value = _uiState.value.copy(refreshing = true, error = null)
+                // In a real app we might also refetch myGroups
+                groupRepository.fetchMyGroups()
+            } else {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            }
             try {
                 val state = _uiState.value
                 val groups = groupRepository.discoverGroups(
@@ -64,11 +70,13 @@ class DiscoverGroupsViewModel @Inject constructor(
                 )
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    refreshing = false,
                     discoveredGroups = groups
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    refreshing = false,
                     error = e.localizedMessage
                 )
             }

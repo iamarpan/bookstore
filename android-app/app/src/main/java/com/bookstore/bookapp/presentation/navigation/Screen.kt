@@ -1,6 +1,7 @@
 package com.bookstore.bookapp.presentation.navigation
 
 sealed class Screen(val route: String) {
+    object Onboarding : Screen("onboarding")
     object Auth : Screen("auth")
     object Home : Screen("home")
     object Discover : Screen("discover")

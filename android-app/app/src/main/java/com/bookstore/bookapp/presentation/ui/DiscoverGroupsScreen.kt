@@ -14,14 +14,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -37,8 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bookstore.bookapp.domain.model.BookClub
+import com.bookstore.bookapp.presentation.ui.components.EmptyState
+import com.bookstore.bookapp.presentation.ui.components.SearchBar
 import com.bookstore.bookapp.presentation.viewmodel.DiscoverGroupsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +57,22 @@ fun DiscoverGroupsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Discover", "My Groups")
+    
+    val pullRefreshState = rememberPullToRefreshState()
+
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.searchGroups(isRefresh = true)
+        }
+    }
+
+    LaunchedEffect(uiState.refreshing) {
+        if (uiState.refreshing) {
+            pullRefreshState.startRefresh()
+        } else {
+            pullRefreshState.endRefresh()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -79,23 +102,22 @@ fun DiscoverGroupsScreen(
             }
 
             if (selectedTabIndex == 0) {
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = { 
+                SearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = { 
                         viewModel.onSearchQueryChanged(it)
                         viewModel.searchGroups()
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    placeholder = { Text("Search groups...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    singleLine = true
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (uiState.isLoading && selectedTabIndex == 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(pullRefreshState.nestedScrollConnection)
+            ) {
+                if (uiState.isLoading && selectedTabIndex == 0 && !uiState.refreshing) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 } else if (uiState.error != null) {
                     Text(
@@ -106,16 +128,24 @@ fun DiscoverGroupsScreen(
                 } else {
                     val groupsToShow = if (selectedTabIndex == 0) uiState.discoveredGroups else uiState.myGroups
                     if (groupsToShow.isEmpty()) {
-                        Text(
-                            text = if (selectedTabIndex == 0) "No groups found." else "You haven't joined any groups yet.",
-                            modifier = Modifier.align(Alignment.Center)
+                        EmptyState(
+                            illustration = {
+                                Icon(
+                                    imageVector = Icons.Default.Group,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(120.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                )
+                            },
+                            title = if (selectedTabIndex == 0) "No Groups Found" else "No Groups Yet",
+                            description = if (selectedTabIndex == 0) "Try adjusting your search query." else "You haven't joined any groups yet. Discover and join groups to start sharing books!"
                         )
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(groupsToShow) { group ->
+                            items(groupsToShow, key = { it.id }) { group ->
                                 GroupCard(
                                     group = group,
                                     onClick = { onGroupClick(group.id) }
@@ -125,6 +155,11 @@ fun DiscoverGroupsScreen(
                         }
                     }
                 }
+                
+                PullToRefreshContainer(
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
             }
         }
     }

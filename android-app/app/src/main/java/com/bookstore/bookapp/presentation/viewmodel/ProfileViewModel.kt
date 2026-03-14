@@ -26,8 +26,7 @@ data class ProfileState(
     val booksBorrowedCount: Int = 0,
     val booksLentCount: Int = 0,
     val reputationScore: Double = 0.0,
-    val isNotificationsEnabled: Boolean = true,
-    val isDarkMode: Boolean = false
+    val isNotificationsEnabled: Boolean = true
 )
 
 @HiltViewModel
@@ -138,10 +137,5 @@ class ProfileViewModel @Inject constructor(
     fun toggleNotifications(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isNotificationsEnabled = enabled)
         // In a real app, update settings repository/preferences
-    }
-    
-    fun toggleDarkMode(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(isDarkMode = enabled)
-        // In a real app, update theme repository/preferences
     }
 }

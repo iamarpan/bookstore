@@ -7,7 +7,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -42,7 +44,7 @@ fun MainScreen(
     )
     
     val titles = listOf("Home", "Groups", "Add", "Library", "Profile")
-    val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.Add, Icons.Default.List, Icons.Default.Person)
+    val icons = listOf(Icons.Default.Home, Icons.Default.Groups, Icons.Default.Add, Icons.Default.LocalLibrary, Icons.Default.Person)
 
     Scaffold(
         bottomBar = {
@@ -99,7 +101,7 @@ fun BottomNavGraph(
             AddBookScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.MyLibrary.route) {
-            MyLibraryScreen()
+            MyLibraryScreen(onBookClick = onNavigateToBookDetail)
         }
         composable(Screen.Profile.route) {
             ProfileScreen()
