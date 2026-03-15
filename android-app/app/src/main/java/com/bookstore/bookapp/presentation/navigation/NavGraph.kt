@@ -7,8 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.bookstore.bookapp.presentation.ui.AddBookScreen
 import com.bookstore.bookapp.presentation.ui.AuthScreen
 import com.bookstore.bookapp.presentation.ui.BookDetailScreen
@@ -62,23 +64,23 @@ fun AppNavGraph(
             )
         }
 
-        composable(Screen.BookDetail.route) { backStackEntry ->
-            val bookId = backStackEntry.arguments?.getString("bookId")
-            if (bookId != null) {
-                BookDetailScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
+        composable(
+            Screen.BookDetail.route,
+            arguments = listOf(navArgument("bookId") { type = NavType.StringType })
+        ) {
+            BookDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
-        composable(Screen.GroupDetail.route) { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId")
-            if (groupId != null) {
-                GroupDetailScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onBookClick = { bookId -> navController.navigate(Screen.BookDetail.createRoute(bookId)) }
-                )
-            }
+        composable(
+            Screen.GroupDetail.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) {
+            GroupDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onBookClick = { bookId -> navController.navigate(Screen.BookDetail.createRoute(bookId)) }
+            )
         }
     }
 }

@@ -45,12 +45,12 @@ fun OwnerInfoCard(
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = book.ownerName,
+                    text = (book.ownerName as String?)?.takeIf { it.isNotBlank() }.orEmpty().ifEmpty { "Unknown" },
                     style = MaterialTheme.typography.titleMedium
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "⭐ ${book.ownerRating ?: "New"}",
+                        text = "⭐ ${book.ownerRating?.toString()?.takeIf { it.isNotBlank() } ?: "New"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

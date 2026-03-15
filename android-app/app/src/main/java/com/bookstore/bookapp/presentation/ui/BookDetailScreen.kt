@@ -48,6 +48,10 @@ import com.bookstore.bookapp.presentation.ui.components.LendingTermsCard
 import com.bookstore.bookapp.presentation.ui.components.OwnerInfoCard
 import com.bookstore.bookapp.presentation.viewmodel.BookDetailViewModel
 
+/** Ensures Text() never receives null or blank; Gson can leave fields null at runtime. */
+private fun safeText(value: String?, default: String): String =
+    value?.takeIf { it.isNotBlank() } ?: default
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BookDetailScreen(
@@ -159,12 +163,12 @@ fun BookDetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = book.title,
+                        text = safeText(book.title as String?, "Untitled"),
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "by ${book.author}",
+                        text = "by ${safeText(book.author as String?, "Unknown")}",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -195,12 +199,13 @@ fun BookDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = book.description,
+                        text = safeText(book.description as String?, "No description."),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    if (book.visibleInGroups.isNotEmpty()) {
+                    val visibleInGroups = book.visibleInGroups ?: emptyList()
+                    if (visibleInGroups.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
                             text = "Also in these groups",
@@ -211,7 +216,7 @@ fun BookDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            book.visibleInGroups.forEach { groupId ->
+                            visibleInGroups.forEach { groupId ->
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
                                     color = MaterialTheme.colorScheme.secondaryContainer

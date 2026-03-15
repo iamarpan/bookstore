@@ -29,18 +29,23 @@ class GroupDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GroupDetailUiState())
     val uiState: StateFlow<GroupDetailUiState> = _uiState.asStateFlow()
 
-    private val groupId: String = checkNotNull(savedStateHandle["groupId"])
+    private val groupId: String? = savedStateHandle["groupId"]
 
     init {
-        loadGroupDetails()
+        if (groupId != null) {
+            loadGroupDetails()
+        } else {
+            _uiState.value = _uiState.value.copy(isLoading = false, error = "Invalid group")
+        }
     }
 
     private fun loadGroupDetails() {
+        val id = groupId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val groupInfo = groupRepository.fetchGroupDetails(groupId)
-                val groupBooks = groupRepository.fetchGroupBooks(groupId)
+                val groupInfo = groupRepository.fetchGroupDetails(id)
+                val groupBooks = groupRepository.fetchGroupBooks(id)
                 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

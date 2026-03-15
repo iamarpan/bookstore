@@ -29,20 +29,23 @@ class BookDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val bookId: String = checkNotNull(savedStateHandle["bookId"])
+    private val bookId: String? = savedStateHandle["bookId"]
 
-    private val _uiState = MutableStateFlow(BookDetailState(isLoading = true))
+    private val _uiState = MutableStateFlow(BookDetailState(isLoading = bookId != null, error = if (bookId == null) "Invalid book" else null))
     val uiState: StateFlow<BookDetailState> = _uiState.asStateFlow()
 
     init {
-        loadBook()
+        if (bookId != null) {
+            loadBook()
+        }
     }
 
     fun loadBook() {
+        val id = bookId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val book = bookRepository.fetchBook(bookId)
+                val book = bookRepository.fetchBook(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, book = book)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
@@ -51,10 +54,11 @@ class BookDetailViewModel @Inject constructor(
     }
 
     fun requestToBorrow(duration: BorrowDuration, customDays: Int? = null, message: String? = null) {
+        val id = bookId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRequesting = true, error = null)
             try {
-                transactionRepository.createBorrowRequest(bookId, duration, customDays, message)
+                transactionRepository.createBorrowRequest(id, duration, customDays, message)
                 _uiState.value = _uiState.value.copy(isRequesting = false, requestSuccess = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isRequesting = false, error = e.localizedMessage)

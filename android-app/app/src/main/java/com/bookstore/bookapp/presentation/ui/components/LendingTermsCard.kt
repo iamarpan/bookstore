@@ -67,7 +67,7 @@ fun LendingTermsCard(
             TermRow(
                 icon = Icons.Default.Info,
                 title = "Condition",
-                value = "Must be returned in ${book.condition.name.lowercase().replace("_", " ")} condition"
+                value = "Must be returned in ${(book.condition?.name ?: "good").lowercase().replace("_", " ")} condition"
             )
         }
     }
