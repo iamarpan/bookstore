@@ -29,7 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bookstore.bookapp.presentation.ui.components.HorizontalBookList
+import com.bookstore.bookapp.presentation.ui.components.BookItemSize
+import com.bookstore.bookapp.presentation.ui.components.CompactHorizontalBookList
 import com.bookstore.bookapp.presentation.ui.components.SearchBar
 import com.bookstore.bookapp.presentation.ui.components.SectionHeader
 import com.bookstore.bookapp.presentation.viewmodel.HomeViewModel
@@ -113,9 +114,10 @@ fun HomeScreen(
                             actionLabel = "See All",
                             onActionClick = { /* TODO: Navigate to active borrowed books */ }
                         )
-                        HorizontalBookList(
+                        CompactHorizontalBookList(
                             books = continueReading,
-                            onBookClick = onBookClick
+                            onBookClick = onBookClick,
+                            size = BookItemSize.STANDARD
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -127,9 +129,10 @@ fun HomeScreen(
                             actionLabel = "Explore",
                             onActionClick = { /* TODO: Navigate to map view or search with filter */ }
                         )
-                        HorizontalBookList(
+                        CompactHorizontalBookList(
                             books = availableNearYou,
-                            onBookClick = onBookClick
+                            onBookClick = onBookClick,
+                            size = BookItemSize.COMPACT
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -141,9 +144,10 @@ fun HomeScreen(
                             actionLabel = "More",
                             onActionClick = { /* TODO: Navigate to all books feed */ }
                         )
-                        HorizontalBookList(
+                        CompactHorizontalBookList(
                             books = recentlyAdded,
-                            onBookClick = onBookClick
+                            onBookClick = onBookClick,
+                            size = BookItemSize.COMPACT
                         )
                         Spacer(modifier = Modifier.height(32.dp))
                     }

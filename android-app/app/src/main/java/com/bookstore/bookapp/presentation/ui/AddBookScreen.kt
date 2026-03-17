@@ -145,30 +145,61 @@ fun AddBookScreen(
                             onValueChange = { viewModel.onIsbnQueryChange(it) },
                             label = { Text("ISBN (Optional)") },
                             modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            enabled = !uiState.isLoadingFromISBN
                         )
-                        IconButton(
-                            onClick = {
-                                val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                                if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
-                                    viewModel.toggleScanner()
-                                } else {
-                                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
-                            },
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.CameraAlt, contentDescription = "Scan Barcode")
+                        if (uiState.isLoadingFromISBN) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(start = 8.dp)
+                                    .width(24.dp)
+                                    .height(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                                    if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
+                                        viewModel.toggleScanner()
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = "Scan Barcode")
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
                         onClick = { viewModel.lookupIsbn(uiState.isbnQuery) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = uiState.isbnQuery.isNotBlank()
+                        enabled = uiState.isbnQuery.isNotBlank() && !uiState.isLoadingFromISBN
                     ) {
-                        Text("Lookup ISBN Details")
+                        if (uiState.isLoadingFromISBN) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .height(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Looking up...")
+                        } else {
+                            Text("Lookup ISBN Details")
+                        }
                     }
+                    
+                    // Show hint that form will be auto-filled
+                    Text(
+                        text = "Scan or enter ISBN to auto-fill book details",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 // --- Book Details Section ---

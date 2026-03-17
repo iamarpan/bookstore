@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,9 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
@@ -27,12 +24,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.bookstore.bookapp.domain.model.Book
 
 @Composable
@@ -72,27 +66,15 @@ fun BookCard(
     ) {
         Column {
             Box {
-                var isLoading by remember { mutableStateOf(true) }
-                
-                AsyncImage(
-                    model = book.imageUrl,
-                    contentDescription = "Book Cover",
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { isLoading = false },
+                BookCoverImage(
+                    imageUrl = book.imageUrl,
+                    contentDescription = "Cover of ${book.title}",
+                    title = book.title,
+                    author = book.author,
+                    cornerRadius = 0.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(0.65f)
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                 )
-                
-                if (isLoading) {
-                    SkeletonLoader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(0.65f)
-                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    )
-                }
                 
                 AvailabilityBadge(
                     isAvailable = book.isAvailable,
@@ -113,6 +95,7 @@ fun BookCard(
                 Text(
                     text = book.title,
                     style = MaterialTheme.typography.titleMedium,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

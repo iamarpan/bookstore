@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,14 +38,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.bookstore.bookapp.domain.model.BorrowDuration
 import com.bookstore.bookapp.presentation.ui.components.AvailabilityBadge
+import com.bookstore.bookapp.presentation.ui.components.BookCoverImage
 import com.bookstore.bookapp.presentation.ui.components.ConditionDots
 import com.bookstore.bookapp.presentation.ui.components.LendingTermsCard
 import com.bookstore.bookapp.presentation.ui.components.OwnerInfoCard
@@ -83,36 +84,55 @@ fun BookDetailScreen(
                     shadowElevation = 8.dp,
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        if (uiState.requestSuccess) {
-                            Text(
-                                text = "Borrow request sent successfully!",
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        } else if (book.isAvailable) {
-                            Button(
-                                onClick = { viewModel.requestToBorrow(duration = BorrowDuration.TWO_WEEKS) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                enabled = !uiState.isRequesting
-                            ) {
-                                if (uiState.isRequesting) {
-                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                                } else {
-                                    Text("Request to Borrow")
+                    Box(
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        when {
+                            uiState.isOwnBook -> {
+                                Button(
+                                    onClick = { /* no-op, user owns this book */ },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    enabled = false
+                                ) {
+                                    Text("You own this book")
                                 }
                             }
-                        } else {
-                            Button(
-                                onClick = { /* TODO: Notify when available */ },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                enabled = true
-                            ) {
-                                Text("Notify Me When Available")
+                            uiState.requestSuccess -> {
+                                Text(
+                                    text = "Borrow request sent successfully!",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                            book.isAvailable -> {
+                                Button(
+                                    onClick = { viewModel.requestToBorrow(duration = BorrowDuration.TWO_WEEKS) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    enabled = !uiState.isRequesting
+                                ) {
+                                    if (uiState.isRequesting) {
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                                    } else {
+                                        Text("Request to Borrow")
+                                    }
+                                }
+                            }
+                            else -> {
+                                Button(
+                                    onClick = { /* TODO: Notify when available */ },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    enabled = true
+                                ) {
+                                    Text("Notify Me When Available")
+                                }
                             }
                         }
                     }
@@ -149,14 +169,12 @@ fun BookDetailScreen(
                             .padding(horizontal = 32.dp, vertical = 16.dp)
                             .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp), spotColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        AsyncImage(
-                            model = book.imageUrl,
-                            contentDescription = "Book Cover",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(0.65f)
-                                .clip(RoundedCornerShape(16.dp))
+                        BookCoverImage(
+                            imageUrl = book.imageUrl,
+                            contentDescription = "Cover of ${safeText(book.title as String?, "book")}",
+                            title = safeText(book.title as String?, ""),
+                            author = safeText(book.author as String?, ""),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     

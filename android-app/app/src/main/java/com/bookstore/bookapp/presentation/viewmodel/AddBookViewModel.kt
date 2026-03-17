@@ -17,6 +17,7 @@ import javax.inject.Inject
 
 data class AddBookState(
     val isLoading: Boolean = false,
+    val isLoadingFromISBN: Boolean = false,
     val isScanning: Boolean = false,
     val isbnQuery: String = "",
     val errorMessage: String? = null,
@@ -125,10 +126,12 @@ class AddBookViewModel @Inject constructor(
     }
 
     fun lookupIsbn(isbn: String) {
+        if (isbn.isBlank()) return
+        
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, isScanning = false, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isLoadingFromISBN = true, isScanning = false, errorMessage = null)
             try {
-                // Try backend scan logic
+                // Try backend scan logic first
                 var book = bookRepository.lookupISBN(isbn)
                 
                 // Fallback to Google Books external if backend fails/not implemented fully or returned null
@@ -137,28 +140,36 @@ class AddBookViewModel @Inject constructor(
                 }
 
                 if (book != null) {
+                    // Auto-fill form fields from ISBN lookup (matching iOS behavior)
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        title = book.title,
-                        author = book.author,
-                        description = book.description,
-                        genre = book.genre,
-                        imageUrl = book.imageUrl,
+                        isLoadingFromISBN = false,
+                        title = book.title.orEmpty(),
+                        author = book.author.orEmpty(),
+                        description = book.description.orEmpty(),
+                        genre = mapGenreToKnown(book.genre),
+                        imageUrl = book.imageUrl.orEmpty(),
                         isbnQuery = isbn
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isLoadingFromISBN = false,
                         errorMessage = "Book not found for this ISBN. Please enter details manually."
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
+                    isLoadingFromISBN = false,
                     errorMessage = "Error looking up ISBN: ${e.localizedMessage}"
                 )
             }
         }
+    }
+    
+    /** Maps genres from external APIs to our known genre list */
+    private fun mapGenreToKnown(genre: String?): String {
+        if (genre.isNullOrBlank()) return "Other"
+        val knownGenres = listOf("Fiction", "Biography", "Science", "History", "Technology", "Romance", "Mystery", "Other")
+        return knownGenres.find { genre.contains(it, ignoreCase = true) } ?: "Other"
     }
 
     fun saveBook() {

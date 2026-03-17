@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -38,15 +35,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bookstore.bookapp.presentation.ui.components.BookCard
+import com.bookstore.bookapp.presentation.ui.components.AdaptiveBookGrid
+import com.bookstore.bookapp.presentation.ui.components.BookGridMode
 import com.bookstore.bookapp.presentation.ui.components.EmptyState
+import com.bookstore.bookapp.presentation.ui.components.ViewModeToggle
 import com.bookstore.bookapp.presentation.viewmodel.MyLibraryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -122,11 +123,14 @@ fun MyLibraryScreen(
                         2 -> TransactionList(transactions = uiState.lentBooks)
                     }
                 }
-                
-                PullToRefreshContainer(
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
+
+                // Only show the pull-to-refresh indicator while actively pulling or refreshing
+                if (uiState.refreshing || pullRefreshState.progress > 0f) {
+                    PullToRefreshContainer(
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
             }
         }
     }
@@ -134,6 +138,8 @@ fun MyLibraryScreen(
 
 @Composable
 fun MyBooksList(books: List<com.bookstore.bookapp.domain.model.Book>, onBookClick: (String) -> Unit) {
+    var viewMode by rememberSaveable { mutableStateOf(BookGridMode.COMPACT_GRID) }
+    
     if (books.isEmpty()) {
         EmptyState(
             illustration = {
@@ -149,16 +155,31 @@ fun MyBooksList(books: List<com.bookstore.bookapp.domain.model.Book>, onBookClic
             modifier = Modifier.fillMaxSize()
         )
     } else {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(books, key = { it.id }) { book ->
-                BookCard(book = book, onClick = { onBookClick(book.id) })
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${books.size} books",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ViewModeToggle(
+                    currentMode = viewMode,
+                    onModeChange = { viewMode = it }
+                )
             }
+            
+            AdaptiveBookGrid(
+                books = books,
+                onBookClick = onBookClick,
+                mode = viewMode,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }

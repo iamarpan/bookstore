@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Group
@@ -29,8 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bookstore.bookapp.presentation.ui.components.BookCard
+import com.bookstore.bookapp.presentation.ui.components.BookItemSize
+import com.bookstore.bookapp.presentation.ui.components.CompactBookItem
 import com.bookstore.bookapp.presentation.viewmodel.GroupDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +109,7 @@ fun GroupDetailScreen(
 
                     item {
                         Text(
-                            text = "Group Books",
+                            text = "Group Books (${uiState.books.size})",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -119,12 +123,24 @@ fun GroupDetailScreen(
                             }
                         }
                     } else {
-                        items(uiState.books, key = { it.id }) { book ->
-                            BookCard(
-                                book = book,
-                                onClick = { onBookClick(book.id) },
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
+                        item {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 100.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height((((uiState.books.size + 2) / 3) * 180).dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                userScrollEnabled = false
+                            ) {
+                                items(uiState.books, key = { it.id }) { book ->
+                                    CompactBookItem(
+                                        book = book,
+                                        onClick = { onBookClick(book.id) },
+                                        size = BookItemSize.COMPACT
+                                    )
+                                }
+                            }
                         }
                     }
                 }

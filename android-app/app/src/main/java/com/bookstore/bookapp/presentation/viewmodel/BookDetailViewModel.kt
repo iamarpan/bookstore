@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.bookstore.bookapp.domain.model.Book
 import com.bookstore.bookapp.domain.model.BorrowDuration
 import com.bookstore.bookapp.domain.repository.BookRepository
+import com.bookstore.bookapp.domain.repository.AuthRepository
 import com.bookstore.bookapp.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,13 +21,15 @@ data class BookDetailState(
     val error: String? = null,
     val book: Book? = null,
     val isRequesting: Boolean = false,
-    val requestSuccess: Boolean = false
+    val requestSuccess: Boolean = false,
+    val isOwnBook: Boolean = false
 )
 
 @HiltViewModel
 class BookDetailViewModel @Inject constructor(
     private val bookRepository: BookRepository,
     private val transactionRepository: TransactionRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -46,7 +50,15 @@ class BookDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val book = bookRepository.fetchBook(id)
-                _uiState.value = _uiState.value.copy(isLoading = false, book = book)
+                // Determine if this book belongs to the currently authenticated user
+                val currentUser = authRepository.currentUser.firstOrNull()
+                val isOwnBook = currentUser?.id == book.ownerId
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    book = book,
+                    isOwnBook = isOwnBook
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
