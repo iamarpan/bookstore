@@ -53,6 +53,7 @@ model User {
   ownedTransactions     Transaction[] @relation("TransactionOwner")
   notifications         Notification[]
   refreshTokens         RefreshToken[]
+  sentMessages          Message[] @relation("MessageSender")
   
   @@map("users")
 }
@@ -192,12 +193,30 @@ model Transaction {
   borrower              User      @relation("TransactionBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
   owner                 User      @relation("TransactionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   group                 Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  messages              Message[]
   
   @@index([borrowerId])
   @@index([ownerId])
   @@index([status])
   @@index([dueDate])
   @@map("transactions")
+}
+
+model Message {
+  id                    String    @id @default(uuid())
+  transactionId         String    @map("transaction_id")
+  senderId              String    @map("sender_id")
+  content               String    @db.Text
+  isRead                Boolean   @default(false) @map("is_read")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  transaction           Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  sender                User      @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@index([transactionId, createdAt])
+  @@index([senderId])
+  @@map("messages")
 }
 
 model Notification {
@@ -308,4 +327,5 @@ enum NotificationType {
   OVERDUE
   RETURN_REQUESTED
   NEW_BOOK_IN_GROUP
+  NEW_MESSAGE
 }

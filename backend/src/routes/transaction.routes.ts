@@ -14,6 +14,12 @@ import {
     rateTransaction,
     cancelRequest,
 } from '../controllers/transaction.controller';
+import {
+    getMessages,
+    sendMessage,
+    getUnreadCount,
+    markAsRead,
+} from '../controllers/message.controller';
 
 const router = Router();
 
@@ -387,5 +393,108 @@ router.post('/:id/rate', authenticate, rateTransaction);
  *         description: Transaction not found
  */
 router.post('/:id/cancel', authenticate, cancelRequest);
+
+/**
+ * @swagger
+ * /transactions/{id}/messages:
+ *   get:
+ *     tags: [Transactions]
+ *     summary: Get messages for a transaction
+ *     description: Retrieves all messages for a transaction. Only available for APPROVED or ACTIVE transactions.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: List of messages
+ *       403:
+ *         description: Not a party to this transaction
+ *       400:
+ *         description: Chat not available for this transaction status
+ */
+router.get('/:transactionId/messages', authenticate, getMessages);
+
+/**
+ * @swagger
+ * /transactions/{id}/messages:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Send a message in a transaction chat
+ *     description: Sends a message to the other party. Only available for APPROVED or ACTIVE transactions.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Message content
+ *     responses:
+ *       201:
+ *         description: Message sent successfully
+ *       400:
+ *         description: Content is required or chat not available
+ *       403:
+ *         description: Not a party to this transaction
+ */
+router.post('/:transactionId/messages', authenticate, sendMessage);
+
+/**
+ * @swagger
+ * /transactions/{id}/messages/unread:
+ *   get:
+ *     tags: [Transactions]
+ *     summary: Get unread message count
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Unread count
+ */
+router.get('/:transactionId/messages/unread', authenticate, getUnreadCount);
+
+/**
+ * @swagger
+ * /transactions/{id}/messages/read:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Mark messages as read
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Messages marked as read
+ */
+router.post('/:transactionId/messages/read', authenticate, markAsRead);
 
 export default router;
