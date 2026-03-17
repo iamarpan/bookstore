@@ -54,6 +54,7 @@ import com.bookstore.bookapp.presentation.viewmodel.MyLibraryViewModel
 @Composable
 fun MyLibraryScreen(
     onBookClick: (String) -> Unit = {},
+    onTransactionClick: (String) -> Unit = {},
     viewModel: MyLibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -119,8 +120,14 @@ fun MyLibraryScreen(
                 } else {
                     when (selectedTabIndex) {
                         0 -> MyBooksList(books = uiState.myBooks, onBookClick = onBookClick)
-                        1 -> TransactionList(transactions = uiState.borrowedBooks)
-                        2 -> TransactionList(transactions = uiState.lentBooks)
+                        1 -> TransactionList(
+                            transactions = uiState.borrowedBooks, 
+                            onTransactionClick = onTransactionClick
+                        )
+                        2 -> TransactionList(
+                            transactions = uiState.lentBooks,
+                            onTransactionClick = onTransactionClick
+                        )
                     }
                 }
 
@@ -185,7 +192,10 @@ fun MyBooksList(books: List<com.bookstore.bookapp.domain.model.Book>, onBookClic
 }
 
 @Composable
-fun TransactionList(transactions: List<com.bookstore.bookapp.domain.model.Transaction>) {
+fun TransactionList(
+    transactions: List<com.bookstore.bookapp.domain.model.Transaction>,
+    onTransactionClick: (String) -> Unit = {}
+) {
     if (transactions.isEmpty()) {
         EmptyState(
             illustration = {
@@ -207,18 +217,25 @@ fun TransactionList(transactions: List<com.bookstore.bookapp.domain.model.Transa
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(transactions, key = { it.id }) { transaction ->
-                TransactionItem(transaction)
+                TransactionItem(
+                    transaction = transaction,
+                    onClick = { onTransactionClick(transaction.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun TransactionItem(transaction: com.bookstore.bookapp.domain.model.Transaction) {
+fun TransactionItem(
+    transaction: com.bookstore.bookapp.domain.model.Transaction,
+    onClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

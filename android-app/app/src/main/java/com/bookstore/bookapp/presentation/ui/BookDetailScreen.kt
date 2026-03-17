@@ -1,6 +1,5 @@
 package com.bookstore.bookapp.presentation.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,21 +31,27 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bookstore.bookapp.domain.model.BorrowDuration
 import com.bookstore.bookapp.presentation.ui.components.AvailabilityBadge
 import com.bookstore.bookapp.presentation.ui.components.BookCoverImage
+import com.bookstore.bookapp.presentation.ui.components.BorrowRequestSheet
 import com.bookstore.bookapp.presentation.ui.components.ConditionDots
 import com.bookstore.bookapp.presentation.ui.components.LendingTermsCard
 import com.bookstore.bookapp.presentation.ui.components.OwnerInfoCard
 import com.bookstore.bookapp.presentation.viewmodel.BookDetailViewModel
+import kotlinx.coroutines.launch
 
 /** Ensures Text() never receives null or blank; Gson can leave fields null at runtime. */
 private fun safeText(value: String?, default: String): String =
@@ -60,6 +64,9 @@ fun BookDetailScreen(
     viewModel: BookDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showBorrowSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -110,7 +117,7 @@ fun BookDetailScreen(
                             }
                             book.isAvailable -> {
                                 Button(
-                                    onClick = { viewModel.requestToBorrow(duration = BorrowDuration.TWO_WEEKS) },
+                                    onClick = { showBorrowSheet = true },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(56.dp),
@@ -254,5 +261,24 @@ fun BookDetailScreen(
                 }
             }
         }
+    }
+
+    if (showBorrowSheet && uiState.book != null) {
+        BorrowRequestSheet(
+            book = uiState.book!!,
+            sheetState = sheetState,
+            isLoading = uiState.isRequesting,
+            onDismiss = {
+                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                    showBorrowSheet = false
+                }
+            },
+            onSubmit = { duration, message ->
+                viewModel.requestToBorrow(duration = duration, message = message)
+                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                    showBorrowSheet = false
+                }
+            }
+        )
     }
 }

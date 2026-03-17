@@ -1,5 +1,6 @@
 package com.bookstore.bookapp.domain.repository
 
+import com.bookstore.bookapp.data.remote.api.Message
 import com.bookstore.bookapp.domain.model.BorrowDuration
 import com.bookstore.bookapp.domain.model.Transaction
 import com.bookstore.bookapp.domain.model.TransactionStatus
@@ -47,4 +48,9 @@ interface TransactionRepository {
     suspend fun cancelTransaction(id: String): Transaction
     
     fun getTransactionsByRoleAndStatus(role: String, status: TransactionStatus): Flow<List<Transaction>>
+
+    suspend fun getMessages(transactionId: String): List<Message>
+    suspend fun sendMessage(transactionId: String, content: String): Message
+    suspend fun getUnreadCount(transactionId: String): Int
+    suspend fun markMessagesAsRead(transactionId: String)
 }

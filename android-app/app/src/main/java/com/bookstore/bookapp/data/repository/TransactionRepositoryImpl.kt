@@ -6,9 +6,11 @@ import com.bookstore.bookapp.data.local.entity.toEntity
 import com.bookstore.bookapp.data.remote.api.BorrowRequest
 import com.bookstore.bookapp.data.remote.api.HandoverRequest
 import com.bookstore.bookapp.data.remote.api.MarkPaymentRequest
+import com.bookstore.bookapp.data.remote.api.Message
 import com.bookstore.bookapp.data.remote.api.RatingRequest
 import com.bookstore.bookapp.data.remote.api.RejectRequest
 import com.bookstore.bookapp.data.remote.api.ReturnRequest
+import com.bookstore.bookapp.data.remote.api.SendMessageRequest
 import com.bookstore.bookapp.data.remote.api.TransactionApi
 import com.bookstore.bookapp.domain.model.BorrowDuration
 import com.bookstore.bookapp.domain.model.Transaction
@@ -163,5 +165,21 @@ class TransactionRepositoryImpl(
             tx.toEntity(isOwnerTxn = true),
             tx.toEntity(isHistoryTxn = true)
         ))
+    }
+
+    override suspend fun getMessages(transactionId: String): List<Message> {
+        return transactionApi.getMessages(transactionId).messages
+    }
+
+    override suspend fun sendMessage(transactionId: String, content: String): Message {
+        return transactionApi.sendMessage(transactionId, SendMessageRequest(content))
+    }
+
+    override suspend fun getUnreadCount(transactionId: String): Int {
+        return transactionApi.getUnreadCount(transactionId).unreadCount
+    }
+
+    override suspend fun markMessagesAsRead(transactionId: String) {
+        transactionApi.markAsRead(transactionId)
     }
 }

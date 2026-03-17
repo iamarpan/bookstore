@@ -30,6 +30,26 @@ data class RatingRequest(
 
 data class OTPResponse(val otp: String)
 
+data class Message(
+    val id: String,
+    val transactionId: String,
+    val senderId: String,
+    val content: String,
+    val isRead: Boolean,
+    val createdAt: String,
+    val sender: MessageSender
+)
+
+data class MessageSender(
+    val id: String,
+    val name: String,
+    val profileImageUrl: String?
+)
+
+data class MessagesResponse(val messages: List<Message>)
+data class SendMessageRequest(val content: String)
+data class UnreadCountResponse(val unreadCount: Int)
+
 interface TransactionApi {
     @GET("transactions/my")
     suspend fun fetchTransactions(
@@ -71,4 +91,19 @@ interface TransactionApi {
 
     @POST("transactions/{id}/cancel")
     suspend fun cancelTransaction(@Path("id") id: String): Transaction
+
+    @GET("transactions/{transactionId}/messages")
+    suspend fun getMessages(@Path("transactionId") transactionId: String): MessagesResponse
+
+    @POST("transactions/{transactionId}/messages")
+    suspend fun sendMessage(
+        @Path("transactionId") transactionId: String,
+        @Body request: SendMessageRequest
+    ): Message
+
+    @GET("transactions/{transactionId}/messages/unread")
+    suspend fun getUnreadCount(@Path("transactionId") transactionId: String): UnreadCountResponse
+
+    @POST("transactions/{transactionId}/messages/read")
+    suspend fun markAsRead(@Path("transactionId") transactionId: String)
 }
