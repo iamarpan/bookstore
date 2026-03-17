@@ -42,6 +42,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bookstore.bookapp.presentation.navigation.Screen
+import com.bookstore.bookapp.presentation.ui.components.AppLogo
 import com.bookstore.bookapp.presentation.viewmodel.NotificationsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +83,13 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(currentTitle) },
+                title = {
+                    if (currentRoute == Screen.Home.route) {
+                        AppLogo(size = 32.dp)
+                    } else {
+                        Text(currentTitle)
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToTransactions) {
                         Icon(
