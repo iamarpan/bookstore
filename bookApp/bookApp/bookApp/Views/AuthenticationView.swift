@@ -230,13 +230,14 @@ struct AuthHeaderView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // Logo/Icon
+            // App Logo
             VStack(spacing: 8) {
-                Image(systemName: "books.vertical.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(AppTheme.primaryAccent)
+                Image("AppLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 120, height: 120)
                 
-                Text("Book Club")
+                Text("BookShare")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))

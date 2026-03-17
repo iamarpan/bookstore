@@ -11,7 +11,7 @@ struct HomeView: View {
         NavigationView {
             mainContent
                 .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
-                .navigationTitle("Book Club")
+                .navigationTitle("BookShare")
                 .navigationBarTitleDisplayMode(.large)
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                 .alert("Error", isPresented: $homeViewModel.showError) {
