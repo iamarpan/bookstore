@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 
 struct AuthenticationView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -45,15 +46,35 @@ struct PhoneSignInView: View {
             
             Spacer()
             
-            // Phone Sign-In Section
+            // Sign-In Section
             VStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Welcome!")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                // Google Sign-In Button
+                GoogleSignInButton(isDarkMode: themeManager.isDarkMode) {
+                    Task {
+                        await authViewModel.signInWithGoogle()
+                    }
+                }
+                .disabled(authViewModel.isGoogleLoading)
+                
+                // Divider with "or"
+                HStack {
+                    Rectangle()
+                        .fill(AppTheme.colorBorder(for: themeManager.isDarkMode))
+                        .frame(height: 1)
                     
-                    Text(otpSent ? "Enter the OTP sent to your phone" : "Enter your phone number to continue")
+                    Text("or")
+                        .font(.subheadline)
+                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                        .padding(.horizontal, 16)
+                    
+                    Rectangle()
+                        .fill(AppTheme.colorBorder(for: themeManager.isDarkMode))
+                        .frame(height: 1)
+                }
+                
+                // Phone Sign-In Section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(otpSent ? "Enter the OTP sent to your phone" : "Continue with phone number")
                         .font(.body)
                         .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 }
@@ -102,7 +123,7 @@ struct PhoneSignInView: View {
                     .buttonStyle(TertiaryButtonStyle())
                 }
                 
-                if authViewModel.isLoading {
+                if authViewModel.isLoading || authViewModel.isGoogleLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.primaryAccent))
                         .scaleEffect(1.2)
@@ -137,6 +158,35 @@ struct PhoneSignInView: View {
                 }
             }
             .padding(.bottom, 40)
+        }
+    }
+}
+
+struct GoogleSignInButton: View {
+    let isDarkMode: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image("google_logo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 24)
+                
+                Text("Sign in with Google")
+                    .font(.headline)
+                    .fontWeight(.medium)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Color.white)
+            .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(AppTheme.colorBorder(for: isDarkMode), lineWidth: 1)
+            )
         }
     }
 }

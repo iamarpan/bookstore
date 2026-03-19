@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { sendOTPService, verifyOTPService, refreshTokenService } from '../services/auth.service';
+import { sendOTPService, verifyOTPService, refreshTokenService, verifyGoogleTokenService } from '../services/auth.service';
 
 /**
  * Send OTP to phone number
@@ -86,6 +86,33 @@ export async function refreshToken(req: Request, res: Response) {
         res.status(401).json({
             error: 'Unauthorized',
             message: error instanceof Error ? error.message : 'Token refresh failed',
+        });
+    }
+}
+
+/**
+ * Sign in with Google
+ * POST /api/v1/auth/google
+ */
+export async function googleSignIn(req: Request, res: Response) {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({
+                error: 'Bad Request',
+                message: 'Google ID token is required',
+            });
+        }
+
+        const result = await verifyGoogleTokenService(idToken);
+
+        res.json(result);
+    } catch (error) {
+        console.error('Google Sign-In error:', error);
+        res.status(401).json({
+            error: 'Unauthorized',
+            message: error instanceof Error ? error.message : 'Google Sign-In failed',
         });
     }
 }

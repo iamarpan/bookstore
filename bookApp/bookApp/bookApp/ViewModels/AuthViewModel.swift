@@ -33,6 +33,7 @@ class AuthViewModel: ObservableObject {
     var currentUser: User? { authService.currentUser }
     var isAuthenticated: Bool { authService.isAuthenticated }
     var isLoading: Bool { authService.isLoading }
+    var isGoogleLoading: Bool { authService.isGoogleLoading }
     var errorMessage: String? {
         get { authService.error }
         set { authService.error = newValue }
@@ -113,6 +114,18 @@ class AuthViewModel: ObservableObject {
                 self.errorMessage = "Verification failed: \(error.localizedDescription)"
                 showError = true
             }
+        }
+    }
+    
+    // MARK: - Google Sign-In
+    
+    func signInWithGoogle() async {
+        do {
+            try await authService.signInWithGoogle()
+            resetForm()
+        } catch {
+            errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+            showError = true
         }
     }
     

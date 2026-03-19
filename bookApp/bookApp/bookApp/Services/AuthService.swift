@@ -1,4 +1,5 @@
 import Foundation
+import GoogleSignIn
 
 /// Service for authentication operations
 @MainActor
@@ -7,6 +8,7 @@ class AuthService: ObservableObject {
     @Published var currentUser: User?
     @Published var isAuthenticated = false
     @Published var isLoading = false
+    @Published var isGoogleLoading = false
     @Published var error: String?
     
     // MARK: - Private Properties
@@ -188,6 +190,76 @@ class AuthService: ObservableObject {
         }
     }
     
+    // MARK: - Google Sign-In
+    
+    /// Sign in with Google
+    func signInWithGoogle() async throws {
+        isGoogleLoading = true
+        error = nil
+        
+        defer { isGoogleLoading = false }
+        
+        // Get the presenting view controller
+        guard let windowScene = await UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = await windowScene.windows.first?.rootViewController else {
+            throw AuthError.noRootViewController
+        }
+        
+        do {
+            // Initiate Google Sign-In
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+            
+            guard let idToken = result.user.idToken?.tokenString else {
+                throw AuthError.missingIdToken
+            }
+            
+            // Send ID token to backend
+            try await verifyGoogleToken(idToken: idToken)
+            
+        } catch let error as GIDSignInError {
+            if error.code == .canceled {
+                print("User cancelled Google Sign-In")
+                return
+            }
+            self.error = "Google Sign-In failed: \(error.localizedDescription)"
+            throw error
+        }
+    }
+    
+    /// Verify Google ID token with backend
+    private func verifyGoogleToken(idToken: String) async throws {
+        struct GoogleSignInRequest: Codable {
+            let idToken: String
+        }
+        
+        struct AuthResponse: Codable {
+            let accessToken: String
+            let refreshToken: String
+            let user: User
+        }
+        
+        let request = GoogleSignInRequest(idToken: idToken)
+        
+        let response: AuthResponse = try await apiClient.post(
+            "/auth/google",
+            body: request,
+            requiresAuth: false
+        )
+        
+        // Save tokens
+        apiClient.saveTokens(
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken
+        )
+        
+        // Save user
+        currentUser = response.user
+        currentUser?.saveToUserDefaults()
+        isAuthenticated = true
+        
+        print("✅ User authenticated via Google: \(response.user.name)")
+    }
+    
     // MARK: - Logout
     
     /// Logout user
@@ -197,8 +269,26 @@ class AuthService: ObservableObject {
         currentUser = nil
         isAuthenticated = false
         
+        // Sign out of Google as well
+        GIDSignIn.sharedInstance.signOut()
+        
         print("✅ User logged out")
     }
     
+}
+
+// MARK: - Auth Errors
+enum AuthError: LocalizedError {
+    case noRootViewController
+    case missingIdToken
+    
+    var errorDescription: String? {
+        switch self {
+        case .noRootViewController:
+            return "Unable to present Google Sign-In"
+        case .missingIdToken:
+            return "Failed to get Google ID token"
+        }
+    }
 }
 

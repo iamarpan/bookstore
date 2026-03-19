@@ -9,6 +9,7 @@ interface AuthRepository {
 
     suspend fun sendOTP(phoneNumber: String): Int
     suspend fun verifyOTP(phoneNumber: String, otp: String, name: String?, bio: String?)
+    suspend fun signInWithGoogle(idToken: String)
     suspend fun fetchCurrentUser()
     suspend fun updateProfile(name: String?, bio: String?, profileImageUrl: String?)
     suspend fun logout()

@@ -2,6 +2,7 @@ package com.bookstore.bookapp.data.repository
 
 import com.bookstore.bookapp.data.local.UserPreferences
 import com.bookstore.bookapp.data.remote.api.AuthApi
+import com.bookstore.bookapp.data.remote.api.GoogleSignInRequest
 import com.bookstore.bookapp.data.remote.api.OTPRequest
 import com.bookstore.bookapp.data.remote.api.UpdateProfileRequest
 import com.bookstore.bookapp.data.remote.api.VerifyOTPRequest
@@ -26,6 +27,12 @@ class AuthRepositoryImpl(
 
     override suspend fun verifyOTP(phoneNumber: String, otp: String, name: String?, bio: String?) {
         val response = authApi.verifyOTP(VerifyOTPRequest(phoneNumber, otp, name, bio))
+        userPreferences.saveTokens(response.accessToken, response.refreshToken)
+        userPreferences.saveUser(response.user)
+    }
+
+    override suspend fun signInWithGoogle(idToken: String) {
+        val response = authApi.signInWithGoogle(GoogleSignInRequest(idToken))
         userPreferences.saveTokens(response.accessToken, response.refreshToken)
         userPreferences.saveUser(response.user)
     }

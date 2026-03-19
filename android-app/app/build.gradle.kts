@@ -93,6 +93,12 @@ dependencies {
     
     // MLKit
     implementation(libs.mlkit.barcode)
+    
+    // Google Sign-In
+    implementation(libs.play.services.auth)
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

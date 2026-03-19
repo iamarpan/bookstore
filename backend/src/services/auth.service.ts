@@ -2,6 +2,9 @@ import prisma from '../config/database';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { generateOTP, storeOTP, sendOTPViaWhatsApp, checkOTP, consumeOTP } from './otp.service';
 import { formatUserResponse } from '../utils/user.utils';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * Send OTP to phone number
@@ -180,4 +183,104 @@ export async function logoutService(userId: string, refreshToken?: string) {
             where: { userId },
         });
     }
+}
+
+/**
+ * Verify Google ID token and login/register user
+ */
+export async function verifyGoogleTokenService(idToken: string) {
+    // Verify the ID token with Google
+    const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+        throw new Error('Invalid Google token');
+    }
+
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!googleId || !email) {
+        throw new Error('Google token missing required fields');
+    }
+
+    // Check if user exists by googleId
+    let user = await prisma.user.findUnique({
+        where: { googleId },
+    });
+
+    if (!user) {
+        // Check if user exists by email (could have signed up with phone first)
+        user = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (user) {
+            // Link Google account to existing user
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    googleId,
+                    profileImageUrl: user.profileImageUrl || picture,
+                    lastLoginAt: new Date(),
+                },
+            });
+            console.log(`✅ Linked Google account to existing user: ${user.name} (${user.email})`);
+        } else {
+            // Create new user with Google
+            // Generate a unique placeholder phone number for Google users
+            const placeholderPhone = `google_${googleId}`;
+
+            user = await prisma.user.create({
+                data: {
+                    phoneNumber: placeholderPhone,
+                    phoneVerified: false,
+                    name: name || 'Google User',
+                    email,
+                    googleId,
+                    authProvider: 'GOOGLE',
+                    profileImageUrl: picture,
+                    lastLoginAt: new Date(),
+                },
+            });
+            console.log(`✅ New user registered via Google: ${user.name} (${user.email})`);
+        }
+    } else {
+        // User exists with Google, update last login
+        user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                lastLoginAt: new Date(),
+                // Update profile image if changed
+                ...(picture && !user.profileImageUrl && { profileImageUrl: picture }),
+            },
+        });
+        console.log(`✅ User logged in via Google: ${user.name} (${user.email})`);
+    }
+
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokenPair({
+        userId: user.id,
+        phoneNumber: user.phoneNumber,
+    });
+
+    // Store refresh token in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    await prisma.refreshToken.create({
+        data: {
+            userId: user.id,
+            token: refreshToken,
+            expiresAt,
+        },
+    });
+
+    return {
+        accessToken,
+        refreshToken,
+        user: formatUserResponse(user),
+    };
 }

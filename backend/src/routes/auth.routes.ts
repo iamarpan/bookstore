@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sendOTP, verifyOTP, refreshToken } from '../controllers/auth.controller';
+import { sendOTP, verifyOTP, refreshToken, googleSignIn } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -135,5 +135,50 @@ router.post('/verify-otp', verifyOTP);
  *         description: Server error
  */
 router.post('/refresh', refreshToken);
+
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Sign in with Google
+ *     description: Verifies Google ID token and returns JWT tokens. Creates new user if doesn't exist.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: Google ID token from client-side sign-in
+ *                 example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Google Sign-In successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 refreshToken:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Missing ID token
+ *       401:
+ *         description: Invalid Google token
+ *       500:
+ *         description: Server error
+ */
+router.post('/google', googleSignIn);
 
 export default router;

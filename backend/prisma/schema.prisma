@@ -17,9 +17,13 @@ model User {
   phoneNumber           String    @unique @map("phone_number")
   phoneVerified         Boolean   @default(false) @map("phone_verified")
   name                  String
-  email                 String?
+  email                 String?   @unique
   bio                   String?
   profileImageUrl       String?   @map("profile_image_url")
+  
+  // OAuth
+  googleId              String?   @unique @map("google_id")
+  authProvider          AuthProvider @default(PHONE) @map("auth_provider")
   
   // Stats
   booksShared           Int       @default(0) @map("books_shared")
@@ -328,4 +332,9 @@ enum NotificationType {
   RETURN_REQUESTED
   NEW_BOOK_IN_GROUP
   NEW_MESSAGE
+}
+
+enum AuthProvider {
+  PHONE
+  GOOGLE
 }

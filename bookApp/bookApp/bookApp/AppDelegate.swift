@@ -1,11 +1,18 @@
 import UIKit
 import UserNotifications
+import GoogleSignIn
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
         print("📱 BookShare app initializing...")
+        
+        // Configure Google Sign-In
+        // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(
+            clientID: "YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com"
+        )
         
         // Set up notification center delegate
         UNUserNotificationCenter.current().delegate = self
@@ -26,6 +33,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         
         return true
+    }
+    
+    // Handle URL callback for Google Sign-In
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
     
     // MARK: - Remote Notifications (APNs)

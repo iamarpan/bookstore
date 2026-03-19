@@ -17,6 +17,8 @@ data class UpdateProfileRequest(val name: String?, val bio: String?, val profile
 data class RefreshRequest(val refreshToken: String)
 data class RefreshResponse(val accessToken: String, val refreshToken: String)
 
+data class GoogleSignInRequest(val idToken: String)
+
 interface AuthApi {
     @POST("auth/send-otp")
     suspend fun sendOTP(@Body request: OTPRequest): AuthOTPResponse
@@ -26,6 +28,9 @@ interface AuthApi {
 
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: RefreshRequest): RefreshResponse
+
+    @POST("auth/google")
+    suspend fun signInWithGoogle(@Body request: GoogleSignInRequest): AuthResponse
 
     @GET("users/me")
     suspend fun fetchCurrentUser(): User
