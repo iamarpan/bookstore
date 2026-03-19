@@ -1,6 +1,6 @@
-import { prisma } from '../config/database';
+import prisma from '../config/database';
 import { NotificationType, TransactionStatus } from '@prisma/client';
-import { notificationService } from './notification.service';
+import * as notificationService from './notification.service';
 
 export const messageService = {
     async getMessages(transactionId: string, userId: string) {
