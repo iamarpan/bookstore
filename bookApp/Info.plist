@@ -20,6 +20,14 @@
 				<string>com.googleusercontent.apps.906496914254-jo5scapap86ie75cvoe7nno2vaepql7s</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.533747577822-5tqtnsmugo44ohbl7qm13ritlnms4f5f</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

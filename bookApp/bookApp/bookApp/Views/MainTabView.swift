@@ -4,7 +4,7 @@ import SwiftUI
 // Replaces fragile raw integers with a type-safe, self-documenting enum.
 
 enum AppTab: Int, CaseIterable, Identifiable {
-    case home, add, groups, library, profile
+    case home, add, groups, library, notifications, profile
 
     var id: Int { rawValue }
 
@@ -14,6 +14,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
         case .add:     return "plus.square.fill"
         case .groups:  return "person.3.fill"
         case .library: return "books.vertical.fill"
+        case .notifications: return "bell.fill"
         case .profile: return "person.fill"
         }
     }
@@ -24,6 +25,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
         case .add:     return "Add"
         case .groups:  return "Groups"
         case .library: return "Library"
+        case .notifications: return "Alerts"
         case .profile: return "Profile"
         }
     }
@@ -107,6 +109,8 @@ struct MainTabView: View {
         case .library:
             MyLibraryView()
                 .environmentObject(libraryViewModel)
+        case .notifications:
+            NotificationsView()
         case .profile:
             ProfileView()
         }
@@ -122,6 +126,8 @@ struct MainTabView: View {
         let groupIds = (user.joinedGroupIds ?? []) + (user.createdGroupIds ?? [])
 
         Task {
+            _ = await NotificationService.shared.requestNotificationPermission()
+            
             async let books: Void   = homeViewModel.fetchBooks(for: groupIds)
             async let library: Void = libraryViewModel.fetchAllData(userId: user.id)
             _ = await (books, library)
@@ -179,6 +185,7 @@ private struct DockButton: View {
     let action: () -> Void
 
     @EnvironmentObject var themeManager: ThemeManager
+    @ObservedObject var notificationService = NotificationService.shared
 
     var body: some View {
         Button(action: action) {
@@ -197,6 +204,16 @@ private struct DockButton: View {
                     Image(systemName: tab.icon)
                         .font(.system(size: 20, weight: isActive ? .semibold : .regular))
                         .symbolRenderingMode(.hierarchical)
+                        .overlay(
+                            Group {
+                                if tab == .notifications && notificationService.unreadCount > 0 {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 8, height: 8)
+                                        .offset(x: 10, y: -10)
+                                }
+                            }
+                        )
 
                     Text(tab.label)
                         .font(.system(size: 10, weight: isActive ? .semibold : .regular))

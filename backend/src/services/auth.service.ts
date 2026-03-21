@@ -189,10 +189,12 @@ export async function logoutService(userId: string, refreshToken?: string) {
  * Verify Google ID token and login/register user
  */
 export async function verifyGoogleTokenService(idToken: string) {
+    const audience = process.env.GOOGLE_CLIENT_ID?.split(',').map(id => id.trim()) || [];
+
     // Verify the ID token with Google
     const ticket = await googleClient.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: audience,
     });
 
     const payload = ticket.getPayload();

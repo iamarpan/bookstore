@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Screen for confirming book handover (owner shows OTP to borrower, then confirms)
+/// Screen for confirming book handover (owner generates OTP; borrower enters it to confirm receipt)
 struct OTPHandoverView: View {
     let transaction: Transaction
     let isOwner: Bool
@@ -27,95 +27,16 @@ struct OTPHandoverView: View {
                         .foregroundColor(AppTheme.primaryAccent)
                 }
 
-                // Title & description
-                VStack(spacing: 12) {
-                    Text(isOwner ? "Confirm Handover" : "Awaiting Handover")
-                        .font(AppTheme.headerFont(size: 26))
-                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-
-                    Text(isOwner
-                         ? "Your one-time code is shown below. Confirm once the borrower acknowledges receipt of \"\(transaction.bookTitle)\"."
-                         : "The owner is confirming the handover of \"\(transaction.bookTitle)\". Please wait.")
-                        .font(AppTheme.bodyFont(size: 16))
-                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                }
-
                 if isOwner {
-                    // OTP display card
-                    VStack(spacing: 16) {
-                        Text("Handover Code")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
-                            .textCase(.uppercase)
-                            .tracking(1.5)
-
-                        if viewModel.isGenerating {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.primaryAccent))
-                                .scaleEffect(1.5)
-                        } else if let otp = viewModel.generatedOTP {
-                            Text(otp)
-                                .font(.system(size: 48, weight: .bold, design: .monospaced))
-                                .foregroundColor(AppTheme.primaryAccent)
-                                .tracking(8)
-                        } else {
-                            Text("Failed to generate code")
-                                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                        }
-
-                        if viewModel.generatedOTP != nil {
-                            Text("Show this to \(transaction.borrowerName) • expires in 10 min")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(24)
-                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
-                    .cornerRadius(20)
-                    .padding(.horizontal, 24)
-
-                    // Checklist
-                    VStack(alignment: .leading, spacing: 14) {
-                        checkRow("Book is in good condition")
-                        checkRow("Borrower is present and confirmed identity")
-                        checkRow("Both parties agree on the handover")
-                    }
-                    .padding(20)
-                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
-                    .cornerRadius(16)
-                    .padding(.horizontal, 24)
+                    ownerContent
+                } else {
+                    borrowerContent
                 }
 
                 Spacer()
 
-                if isOwner {
-                    Button(action: {
-                        Task { await viewModel.confirmHandover(transactionId: transaction.id) }
-                    }) {
-                        HStack {
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                Text("Confirm Handover")
-                                    .fontWeight(.bold)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(viewModel.generatedOTP != nil ? AppTheme.primaryAccent : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(AppTheme.buttonRadius)
-                        .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
-                    }
-                    .disabled(viewModel.isLoading || viewModel.generatedOTP == nil)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
+                if !isOwner {
+                    borrowerActionButton
                 }
             }
         }
@@ -135,6 +56,136 @@ struct OTPHandoverView: View {
         } message: {
             Text("The book has been handed over. The transaction is now active.")
         }
+    }
+
+    // MARK: - Owner Side: show the generated OTP
+
+    private var ownerContent: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 12) {
+                Text("Show Handover Code")
+                    .font(AppTheme.headerFont(size: 24))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                    .multilineTextAlignment(.center)
+
+                Text("Share this code with \(transaction.borrowerName). They will enter it on their device to confirm receipt of \"\(transaction.bookTitle)\".")
+                    .font(AppTheme.bodyFont(size: 15))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            // OTP card
+            VStack(spacing: 12) {
+                Text("Handover Code")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+
+                if viewModel.isGenerating {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.primaryAccent))
+                        .scaleEffect(1.5)
+                        .padding(.vertical, 14)
+                } else if let otp = viewModel.generatedOTP {
+                    Text(otp)
+                        .font(.system(size: 48, weight: .bold, design: .monospaced))
+                        .foregroundColor(AppTheme.primaryAccent)
+                        .tracking(8)
+
+                    Text("Expires in 10 min")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+                } else {
+                    Text("Failed to generate code")
+                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(24)
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .cornerRadius(20)
+            .padding(.horizontal, 24)
+        }
+    }
+
+    // MARK: - Borrower Side: enter the OTP shown by owner
+
+    private var borrowerContent: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 12) {
+                Text("Confirm Handover")
+                    .font(AppTheme.headerFont(size: 26))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+
+                Text("Ask \(transaction.ownerName) for the handover code and enter it below to confirm you received \"\(transaction.bookTitle)\".")
+                    .font(AppTheme.bodyFont(size: 16))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            // OTP entry field
+            VStack(spacing: 8) {
+                Text("Handover Code from Owner")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextField("Enter 6-digit code", text: $viewModel.enteredOTP.animation(nil))
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 32, weight: .bold, design: .monospaced))
+                    .tracking(6)
+                    .padding()
+                    .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+                    .cornerRadius(12)
+                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+            }
+            .padding(.horizontal, 24)
+
+            // Checklist
+            VStack(alignment: .leading, spacing: 14) {
+                checkRow("I have received the book")
+                checkRow("Book is in good condition")
+                checkRow("Owner is present")
+            }
+            .padding(20)
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .cornerRadius(16)
+            .padding(.horizontal, 24)
+        }
+    }
+
+    private var borrowerActionButton: some View {
+        Button(action: {
+            Task { await viewModel.confirmHandover(transactionId: transaction.id) }
+        }) {
+            HStack {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Confirm Receipt")
+                        .fontWeight(.bold)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(viewModel.enteredOTP.count == 6 ? AppTheme.primaryAccent : Color.gray)
+            .foregroundColor(.white)
+            .cornerRadius(AppTheme.buttonRadius)
+            .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
+        }
+        .disabled(viewModel.isLoading || viewModel.enteredOTP.count != 6)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 32)
     }
 
     private func checkRow(_ text: String) -> some View {
@@ -158,6 +209,7 @@ class HandoverConfirmViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showSuccess = false
     @Published var generatedOTP: String?
+    @Published var enteredOTP: String = ""
 
     private let transactionService = TransactionService()
 
@@ -173,10 +225,10 @@ class HandoverConfirmViewModel: ObservableObject {
         isGenerating = false
     }
 
-    /// Owner: confirm handover using the OTP they just generated
+    /// Borrower: confirm handover using the OTP they got from the owner
     func confirmHandover(transactionId: String) async {
-        guard let otp = generatedOTP else {
-            errorMessage = "Handover code not generated yet. Please wait."
+        guard !enteredOTP.isEmpty else {
+            errorMessage = "Please enter the handover code from the owner."
             showError = true
             return
         }
@@ -185,7 +237,7 @@ class HandoverConfirmViewModel: ObservableObject {
         errorMessage = nil
 
         do {
-            _ = try await transactionService.confirmHandover(id: transactionId, otp: otp)
+            _ = try await transactionService.confirmHandover(id: transactionId, otp: enteredOTP)
             showSuccess = true
         } catch {
             errorMessage = error.localizedDescription
@@ -201,7 +253,7 @@ class HandoverConfirmViewModel: ObservableObject {
     NavigationView {
         OTPHandoverView(
             transaction: Transaction.mockTransactions[0],
-            isOwner: true
+            isOwner: false
         )
         .environmentObject(ThemeManager())
     }

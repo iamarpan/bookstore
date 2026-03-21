@@ -59,7 +59,7 @@ struct PhoneSignInView: View {
                 // Divider with "or"
                 HStack {
                     Rectangle()
-                        .fill(AppTheme.colorBorder(for: themeManager.isDarkMode))
+                        .fill(AppTheme.dynamicBorderColor(for: themeManager.isDarkMode))
                         .frame(height: 1)
                     
                     Text("or")
@@ -68,7 +68,7 @@ struct PhoneSignInView: View {
                         .padding(.horizontal, 16)
                     
                     Rectangle()
-                        .fill(AppTheme.colorBorder(for: themeManager.isDarkMode))
+                        .fill(AppTheme.dynamicBorderColor(for: themeManager.isDarkMode))
                         .frame(height: 1)
                 }
                 
@@ -185,9 +185,10 @@ struct GoogleSignInButton: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.colorBorder(for: isDarkMode), lineWidth: 1)
+                    .stroke(AppTheme.dynamicBorderColor(for: isDarkMode), lineWidth: 1)
             )
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

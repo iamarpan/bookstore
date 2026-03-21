@@ -11,7 +11,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Configure Google Sign-In
         // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(
-            clientID: "YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com"
+            clientID: "533747577822-5tqtnsmugo44ohbl7qm13ritlnms4f5f.apps.googleusercontent.com"
         )
         
         // Set up notification center delegate

@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import { NotificationType } from '@prisma/client';
+import admin from '../config/firebase';
 
 /**
  * Fetch notifications for a user
@@ -78,5 +79,34 @@ export async function createNotification(data: {
     groupId?: string;
     relatedUserId?: string;
 }) {
-    return await prisma.notification.create({ data });
+    const notification = await prisma.notification.create({ data });
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: data.userId },
+            select: { deviceToken: true }
+        });
+
+        if (user?.deviceToken && admin.apps.length > 0) {
+            await admin.messaging().send({
+                token: user.deviceToken,
+                notification: {
+                    title: data.title,
+                    body: data.message,
+                },
+                data: {
+                    type: data.type,
+                    transactionId: data.transactionId || '',
+                    bookId: data.bookId || '',
+                    groupId: data.groupId || '',
+                    relatedUserId: data.relatedUserId || '',
+                }
+            });
+            console.log(`Push notification sent to ${data.userId}`);
+        }
+    } catch (error) {
+        console.error('Failed to send push notification:', error);
+    }
+
+    return notification;
 }

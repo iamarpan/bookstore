@@ -151,9 +151,7 @@ struct TransactionDetailView: View {
                 
                 Spacer()
                 
-                Button(action: {
-                    // Message action
-                }) {
+                NavigationLink(destination: ChatView(transactionId: viewModel.transaction.id)) {
                     Image(systemName: "message.circle.fill")
                         .font(.title)
                         .foregroundColor(AppTheme.primaryAccent)
