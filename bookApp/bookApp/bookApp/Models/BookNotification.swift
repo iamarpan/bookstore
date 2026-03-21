@@ -9,6 +9,7 @@ enum NotificationType: String, Codable {
     case overdue = "OVERDUE"
     case returnRequested = "RETURN_REQUESTED"
     case newBookInGroup = "NEW_BOOK_IN_GROUP"
+    case newMessage = "NEW_MESSAGE"
     
     var displayName: String {
         switch self {
@@ -19,6 +20,7 @@ enum NotificationType: String, Codable {
         case .overdue: return "Book Overdue"
         case .returnRequested: return "Return Requested"
         case .newBookInGroup: return "New Book in Group"
+        case .newMessage: return "New Message"
         }
     }
     
@@ -31,6 +33,7 @@ enum NotificationType: String, Codable {
         case .overdue: return "exclamationmark.triangle.fill"
         case .returnRequested: return "arrow.uturn.backward.circle.fill"
         case .newBookInGroup: return "sparkles"
+        case .newMessage: return "message.fill"
         }
     }
     
@@ -43,6 +46,7 @@ enum NotificationType: String, Codable {
         case .overdue: return "red"
         case .returnRequested: return "purple"
         case .newBookInGroup: return "teal"
+        case .newMessage: return "blue"
         }
     }
 }
@@ -65,7 +69,59 @@ struct BookNotification: Identifiable, Codable {
     
     // MARK: - CodingKeys
     enum CodingKeys: String, CodingKey {
-        case id, type, title, message, data, isRead, createdAt
+        case id, type, title, message, isRead, createdAt
+        case transactionId, bookId, groupId, userId
+    }
+    
+    // MARK: - Decodable
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        
+        // Safely decode type with a fallback if desired, but explicitly decode for now
+        if let decodedType = try? container.decode(NotificationType.self, forKey: .type) {
+            type = decodedType
+        } else {
+            // Fallback to a safe default if unknown type comes from backend
+            type = .borrowRequest
+        }
+        
+        title = try container.decode(String.self, forKey: .title)
+        message = try container.decode(String.self, forKey: .message)
+        isRead = try container.decode(Bool.self, forKey: .isRead)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        
+        var d = NotificationData()
+        d.transactionId = try container.decodeIfPresent(String.self, forKey: .transactionId)
+        d.bookId = try container.decodeIfPresent(String.self, forKey: .bookId)
+        d.groupId = try container.decodeIfPresent(String.self, forKey: .groupId)
+        d.userId = try container.decodeIfPresent(String.self, forKey: .userId)
+        
+        if d.transactionId != nil || d.bookId != nil || d.groupId != nil || d.userId != nil {
+            data = d
+        } else {
+            data = nil
+        }
+    }
+    
+    // MARK: - Encodable
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(type, forKey: .type)
+        try container.encode(title, forKey: .title)
+        try container.encode(message, forKey: .message)
+        try container.encode(isRead, forKey: .isRead)
+        try container.encode(createdAt, forKey: .createdAt)
+        
+        if let data = data {
+            try container.encodeIfPresent(data.transactionId, forKey: .transactionId)
+            try container.encodeIfPresent(data.bookId, forKey: .bookId)
+            try container.encodeIfPresent(data.groupId, forKey: .groupId)
+            try container.encodeIfPresent(data.userId, forKey: .userId)
+        }
     }
     
     // MARK: - Initializers

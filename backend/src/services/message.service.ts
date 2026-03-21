@@ -16,8 +16,8 @@ export const messageService = {
             throw new Error('You are not a party to this transaction');
         }
 
-        if (transaction.status !== TransactionStatus.APPROVED && transaction.status !== TransactionStatus.ACTIVE) {
-            throw new Error('Chat is only available for approved or active transactions');
+        if (transaction.status !== TransactionStatus.APPROVED && transaction.status !== TransactionStatus.ACTIVE && transaction.status !== TransactionStatus.PENDING) {
+            throw new Error('Chat is only available for pending, approved, or active transactions');
         }
 
         const messages = await prisma.message.findMany({
@@ -64,8 +64,8 @@ export const messageService = {
             throw new Error('You are not a party to this transaction');
         }
 
-        if (transaction.status !== TransactionStatus.APPROVED && transaction.status !== TransactionStatus.ACTIVE) {
-            throw new Error('Chat is only available for approved or active transactions');
+        if (transaction.status !== TransactionStatus.APPROVED && transaction.status !== TransactionStatus.ACTIVE && transaction.status !== TransactionStatus.PENDING) {
+            throw new Error('Chat is only available for pending, approved, or active transactions');
         }
 
         const message = await prisma.message.create({

@@ -1,12 +1,17 @@
 import UIKit
 import UserNotifications
 import GoogleSignIn
+import FirebaseCore
+import FirebaseMessaging
 
-class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
         print("📱 BookShare app initializing...")
+        
+        // Configure Firebase
+        FirebaseApp.configure()
         
         // Configure Google Sign-In
         // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
@@ -14,8 +19,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             clientID: "533747577822-5tqtnsmugo44ohbl7qm13ritlnms4f5f.apps.googleusercontent.com"
         )
         
-        // Set up notification center delegate
+        // Set up notification center and messaging delegates
         UNUserNotificationCenter.current().delegate = self
+        Messaging.messaging().delegate = self
         
         // Request notification permissions
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
@@ -43,18 +49,23 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // MARK: - Remote Notifications (APNs)
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         print("📲 Registered for remote notifications")
-        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
-        let token = tokenParts.joined()
-        print("Device Token: \(token)")
-        
-        // Send device token to backend for push notifications
-        Task { @MainActor in
-            await NotificationService.shared.registerDeviceToken(token)
-        }
+        // Pass device token to Firebase Messaging
+        Messaging.messaging().apnsToken = deviceToken
     }
     
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
+    }
+    
+    // MARK: - MessagingDelegate
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken = fcmToken else { return }
+        print("Firebase registration token: \(fcmToken)")
+        
+        // Send device token to backend for push notifications
+        Task { @MainActor in
+            await NotificationService.shared.registerDeviceToken(fcmToken)
+        }
     }
     
     // MARK: - UNUserNotificationCenterDelegate

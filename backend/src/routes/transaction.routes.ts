@@ -400,7 +400,7 @@ router.post('/:id/cancel', authenticate, cancelRequest);
  *   get:
  *     tags: [Transactions]
  *     summary: Get messages for a transaction
- *     description: Retrieves all messages for a transaction. Only available for APPROVED or ACTIVE transactions.
+ *     description: Retrieves all messages for a transaction. Only available for PENDING, APPROVED or ACTIVE transactions.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -426,7 +426,7 @@ router.get('/:transactionId/messages', authenticate, getMessages);
  *   post:
  *     tags: [Transactions]
  *     summary: Send a message in a transaction chat
- *     description: Sends a message to the other party. Only available for APPROVED or ACTIVE transactions.
+ *     description: Sends a message to the other party. Only available for PENDING, APPROVED or ACTIVE transactions.
  *     security:
  *       - BearerAuth: []
  *     parameters:

@@ -208,6 +208,17 @@ export class TransactionService {
             relatedUserId: data.borrowerId
         }).catch(err => console.error('Failed to create BORROW_REQUEST notification:', err));
 
+        // If an initial request message was provided, add it to the chat
+        if (data.message && data.message.trim() !== '') {
+            await prisma.message.create({
+                data: {
+                    transactionId: created.id,
+                    senderId: data.borrowerId,
+                    content: data.message,
+                }
+            });
+        }
+
         return this.mapTransaction(created);
     }
 

@@ -10,9 +10,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d968d579-ee95-4c2a-ab78-8875a15a78f3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bookApp/bookApp/bookApp/GoogleService-Info.plist" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/transaction.routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/transaction.routes.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/services/message.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/services/message.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/services/transaction.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/services/transaction.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bookApp/Info.plist" beforeDir="false" afterPath="$PROJECT_DIR$/bookApp/Info.plist" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.pbxproj" beforeDir="false" afterPath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.pbxproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" beforeDir="false" afterPath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.xcworkspace/xcuserdata/ayushyachitransh.xcuserdatad/UserInterfaceState.xcuserstate" beforeDir="false" afterPath="$PROJECT_DIR$/bookApp/bookApp/bookApp.xcodeproj/project.xcworkspace/xcuserdata/ayushyachitransh.xcuserdatad/UserInterfaceState.xcuserstate" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bookApp/bookApp/bookApp/AppDelegate.swift" beforeDir="false" afterPath="$PROJECT_DIR$/bookApp/bookApp/bookApp/AppDelegate.swift" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,6 +86,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "feature/ios-chat-notifications-transactions",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/ayushyachitransh/development/bookstore",
     "project.structure.last.edited": "Modules",
