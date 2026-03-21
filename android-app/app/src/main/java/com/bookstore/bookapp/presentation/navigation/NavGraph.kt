@@ -15,8 +15,11 @@ import com.bookstore.bookapp.domain.model.NotificationType
 import com.bookstore.bookapp.presentation.ui.AddBookScreen
 import com.bookstore.bookapp.presentation.ui.AuthScreen
 import com.bookstore.bookapp.presentation.ui.BookDetailScreen
+import com.bookstore.bookapp.presentation.ui.CreateGroupScreen
 import com.bookstore.bookapp.presentation.ui.OnboardingScreen
 import com.bookstore.bookapp.presentation.ui.GroupDetailScreen
+import com.bookstore.bookapp.presentation.ui.GroupMembersScreen
+import com.bookstore.bookapp.presentation.ui.GroupSettingsScreen
 import com.bookstore.bookapp.presentation.ui.MainScreen
 import com.bookstore.bookapp.presentation.ui.NotificationsScreen
 import com.bookstore.bookapp.presentation.ui.TransactionChatScreen
@@ -60,6 +63,9 @@ fun AppNavGraph(
                 onNavigateToGroupDetail = { groupId ->
                     navController.navigate(Screen.GroupDetail.createRoute(groupId))
                 },
+                onNavigateToCreateGroup = {
+                    navController.navigate(Screen.CreateGroup.route)
+                },
                 onNavigateToTransactions = {
                     navController.navigate(Screen.Transactions.route)
                 },
@@ -93,7 +99,42 @@ fun AppNavGraph(
         ) {
             GroupDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onBookClick = { bookId -> navController.navigate(Screen.BookDetail.createRoute(bookId)) }
+                onBookClick = { bookId -> navController.navigate(Screen.BookDetail.createRoute(bookId)) },
+                onNavigateToSettings = { groupId ->
+                    navController.navigate(Screen.GroupSettings.createRoute(groupId))
+                },
+                onNavigateToMembers = { groupId ->
+                    navController.navigate(Screen.GroupMembers.createRoute(groupId))
+                }
+            )
+        }
+
+        composable(Screen.CreateGroup.route) {
+            CreateGroupScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onGroupCreated = { groupId ->
+                    navController.navigate(Screen.GroupDetail.createRoute(groupId)) {
+                        popUpTo(Screen.CreateGroup.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            Screen.GroupSettings.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) {
+            GroupSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            Screen.GroupMembers.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) {
+            GroupMembersScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

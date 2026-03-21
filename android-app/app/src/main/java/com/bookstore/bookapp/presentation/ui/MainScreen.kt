@@ -50,6 +50,7 @@ import com.bookstore.bookapp.presentation.viewmodel.NotificationsViewModel
 fun MainScreen(
     onNavigateToBookDetail: (String) -> Unit,
     onNavigateToGroupDetail: (String) -> Unit,
+    onNavigateToCreateGroup: () -> Unit = {},
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToTransactionDetail: (String) -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -152,6 +153,7 @@ fun MainScreen(
                 navController = bottomNavController,
                 onNavigateToBookDetail = onNavigateToBookDetail,
                 onNavigateToGroupDetail = onNavigateToGroupDetail,
+                onNavigateToCreateGroup = onNavigateToCreateGroup,
                 onNavigateToTransactionDetail = onNavigateToTransactionDetail
             )
         }
@@ -163,6 +165,7 @@ fun BottomNavGraph(
     navController: NavHostController,
     onNavigateToBookDetail: (String) -> Unit,
     onNavigateToGroupDetail: (String) -> Unit,
+    onNavigateToCreateGroup: () -> Unit = {},
     onNavigateToTransactionDetail: (String) -> Unit = {}
 ) {
     NavHost(
@@ -173,7 +176,10 @@ fun BottomNavGraph(
             HomeScreen(onBookClick = onNavigateToBookDetail)
         }
         composable(Screen.Groups.route) {
-            DiscoverGroupsScreen(onGroupClick = onNavigateToGroupDetail)
+            DiscoverGroupsScreen(
+                onGroupClick = onNavigateToGroupDetail,
+                onCreateGroupClick = onNavigateToCreateGroup
+            )
         }
         composable(Screen.AddBook.route) {
             AddBookScreen(onNavigateBack = { navController.popBackStack() })

@@ -12,7 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.bookstore.bookapp.R
 import com.bookstore.bookapp.domain.model.User
 import com.bookstore.bookapp.domain.repository.AuthRepository
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -93,10 +93,9 @@ class AuthViewModel @Inject constructor(
             try {
                 val credentialManager = CredentialManager.create(activity)
                 
-                val googleIdOption = GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setServerClientId(activity.getString(R.string.google_client_id))
-                    .setAutoSelectEnabled(false)
+                val googleIdOption = GetSignInWithGoogleOption.Builder(
+                    serverClientId = activity.getString(R.string.google_client_id)
+                )
                     .build()
                 
                 val request = GetCredentialRequest.Builder()

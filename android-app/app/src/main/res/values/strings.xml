@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">BookShare</string>
     <!-- TODO: Replace with your actual Google OAuth Web Client ID from Google Cloud Console -->
-    <string name="google_client_id">YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com</string>
+    <string name="google_client_id">533747577822-ht8ei7n8m4o4jo7vb7s8ojigvopje3jt.apps.googleusercontent.com</string>
 </resources>

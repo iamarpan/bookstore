@@ -24,7 +24,9 @@ data class DiscoverGroupsState(
     val discoveredGroups: List<BookClub> = emptyList(),
     val myGroups: List<BookClub> = emptyList(),
     val searchQuery: String = "",
-    val selectedCategory: GroupCategory? = null
+    val selectedCategory: GroupCategory? = null,
+    val joiningGroupId: String? = null,
+    val joinedGroupId: String? = null
 )
 
 @OptIn(FlowPreview::class)
@@ -105,24 +107,47 @@ class DiscoverGroupsViewModel @Inject constructor(
 
     fun joinPublicGroup(groupId: String) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(joiningGroupId = groupId, error = null)
             try {
                 groupRepository.joinGroup(groupId)
+                _uiState.value = _uiState.value.copy(
+                    joiningGroupId = null,
+                    joinedGroupId = groupId
+                )
                 // Re-fetch groups to update lists
                 searchGroups()
                 groupRepository.fetchMyGroups()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.localizedMessage)
+                _uiState.value = _uiState.value.copy(
+                    joiningGroupId = null,
+                    error = e.localizedMessage
+                )
             }
         }
     }
 
-    fun joinViaInvite(code: String) {
+    fun joinViaInvite(code: String, onSuccess: (BookClub) -> Unit) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                groupRepository.joinViaInvite(code)
+                val group = groupRepository.joinViaInvite(code)
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                groupRepository.fetchMyGroups()
+                onSuccess(group)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.localizedMessage)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.localizedMessage
+                )
             }
         }
+    }
+
+    fun clearJoinedGroup() {
+        _uiState.value = _uiState.value.copy(joinedGroupId = null)
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 }

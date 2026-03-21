@@ -78,15 +78,6 @@ fun MyLibraryScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("My Library", style = MaterialTheme.typography.headlineMedium) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(

@@ -39,7 +39,7 @@ data class Book(
     val ownerProfileImageUrl: String?,
     
     // Multi-group visibility
-    val visibleInGroups: List<String>,
+    val visibleInGroups: List<String>?,
     
     // Transaction tracking
     val currentTransactionId: String?,
@@ -49,10 +49,10 @@ data class Book(
     val updatedAt: Date?
 ) {
     val primaryGroupId: String?
-        get() = visibleInGroups.firstOrNull()
+        get() = visibleInGroups?.firstOrNull()
 
     fun isVisibleIn(groupId: String): Boolean {
-        return visibleInGroups.contains(groupId)
+        return visibleInGroups?.contains(groupId) == true
     }
 
     val formattedPrice: String
