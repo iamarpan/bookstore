@@ -143,20 +143,20 @@ struct ParallaxHeader: View {
 struct BookInfoSection: View {
     let book: Book
     let isDarkMode: Bool
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(book.title)
                 .font(AppTheme.headerFont(size: 28))
                 .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
                 .fixedSize(horizontal: false, vertical: true)
-            
+
             Text("by \(book.author)")
                 .font(AppTheme.bodyFont(size: 18, weight: .medium))
                 .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
-            
+
+            // Genre + Availability row
             HStack(spacing: 12) {
-                // Genre Tag
                 Text(book.genre.uppercased())
                     .font(AppTheme.bodyFont(size: 12, weight: .bold))
                     .foregroundColor(AppTheme.secondaryAccent)
@@ -164,8 +164,7 @@ struct BookInfoSection: View {
                     .padding(.vertical, 6)
                     .background(AppTheme.secondaryAccent.opacity(0.1))
                     .cornerRadius(AppTheme.buttonRadius)
-                
-                // Availability
+
                 HStack(spacing: 4) {
                     Circle()
                         .fill(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
@@ -175,24 +174,84 @@ struct BookInfoSection: View {
                         .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
                 }
             }
-            
-            // Condition & Price
+
+            // Condition dots + price
             HStack(spacing: 16) {
-                Label(book.condition.rawValue.capitalized, systemImage: "star.fill")
-                    .font(AppTheme.bodyFont(size: 14))
-                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
-                
-                if book.lendingPricePerWeek > 0 {
-                    Label(String(format: "$%.2f/week", book.lendingPricePerWeek), systemImage: "tag.fill")
-                        .font(AppTheme.bodyFont(size: 14))
-                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
-                } else {
-                    Label("Free to Borrow", systemImage: "gift.fill")
-                        .font(AppTheme.bodyFont(size: 14))
-                        .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Condition")
+                        .font(AppTheme.bodyFont(size: 11))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                    ConditionDotsView(condition: book.condition)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Price")
+                        .font(AppTheme.bodyFont(size: 11))
+                        .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                    Text(book.formattedPrice)
+                        .font(AppTheme.bodyFont(size: 18, weight: .bold))
+                        .foregroundColor(book.lendingPricePerWeek == 0 ? AppTheme.successColor : AppTheme.primaryAccent)
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, 4)
+
+            // Lending Terms card
+            LendingTermsView(book: book, isDarkMode: isDarkMode)
+        }
+    }
+}
+
+// MARK: - Lending Terms
+struct LendingTermsView: View {
+    let book: Book
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Lending Terms")
+                .font(AppTheme.bodyFont(size: 13, weight: .semibold))
+                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+
+            HStack(spacing: 16) {
+                // Price per week
+                HStack(spacing: 6) {
+                    Image(systemName: "indianrupeesign.circle.fill")
+                        .foregroundColor(AppTheme.primaryAccent)
+                        .font(.system(size: 18))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(book.formattedPrice)
+                            .font(AppTheme.bodyFont(size: 14, weight: .semibold))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                        Text("per week")
+                            .font(AppTheme.bodyFont(size: 10))
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                    }
+                }
+
+                Divider().frame(height: 30)
+
+                // Condition
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundColor(AppTheme.successColor)
+                        .font(.system(size: 18))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(book.condition.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                            .font(AppTheme.bodyFont(size: 14, weight: .semibold))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                        Text("condition")
+                            .font(AppTheme.bodyFont(size: 10))
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(12)
+            .background(AppTheme.colorSecondaryBackground(for: isDarkMode))
+            .cornerRadius(12)
         }
     }
 }
@@ -243,36 +302,89 @@ struct BookDescriptionView: View {
 struct OwnerInfoView: View {
     let book: Book
     @EnvironmentObject var themeManager: ThemeManager
-    
+
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 50))
+        VStack(alignment: .leading, spacing: 12) {
+            Text("About the Owner")
+                .font(AppTheme.bodyFont(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Owned by")
-                    .font(AppTheme.bodyFont(size: 12))
-                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                
-                Text(book.ownerName)
-                    .font(AppTheme.headerFont(size: 18))
-                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+
+            HStack(spacing: 16) {
+                // Avatar
+                if let imageUrl = book.ownerProfileImageUrl, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        ownerPlaceholder
+                    }
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                } else {
+                    ownerPlaceholder
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(book.ownerName)
+                        .font(AppTheme.headerFont(size: 18))
+                        .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+
+                    HStack(spacing: 12) {
+                        if let rating = book.ownerRating, rating > 0 {
+                            Label(String(format: "%.1f", rating), systemImage: "star.fill")
+                                .font(AppTheme.bodyFont(size: 13))
+                                .foregroundColor(.orange)
+                        }
+                        if let booksCount = book.ownerBooksCount, booksCount > 0 {
+                            Label("\(booksCount) books", systemImage: "books.vertical.fill")
+                                .font(AppTheme.bodyFont(size: 13))
+                                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                        }
+                    }
+                }
+
+                Spacer()
+
+                NavigationLink(destination: PublicProfileView(userId: book.ownerId)) {
+                    Text("View Profile")
+                        .foregroundColor(AppTheme.primaryAccent)
+                        .font(AppTheme.bodyFont(size: 14, weight: .medium))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.primaryAccent.opacity(0.1))
+                        .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
             }
-            
-            Spacer()
-            
-            NavigationLink(destination: PublicProfileView(userId: book.ownerId)) {
-                Text("View Profile")
-                    .foregroundColor(AppTheme.primaryAccent)
-                    .font(AppTheme.bodyFont(size: 15, weight: .medium))
-                    .frame(width: 120)
-                    .padding(.vertical, 10)
-                    .background(AppTheme.primaryAccent.opacity(0.1))
-                    .cornerRadius(12)
+            .padding(14)
+            .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
+            .cornerRadius(14)
+
+            // Visible in Groups
+            if !book.visibleInGroups.isEmpty {
+                GroupsVisibilityRow(groupIds: book.visibleInGroups, isDarkMode: themeManager.isDarkMode)
             }
-            .buttonStyle(.plain)
         }
+    }
+
+    private var ownerPlaceholder: some View {
+        Image(systemName: "person.circle.fill")
+            .font(.system(size: 50))
+            .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+    }
+}
+
+// MARK: - Groups Visibility
+struct GroupsVisibilityRow: View {
+    let groupIds: [String]
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Shared in \(groupIds.count) group\(groupIds.count == 1 ? "" : "s")", systemImage: "person.3.fill")
+                .font(AppTheme.bodyFont(size: 13))
+                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+        }
+        .padding(.horizontal, 4)
     }
 }
 

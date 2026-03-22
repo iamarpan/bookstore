@@ -61,6 +61,26 @@ enum HTTPMethod: String {
     case PATCH
 }
 
+// MARK: - Token Refresh Serialiser
+// Ensures that when multiple concurrent requests get a 401 at the same time,
+// only ONE refresh call is made to the server. All other callers wait for the
+// in-flight refresh to finish and then reuse the new token already in Keychain.
+private actor TokenRefreshActor {
+    private var refreshTask: Task<Void, Error>?
+
+    func refresh(using block: @escaping () async throws -> Void) async throws {
+        // If a refresh is already in-flight, wait for it instead of firing a second one.
+        if let existing = refreshTask {
+            try await existing.value
+            return
+        }
+        let task = Task { try await block() }
+        refreshTask = task
+        defer { refreshTask = nil }
+        try await task.value
+    }
+}
+
 // MARK: - API Client
 class APIClient {
     static let shared = APIClient()
@@ -70,6 +90,7 @@ class APIClient {
     private let keychainManager: KeychainManager
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let refreshActor = TokenRefreshActor()
     
     // MARK: - Shared Date Formatters (static to avoid per-call allocation)
     private static let isoWithFractional: ISO8601DateFormatter = {
@@ -305,10 +326,14 @@ class APIClient {
                 
             case 401:
                 // Unauthorized - try to refresh token
+                // Uses TokenRefreshActor to ensure only ONE refresh fires even if
+                // multiple requests get 401 concurrently (race condition fix).
                 if retryCount < 1 {
                     do {
-                        try await refreshAccessToken()
-                        // Retry the request with new token
+                        try await refreshActor.refresh {
+                            try await self.refreshAccessToken()
+                        }
+                        // Retry the request with the newly saved token
                         return try await request(
                             endpoint: endpoint,
                             method: method,

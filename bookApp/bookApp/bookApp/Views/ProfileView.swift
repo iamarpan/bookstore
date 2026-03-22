@@ -10,82 +10,97 @@ struct ProfileView: View {
     var body: some View {
         NavigationView {
             List {
+                // MARK: - Profile Header
                 Section {
                     if let user = authViewModel.currentUser {
-                        HStack {
+                        VStack(spacing: 12) {
+                            // Avatar
                             Image(systemName: "person.circle.fill")
-                                .font(.system(size: 50))
+                                .font(.system(size: 72))
                                 .foregroundColor(AppTheme.primaryAccent)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
+
+                            VStack(spacing: 4) {
                                 Text(user.name)
                                     .font(.title2)
-                                    .fontWeight(.semibold)
+                                    .fontWeight(.bold)
                                     .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-                                
-                                if !(user.joinedGroupIds?.isEmpty ?? true) || !(user.createdGroupIds?.isEmpty ?? true) {
-                                    Text("Member of Book Club")
-                                        .font(.caption)
-                                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                                }
-                                
+
+                                // Phone / handle
                                 Text(user.phoneNumber)
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
-                                
+
+                                if let bio = user.bio, !bio.isEmpty {
+                                    Text(bio)
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+                                        .multilineTextAlignment(.center)
+                                        .padding(.top, 2)
+                                }
+
                                 if let email = user.email {
-                                    Text(email)
-                                        .font(.subheadline)
-                                        .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                                    Label(email, systemImage: "envelope.fill")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                                 }
                             }
-                            
-                            Spacer()
+
+                            NavigationLink(destination: EditProfileView()) {
+                                Text("Edit Profile")
+                                    .font(AppTheme.bodyFont(size: 14, weight: .semibold))
+                                    .foregroundColor(AppTheme.primaryAccent)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 8)
+                                    .background(AppTheme.primaryAccent.opacity(0.1))
+                                    .cornerRadius(20)
+                            }
+                            .buttonStyle(.plain)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        
-                        NavigationLink(destination: EditProfileView()) {
-                            Text("Edit Profile")
-                                .foregroundColor(AppTheme.primaryAccent)
-                        }
                     }
                 }
                 .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
-                
-                Section(header: Text("Library Stats").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
-                    ProfileStatRow(
-                        icon: "books.vertical.fill",
-                        iconColor: AppTheme.primaryAccent,
-                        title: "Books Added",
-                        value: "\(viewModel.booksAddedCount)",
-                        isDarkMode: themeManager.isDarkMode
-                    )
-                    
-                    ProfileStatRow(
-                        icon: "book.fill",
-                        iconColor: AppTheme.successColor,
-                        title: "Books Borrowed",
-                        value: "\(viewModel.booksBorrowedCount)",
-                        isDarkMode: themeManager.isDarkMode
-                    )
-                    
-                    ProfileStatRow(
-                        icon: "person.2.fill",
-                        iconColor: AppTheme.warningColor,
-                        title: "Books Lent",
-                        value: "\(viewModel.booksLentCount)",
-                        isDarkMode: themeManager.isDarkMode
-                    )
-                    
-                    ProfileStatRow(
-                        icon: "star.fill",
-                        iconColor: .purple,
-                        title: "Reputation",
-                        value: String(format: "%.1f", viewModel.reputationScore),
-                        isDarkMode: themeManager.isDarkMode
-                    )
+
+                // MARK: - Your Impact
+                Section(header: Text("Your Impact").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ImpactCard(value: "\(viewModel.booksAddedCount)", label: "Books Added", icon: "books.vertical.fill", color: AppTheme.primaryAccent, isDarkMode: themeManager.isDarkMode)
+                            ImpactCard(value: "\(viewModel.booksLentCount)", label: "Lent Out", icon: "arrow.up.forward.circle.fill", color: AppTheme.warningColor, isDarkMode: themeManager.isDarkMode)
+                            ImpactCard(value: "\(viewModel.booksBorrowedCount)", label: "Borrowed", icon: "book.fill", color: AppTheme.successColor, isDarkMode: themeManager.isDarkMode)
+                            ImpactCard(value: String(format: "%.1f", viewModel.reputationScore), label: "Reputation", icon: "star.fill", color: .purple, isDarkMode: themeManager.isDarkMode)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                 }
                 .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
+
+                // MARK: - Activity Summary
+                if viewModel.booksLentCount > 0 || viewModel.booksBorrowedCount > 0 {
+                    Section(header: Text("Activity").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
+                        if viewModel.booksLentCount > 0 {
+                            HStack {
+                                Image(systemName: "arrow.up.forward.circle.fill")
+                                    .foregroundColor(AppTheme.warningColor)
+                                    .frame(width: 24)
+                                Text("Currently lending \(viewModel.booksLentCount) book\(viewModel.booksLentCount == 1 ? "" : "s")")
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                            }
+                        }
+                        if viewModel.booksBorrowedCount > 0 {
+                            HStack {
+                                Image(systemName: "book.fill")
+                                    .foregroundColor(AppTheme.successColor)
+                                    .frame(width: 24)
+                                Text("Borrowed \(viewModel.booksBorrowedCount) book\(viewModel.booksBorrowedCount == 1 ? "" : "s")")
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                            }
+                        }
+                    }
+                    .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
+                }
                 
                 Section(header: Text("Settings").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
                     HStack {
@@ -226,6 +241,34 @@ struct ProfileStatRow: View {
                 .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
                 .fontWeight(.medium)
         }
+    }
+}
+
+// MARK: - Impact Card
+struct ImpactCard: View {
+    let value: String
+    let label: String
+    let icon: String
+    let color: Color
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+            Text(label)
+                .font(AppTheme.bodyFont(size: 11))
+                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                .multilineTextAlignment(.center)
+        }
+        .frame(width: 90, height: 100)
+        .padding(12)
+        .background(color.opacity(0.08))
+        .cornerRadius(16)
     }
 }
 

@@ -1,5 +1,31 @@
 import SwiftUI
 
+// MARK: - Condition Dots (shared component)
+struct ConditionDotsView: View {
+    let condition: BookCondition
+
+    private var filledCount: Int {
+        switch condition {
+        case .new: return 5
+        case .likeNew: return 4
+        case .good: return 3
+        case .fair: return 2
+        case .poor: return 1
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<5, id: \.self) { index in
+                Circle()
+                    .fill(index < filledCount ? AppTheme.primaryAccent : Color.gray.opacity(0.3))
+                    .frame(width: 6, height: 6)
+            }
+        }
+    }
+}
+
+// MARK: - Home View
 struct HomeView: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @EnvironmentObject var themeManager: ThemeManager
@@ -24,7 +50,6 @@ struct HomeView: View {
                         .environmentObject(homeViewModel)
                 }
                 .onAppear {
-                    // Configure once — appearance proxy is global, no need to call on every appear
                     if !hasConfiguredNavBar { setupNavigationBarAppearance() }
                 }
                 .onChange(of: themeManager.isDarkMode) { _, _ in
@@ -33,14 +58,14 @@ struct HomeView: View {
         }
         .accentColor(AppTheme.primaryAccent)
     }
-    
+
     private var mainContent: some View {
         VStack(spacing: 16) {
             searchSection
             contentSection
         }
     }
-    
+
     private var searchSection: some View {
         HStack {
             searchBar
@@ -49,12 +74,12 @@ struct HomeView: View {
         .padding(.horizontal)
         .padding(.top, 8)
     }
-    
+
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-            
+
             TextField("Search books, authors...", text: $homeViewModel.searchText.animation(nil))
                 .font(AppTheme.bodyFont())
                 .autocorrectionDisabled()
@@ -62,14 +87,16 @@ struct HomeView: View {
         }
         .shadow(color: AppTheme.shadowCard, radius: 10, x: 0, y: 4)
     }
-    
+
     private var filterButton: some View {
-        Button(action: {
-            showingFilterSheet.toggle()
-        }) {
-            Image(systemName: homeViewModel.hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "slider.horizontal.3")
+        Button(action: { showingFilterSheet.toggle() }) {
+            Image(systemName: homeViewModel.hasActiveFilters
+                  ? "line.3.horizontal.decrease.circle.fill"
+                  : "slider.horizontal.3")
                 .font(.title2)
-                .foregroundColor(homeViewModel.hasActiveFilters ? AppTheme.primaryAccent : AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+                .foregroundColor(homeViewModel.hasActiveFilters
+                                 ? AppTheme.primaryAccent
+                                 : AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
                 .padding(12)
                 .background(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 .clipShape(Circle())
@@ -77,32 +104,92 @@ struct HomeView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private var contentSection: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                // Removed activeBookClub section - will be implemented when groups are ready
-                
-                if homeViewModel.isLoading {
-                    loadingView
-                } else if homeViewModel.filteredBooks.isEmpty {
-                    emptyStateView
-                } else {
-                    booksGrid
+            if homeViewModel.isLoading {
+                loadingView
+            } else if homeViewModel.hasActiveFilters {
+                // Filtered: flat grid
+                VStack(alignment: .leading, spacing: 16) {
+                    if homeViewModel.filteredBooks.isEmpty {
+                        emptyStateView
+                    } else {
+                        Text("Results")
+                            .font(AppTheme.headerFont(size: 20))
+                            .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                            .padding(.horizontal, 16)
+                        flatGrid(homeViewModel.filteredBooks)
+                    }
                 }
+                .padding(.vertical, 8)
+            } else {
+                // Default: curated carousels
+                VStack(alignment: .leading, spacing: 28) {
+                    if !availableBooks.isEmpty {
+                        BookCarouselSection(
+                            title: "Available Now",
+                            icon: "checkmark.circle.fill",
+                            iconColor: AppTheme.successColor,
+                            books: availableBooks,
+                            isDarkMode: themeManager.isDarkMode
+                        )
+                    }
+                    if !recentBooks.isEmpty {
+                        BookCarouselSection(
+                            title: "Recently Added",
+                            icon: "sparkles",
+                            iconColor: AppTheme.primaryAccent,
+                            books: recentBooks,
+                            isDarkMode: themeManager.isDarkMode
+                        )
+                    }
+                    if !popularBooks.isEmpty {
+                        BookCarouselSection(
+                            title: "Popular in Groups",
+                            icon: "person.3.fill",
+                            iconColor: AppTheme.secondaryAccent,
+                            books: popularBooks,
+                            isDarkMode: themeManager.isDarkMode
+                        )
+                    }
+                }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 8)
         }
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 100)
-        }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 100) }
         .refreshable {
-            Task {
-                await homeViewModel.refreshBooks()
-            }
+            Task { await homeViewModel.refreshBooks() }
         }
     }
-    
+
+    // MARK: - Carousel Data Sources
+    private var availableBooks: [Book] {
+        homeViewModel.books.filter { $0.isAvailable }
+    }
+    private var recentBooks: [Book] {
+        Array(homeViewModel.books.sorted { $0.createdAt > $1.createdAt }.prefix(10))
+    }
+    private var popularBooks: [Book] {
+        Array(homeViewModel.books
+            .filter { !$0.visibleInGroups.isEmpty }
+            .sorted { ($0.ownerRating ?? 0) > ($1.ownerRating ?? 0) }
+            .prefix(10))
+    }
+
+    @ViewBuilder
+    private func flatGrid(_ items: [Book]) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 20) {
+            ForEach(items) { book in
+                NavigationLink(destination: BookDetailView(book: book)) {
+                    BookTileView(book: book, isDarkMode: themeManager.isDarkMode)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
     private var loadingView: some View {
         VStack {
             Spacer()
@@ -113,41 +200,22 @@ struct HomeView: View {
         }
         .frame(height: 200)
     }
-    
+
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            VStack {
-                Image(systemName: "books.vertical")
-                    .font(.system(size: 50))
-                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-                Text("No books found")
-                    .font(.title2)
-                    .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
-                Text("Try adjusting your search or filters")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
-            }
-            Spacer()
+        VStack(spacing: 12) {
+            Image(systemName: "books.vertical")
+                .font(.system(size: 50))
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
+            Text("No books found")
+                .font(.title2)
+                .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))
+            Text("Try adjusting your search or filters")
+                .font(.caption)
+                .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
         }
-        .frame(height: 300)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
     }
-    
-    private var booksGrid: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible(), spacing: 12),
-            GridItem(.flexible(), spacing: 12)
-        ], spacing: 20) {
-            ForEach(homeViewModel.filteredBooks) { book in
-                NavigationLink(destination: BookDetailView(book: book)) {
-                    BookTileView(book: book, isDarkMode: themeManager.isDarkMode)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-        .padding(.horizontal, 16)
-    }
-    
 
     private func setupNavigationBarAppearance() {
         hasConfiguredNavBar = true
@@ -156,12 +224,183 @@ struct HomeView: View {
         appearance.backgroundColor = UIColor(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode))
         appearance.titleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))]
-
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
 }
 
+// MARK: - Book Carousel Section
+struct BookCarouselSection: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let books: [Book]
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .foregroundColor(iconColor)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(title)
+                    .font(AppTheme.headerFont(size: 20))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(books) { book in
+                        NavigationLink(destination: BookDetailView(book: book)) {
+                            CarouselBookCard(book: book, isDarkMode: isDarkMode)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+// MARK: - Carousel Book Card
+struct CarouselBookCard: View {
+    let book: Book
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topTrailing) {
+                AsyncImage(url: URL(string: book.imageUrl)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(AppTheme.colorSecondaryBackground(for: isDarkMode))
+                        .overlay(
+                            Image(systemName: "book.closed.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                        )
+                }
+                .frame(width: 130, height: 180)
+                .clipped()
+                .cornerRadius(12, corners: [.topLeft, .topRight])
+
+                Text(book.isAvailable ? "Available" : "Borrowed")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                    .cornerRadius(8)
+                    .padding(6)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(book.title)
+                    .font(AppTheme.bodyFont(size: 13, weight: .semibold))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(book.author)
+                    .font(AppTheme.bodyFont(size: 11))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                    .lineLimit(1)
+
+                ConditionDotsView(condition: book.condition)
+
+                Text(book.formattedPrice)
+                    .font(AppTheme.bodyFont(size: 12, weight: .semibold))
+                    .foregroundColor(AppTheme.primaryAccent)
+            }
+            .padding(8)
+        }
+        .frame(width: 130)
+        .background(AppTheme.colorCardBackground(for: isDarkMode))
+        .cornerRadius(12)
+        .shadow(color: AppTheme.shadowCard, radius: 6, x: 0, y: 3)
+    }
+}
+
+// MARK: - Book Tile View (flat grid)
+struct BookTileView: View {
+    let book: Book
+    let isDarkMode: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack(alignment: .topLeading) {
+                AsyncImage(url: URL(string: book.imageUrl)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(AppTheme.colorSecondaryBackground(for: isDarkMode))
+                        .overlay(
+                            Image(systemName: "book.closed.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                        )
+                }
+                .frame(height: 200)
+                .frame(maxWidth: .infinity)
+                .cornerRadius(12)
+
+                Text(book.isAvailable ? "Available" : "Borrowed")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                    .cornerRadius(8)
+                    .padding(8)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(book.title)
+                    .font(AppTheme.headerFont(size: 18))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("by \(book.author)")
+                    .font(AppTheme.bodyFont(size: 14))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                    .lineLimit(1)
+
+                ConditionDotsView(condition: book.condition)
+
+                Spacer(minLength: 8)
+
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                        Text(book.ownerName)
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Text(book.formattedPrice)
+                        .font(AppTheme.bodyFont(size: 12, weight: .semibold))
+                        .foregroundColor(AppTheme.primaryAccent)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
+        }
+        .padding(12)
+        .appCardStyle()
+    }
+}
+
+// MARK: - Filter Sheet
 struct FilterSheet: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @EnvironmentObject var themeManager: ThemeManager
@@ -169,84 +408,58 @@ struct FilterSheet: View {
 
     var body: some View {
         NavigationView {
-            filterContent
-                .padding()
-                .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
-                .navigationTitle("Filters")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") {
-                            presentationMode.wrappedValue.dismiss()
-                        }
+            VStack(alignment: .leading, spacing: 24) {
+                genreSection
+                availabilitySection
+                Spacer()
+                clearButton
+            }
+            .padding()
+            .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { presentationMode.wrappedValue.dismiss() }
                         .fontWeight(.semibold)
                         .foregroundColor(AppTheme.primaryAccent)
-                    }
                 }
+            }
         }
         .accentColor(AppTheme.primaryAccent)
     }
-    
-    private var filterContent: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            genreFilterSection
-            availabilityFilterSection
-            Spacer()
-            clearFiltersButton
-        }
-    }
-    
-    private var genreFilterSection: some View {
+
+    private var genreSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Genre")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Genre").font(.headline).fontWeight(.semibold)
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(homeViewModel.genres, id: \.self) { genre in
-                    FilterOptionButton(
-                        title: genre,
-                        isSelected: homeViewModel.selectedGenre == genre,
-                        isDarkMode: themeManager.isDarkMode
-                    ) {
+                    FilterOptionButton(title: genre, isSelected: homeViewModel.selectedGenre == genre, isDarkMode: themeManager.isDarkMode) {
                         homeViewModel.selectedGenre = genre
                     }
                 }
             }
         }
     }
-    
-    private var availabilityFilterSection: some View {
+
+    private var availabilitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Availability")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Availability").font(.headline).fontWeight(.semibold)
                 .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-            
             VStack(spacing: 8) {
-                ForEach(homeViewModel.availabilityOptions, id: \.self) { availability in
-                    FilterOptionButton(
-                        title: availability,
-                        isSelected: homeViewModel.selectedAvailability == availability,
-                        isDarkMode: themeManager.isDarkMode
-                    ) {
-                        homeViewModel.selectedAvailability = availability
+                ForEach(homeViewModel.availabilityOptions, id: \.self) { avail in
+                    FilterOptionButton(title: avail, isSelected: homeViewModel.selectedAvailability == avail, isDarkMode: themeManager.isDarkMode) {
+                        homeViewModel.selectedAvailability = avail
                     }
                 }
             }
         }
     }
-    
-    @ViewBuilder
-    private var clearFiltersButton: some View {
+
+    @ViewBuilder private var clearButton: some View {
         if homeViewModel.hasActiveFilters {
-            Button(action: {
-                homeViewModel.clearFilters()
-            }) {
+            Button(action: { homeViewModel.clearFilters() }) {
                 Text("Clear All Filters")
                     .font(.subheadline)
                     .foregroundColor(AppTheme.errorColor)
@@ -260,12 +473,13 @@ struct FilterSheet: View {
     }
 }
 
+// MARK: - Filter Option Button
 struct FilterOptionButton: View {
     let title: String
     let isSelected: Bool
     let isDarkMode: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -282,85 +496,7 @@ struct FilterOptionButton: View {
     }
 }
 
-struct BookTileView: View {
-    let book: Book
-    let isDarkMode: Bool
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Book Cover with Deep Shadow
-            AsyncImage(url: URL(string: book.imageUrl)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle()
-                    .fill(AppTheme.colorSecondaryBackground(for: isDarkMode))
-                    .overlay(
-                        Image(systemName: "book.closed.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
-                    )
-            }
-            .frame(height: 200)
-            .frame(maxWidth: .infinity)
-            .cornerRadius(12)
-            // Removed redundant shadow — AppCardStyle (.appCardStyle) already applies a card shadow
-            
-            VStack(alignment: .leading, spacing: 6) {
-                // Title (Serif)
-                Text(book.title)
-                    .font(AppTheme.headerFont(size: 18)) // Serif font
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                // Author
-                Text("by \(book.author)")
-                    .font(AppTheme.bodyFont(size: 14))
-                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
-                    .lineLimit(1)
-                
-                // Genre Tag
-                Text(book.genre.uppercased())
-                    .font(AppTheme.bodyFont(size: 10, weight: .bold))
-                    .foregroundColor(AppTheme.secondaryAccent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.secondaryAccent.opacity(0.1))
-                    .cornerRadius(AppTheme.buttonRadius)
-                
-                Spacer(minLength: 8)
-                
-                // Footer: Owner & Availability
-                HStack {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
-                        Text(book.ownerName)
-                            .font(AppTheme.bodyFont(size: 12))
-                            .foregroundColor(AppTheme.colorTertiaryText(for: isDarkMode))
-                            .lineLimit(1)
-                    }
-                    
-                    Spacer()
-                    
-                    // Availability Dot
-                    Circle()
-                        .fill(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.bottom, 4)
-        }
-        .padding(12)
-        .appCardStyle() // New card style
-    }
-}
-
+// MARK: - Preview
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
@@ -370,4 +506,4 @@ struct HomeView_Previews: PreviewProvider {
                 .environmentObject(AuthViewModel())
         }
     }
-} 
+}
