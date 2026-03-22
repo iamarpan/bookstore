@@ -3,7 +3,14 @@ import prisma from '../config/database';
 /**
  * Generate a 6-digit OTP
  */
-export function generateOTP(): string {
+export function generateOTP(phoneNumber?: string): string {
+    // If it's a test number, return the test OTP
+    const testPhone = process.env.TEST_PHONE_NUMBER || '8888888888';
+    const testOtp = process.env.TEST_OTP || '123456';
+
+    if (phoneNumber && phoneNumber === testPhone) {
+        return testOtp;
+    }
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
@@ -36,6 +43,14 @@ export async function storeOTP(phoneNumber: string, otp: string): Promise<void> 
  * Check if OTP is valid without consuming it
  */
 export async function checkOTP(phoneNumber: string, otp: string): Promise<string | null> {
+    // Check for test phone number and test OTP
+    const testPhone = process.env.TEST_PHONE_NUMBER || '8888888888';
+    const testOtp = process.env.TEST_OTP || '123456';
+
+    if (phoneNumber === testPhone && otp === testOtp) {
+        return 'test-otp-id';
+    }
+
     const otpRecord = await prisma.oTPCode.findFirst({
         where: {
             phoneNumber,
@@ -54,6 +69,8 @@ export async function checkOTP(phoneNumber: string, otp: string): Promise<string
  * Consume (mark as verified) an OTP
  */
 export async function consumeOTP(otpId: string): Promise<void> {
+    if (otpId === 'test-otp-id') return; // Don't try to update DB for test OTP
+
     await prisma.oTPCode.update({
         where: { id: otpId },
         data: { verified: true },
@@ -79,6 +96,13 @@ export async function verifyOTP(phoneNumber: string, otp: string): Promise<boole
  * Falls back to console logging if Twilio is not configured
  */
 export async function sendOTPViaWhatsApp(phoneNumber: string, otp: string): Promise<void> {
+    // Skip real delivery for test phone number
+    const testPhone = process.env.TEST_PHONE_NUMBER || '8888888888';
+    if (phoneNumber === testPhone) {
+        console.log(`🧪 Skipping real WhatsApp for test number ${phoneNumber}. Code: ${otp}`);
+        return;
+    }
+
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM;
