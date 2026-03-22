@@ -3,7 +3,7 @@ import Combine
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var authService = AuthService()
+    @Published var authService: any AuthServiceProtocol
     @Published var showRegistrationForm = false
     @Published var showError = false
     @Published var needsRegistration = false
@@ -39,7 +39,8 @@ class AuthViewModel: ObservableObject {
         set { authService.error = newValue }
     }
     
-    init() {
+    init(authService: (any AuthServiceProtocol)? = nil) {
+        self.authService = authService ?? AuthService()
         // Subscribe to auth service changes
         setupSubscribers()
         

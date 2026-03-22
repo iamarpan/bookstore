@@ -14,9 +14,9 @@ class MyLibraryViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
 
     // MARK: - Services
-    private let bookService: BookService
-    private let transactionService: TransactionService
-    private let refresher: AppDataRefresher
+    private let bookService: any BookServiceProtocol
+    private let transactionService: any TransactionServiceProtocol
+    private let refresher: any AppDataRefresherProtocol
     private var currentUserId: String = ""
 
     // MARK: - Computed Properties
@@ -39,13 +39,13 @@ class MyLibraryViewModel: ObservableObject {
     // MARK: - Initialization
 
     init(
-        bookService: BookService? = nil,
-        transactionService: TransactionService? = nil,
-        refresher: AppDataRefresher = .shared
+        bookService: (any BookServiceProtocol)? = nil,
+        transactionService: (any TransactionServiceProtocol)? = nil,
+        refresher: (any AppDataRefresherProtocol)? = nil
     ) {
         self.bookService = bookService ?? BookService()
         self.transactionService = transactionService ?? TransactionService()
-        self.refresher = refresher
+        self.refresher = refresher ?? AppDataRefresher.shared
     }
 
     // MARK: - View Actions
@@ -65,7 +65,7 @@ class MyLibraryViewModel: ObservableObject {
                     _ = try await transactionService.approveRequest(id: transaction.id)
                 } else if newStatus == .rejected {
                     // Reason parameter can be passed if needed, here we just reject without reason.
-                    _ = try await transactionService.rejectRequest(id: transaction.id)
+                    _ = try await transactionService.rejectRequest(id: transaction.id, reason: nil)
                 } else {
                     print("Unsupported status update from MyLibrary: \(newStatus)")
                     isLoading = false
@@ -165,7 +165,14 @@ class MyLibraryViewModel: ObservableObject {
         do {
             let txns = try await refresher.refreshOwnerTransactionsIfNeeded(forceRefresh: false)
             lentBooks = txns
-        } catch { /* silent — stale data already shown */ }
+        } catch {
+            // If we have no cached data, surface the error so the user knows
+            if lentBooks.isEmpty {
+                errorMessage = "Failed to load lent books: \(error.localizedDescription)"
+                showError = true
+            }
+            print("⚠️ fetchLentBooks error: \(error.localizedDescription)")
+        }
     }
 
     /// Fetch history — shows cached data instantly, refreshes in background.
@@ -179,7 +186,14 @@ class MyLibraryViewModel: ObservableObject {
         do {
             let txns = try await refresher.refreshHistoryTransactionsIfNeeded(forceRefresh: false)
             bookHistory = txns
-        } catch { /* silent — stale data already shown */ }
+        } catch {
+            // If we have no cached data, surface the error so the user knows
+            if bookHistory.isEmpty {
+                errorMessage = "Failed to load history: \(error.localizedDescription)"
+                showError = true
+            }
+            print("⚠️ fetchHistory error: \(error.localizedDescription)")
+        }
     }
 
     /// Fetch all library data concurrently.

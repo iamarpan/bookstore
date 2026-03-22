@@ -2,7 +2,7 @@ import Foundation
 
 /// Service for transaction/borrowing workflow operations
 @MainActor
-class TransactionService: ObservableObject {
+class TransactionService: TransactionServiceProtocol, ObservableObject {
     // MARK: - Published Properties
     @Published var transactions: [Transaction] = []
     @Published var activeTransactions: [Transaction] = []

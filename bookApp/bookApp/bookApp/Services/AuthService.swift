@@ -3,7 +3,7 @@ import GoogleSignIn
 
 /// Service for authentication operations
 @MainActor
-class AuthService: ObservableObject {
+class AuthService: AuthServiceProtocol, ObservableObject {
     // MARK: - Published Properties
     @Published var currentUser: User?
     @Published var isAuthenticated = false

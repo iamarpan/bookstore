@@ -87,6 +87,7 @@ struct PhoneSignInView: View {
                         .textContentType(.telephoneNumber)
                         .autocorrectionDisabled()
                         .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
+                        .accessibilityIdentifier("phone_number_field")
                     
                     Button {
                         Task {
@@ -98,12 +99,14 @@ struct PhoneSignInView: View {
                     }
                     .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isPhoneValid))
                     .disabled(!authViewModel.isPhoneValid)
+                    .accessibilityIdentifier("send_otp_button")
                 } else {
                     // OTP Field
                     TextField("Enter OTP", text: $authViewModel.otp.animation(nil))
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
                         .appTextFieldStyle(isDarkMode: themeManager.isDarkMode)
+                        .accessibilityIdentifier("otp_field")
                     
                     Button {
                         Task {
@@ -114,6 +117,7 @@ struct PhoneSignInView: View {
                     }
                     .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isOTPValid))
                     .disabled(!authViewModel.isOTPValid)
+                    .accessibilityIdentifier("verify_otp_button")
                     
                     Button("Resend OTP") {
                         Task {
@@ -165,7 +169,9 @@ struct PhoneSignInView: View {
 struct GoogleSignInButton: View {
     let isDarkMode: Bool
     let action: () -> Void
-    
+
+    private let cornerRadius: CGFloat = 12
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -173,22 +179,28 @@ struct GoogleSignInButton: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 24, height: 24)
-                
+
                 Text("Sign in with Google")
                     .font(.headline)
                     .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
-            .background(Color.white)
-            .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
+            // A single RoundedRectangle acts as both the fill background and the
+            // stroke border, preventing the "double rectangle" visual artifact that
+            // occurs when `.cornerRadius` and `.overlay(RoundedRectangle.stroke)`
+            // are applied as separate modifiers (they use different shape geometry).
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Color.white)
                     .stroke(AppTheme.dynamicBorderColor(for: isDarkMode), lineWidth: 1)
             )
+            .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         }
         .buttonStyle(PlainButtonStyle())
+        .accessibilityIdentifier("google_sign_in_button")
+        .accessibilityLabel("Sign in with Google")
     }
 }
 
@@ -266,6 +278,7 @@ struct RegistrationView: View {
                     .buttonStyle(PrimaryButtonStyle(isEnabled: authViewModel.isRegistrationValid && !authViewModel.isLoading))
                     .disabled(!authViewModel.isRegistrationValid || authViewModel.isLoading)
                     .padding(.top, 8)
+                    .accessibilityIdentifier("complete_registration_button")
                     
                     Spacer(minLength: 40)
                 }

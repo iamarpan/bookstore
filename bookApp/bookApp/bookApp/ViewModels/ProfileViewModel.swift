@@ -10,6 +10,7 @@ class ProfileViewModel: ObservableObject {
     @Published var reputationScore = 5.0
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var showError = false
     
     private let bookService = BookService()
     private let transactionService = TransactionService()
@@ -40,7 +41,8 @@ class ProfileViewModel: ObservableObject {
             
         } catch {
             print("Error fetching stats: \(error)")
-            errorMessage = "Failed to load stats"
+            errorMessage = "Failed to load stats: \(error.localizedDescription)"
+            showError = true
         }
         
         isLoading = false

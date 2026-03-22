@@ -7,7 +7,7 @@ import Foundation
 /// Orchestrates background refreshes by coordinating the services and writing
 /// results into AppDataStore. ViewModels inject this to trigger cache-miss fetches.
 @MainActor
-final class AppDataRefresher: ObservableObject {
+class AppDataRefresher: AppDataRefresherProtocol, ObservableObject {
 
     // MARK: - Singleton
     static let shared = AppDataRefresher()

@@ -19,7 +19,7 @@ class HomeViewModel: ObservableObject {
 
     let availabilityOptions = ["Available", "Not Available"]
 
-    private let refresher: AppDataRefresher
+    private let refresher: any AppDataRefresherProtocol
     private var selectedGroupIds: [String] = []
     private var cancellables = Set<AnyCancellable>()
 
@@ -31,8 +31,8 @@ class HomeViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(refresher: AppDataRefresher = .shared) {
-        self.refresher = refresher
+    init(refresher: (any AppDataRefresherProtocol)? = nil) {
+        self.refresher = refresher ?? AppDataRefresher.shared
         setupFiltering()
     }
 

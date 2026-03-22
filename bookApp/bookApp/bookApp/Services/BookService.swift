@@ -2,7 +2,7 @@ import Foundation
 
 /// Service for book operations.
 /// NOT @MainActor — JSON decoding runs on the calling task's context (background).
-class BookService {
+class BookService: BookServiceProtocol {
     // MARK: - Private Properties
     private let apiClient: APIClient
 
