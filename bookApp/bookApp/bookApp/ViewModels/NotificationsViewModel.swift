@@ -21,7 +21,11 @@ class NotificationsViewModel: ObservableObject {
     func fetchNotifications() async {
         isLoading = true
         error = nil
-        await notificationService.fetchNotifications()
+        do {
+            try await notificationService.fetchNotifications()
+        } catch {
+            self.error = error.localizedDescription
+        }
         isLoading = false
     }
     

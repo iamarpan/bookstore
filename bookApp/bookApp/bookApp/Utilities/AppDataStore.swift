@@ -4,6 +4,7 @@
 // Disk reads on first-launch are performed asynchronously to avoid main-thread I/O stalls.
 
 import Foundation
+import Combine
 
 // MARK: - Persisted Cache Entry
 
@@ -20,15 +21,31 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     // MARK: Singleton
     static let shared = AppDataStore()
-    private init() {}
+    
+    private init() {
+        // Hydrate from disk on init (fire and forget, updates @Published on main actor)
+        Task {
+            await loadAllFromDisk()
+        }
+    }
+
+    // MARK: - Published (Single Source of Truth)
+    // ViewModels observe these for reactive UI updates.
+    @MainActor @Published var overallBooks: [Book] = []
+    @MainActor @Published var myGroups: [BookClub] = []
+    @MainActor @Published var myBooks: [Book] = []
+    @MainActor @Published var borrowedTransactions: [Transaction] = []
+    @MainActor @Published var ownerTransactions: [Transaction] = []
+    @MainActor @Published var historyTransactions: [Transaction] = []
+    @MainActor @Published var notifications: [BookNotification] = []
+    @MainActor @Published var messagesByTransaction: [String: [Message]] = [:]
+    @MainActor @Published var groupMembersByGroup: [String: [GroupMember]] = [:]
+    @MainActor @Published var groupBooksByGroup: [String: [Book]] = [:]
 
     // MARK: - TTL
     static let defaultTTL: TimeInterval = 5 * 60   // 5 minutes
 
     // MARK: - In-memory cache (avoids repeated disk reads)
-    // The memory cache holds the decoded Swift values keyed by filename.
-    // It's accessed only from background Tasks that hold the actor hop,
-    // so we protect it with a simple lock.
     private var memoryCache: [String: Any] = [:]
     private let memoryCacheLock = NSLock()
 
@@ -41,13 +58,43 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
     }()
 
     // ──────────────────────────────────────────────────────────────────────────
+    // MARK: - Hydration
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// Loads key data sets from disk asynchronously.
+    private func loadAllFromDisk() async {
+        async let books = load([Book].self, filename: "books_feed.json", ttl: .infinity)
+        async let mGroups = load([BookClub].self, filename: "my_groups.json", ttl: .infinity)
+        async let mBooks = load([Book].self, filename: "my_books.json", ttl: .infinity)
+        async let bTxns = load([Transaction].self, filename: "txn_borrower.json", ttl: .infinity)
+        async let oTxns = load([Transaction].self, filename: "txn_owner.json", ttl: .infinity)
+        async let hTxns = load([Transaction].self, filename: "txn_history.json", ttl: .infinity)
+        async let notifs = load([BookNotification].self, filename: "notifications.json", ttl: .infinity)
+
+        let resolvedBooks = await books
+        let resolvedMyGroups = await mGroups
+        let resolvedMyBooks = await mBooks
+        let resolvedBorrower = await bTxns
+        let resolvedOwner = await oTxns
+        let resolvedHistory = await hTxns
+        let resolvedNotifs = await notifs
+
+        await MainActor.run {
+            self.overallBooks = resolvedBooks ?? []
+            self.myGroups = resolvedMyGroups ?? []
+            self.myBooks = resolvedMyBooks ?? []
+            self.borrowedTransactions = resolvedBorrower ?? []
+            self.ownerTransactions = resolvedOwner ?? []
+            self.historyTransactions = resolvedHistory ?? []
+            self.notifications = resolvedNotifs ?? []
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // MARK: - Generic Async Disk Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// Async disk read — runs on the calling context (should be a background Task).
-    /// Returns nil if missing, corrupt, or stale. Populates in-memory cache on success.
     func load<T: Codable>(_ type: T.Type, filename: String, ttl: TimeInterval) async -> T? {
-        // 1. Check memory cache first (no I/O)
         memoryCacheLock.lock()
         if let entry = memoryCache[filename] as? PersistedEntry<T> {
             memoryCacheLock.unlock()
@@ -56,7 +103,6 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         }
         memoryCacheLock.unlock()
 
-        // 2. Background disk read
         return await Task.detached(priority: .userInitiated) { [weak self] () -> T? in
             guard let self else { return nil }
             let url = Self.cachesURL.appendingPathComponent(filename)
@@ -66,7 +112,6 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
                 !self.isStale(entry.cachedAt, ttl: ttl)
             else { return nil }
 
-            // Warm in-memory cache
             self.memoryCacheLock.lock()
             self.memoryCache[filename] = entry
             self.memoryCacheLock.unlock()
@@ -75,8 +120,6 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         }.value
     }
 
-    /// Synchronous memory-only read (no disk I/O). Use only when you know the cache
-    /// has already been warmed (e.g., after a previous `load` or `persist`).
     func loadFromMemory<T: Codable>(_ type: T.Type, filename: String, ttl: TimeInterval) -> T? {
         memoryCacheLock.lock()
         defer { memoryCacheLock.unlock() }
@@ -85,16 +128,13 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         return entry.value
     }
 
-    /// Write an encodable value + timestamp to disk (background) and memory (immediate).
     func persist<T: Codable>(_ value: T, filename: String) {
         let entry = PersistedEntry(value: value, cachedAt: Date())
 
-        // Update memory cache immediately so subsequent reads hit memory
         memoryCacheLock.lock()
         memoryCache[filename] = entry
         memoryCacheLock.unlock()
 
-        // Write to disk in the background
         Task.detached(priority: .background) {
             let url = Self.cachesURL.appendingPathComponent(filename)
             if let data = try? JSONEncoder().encode(entry) {
@@ -103,7 +143,6 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         }
     }
 
-    /// Delete a single cache file from memory + disk.
     func deleteDisk(filename: String) {
         memoryCacheLock.lock()
         memoryCache.removeValue(forKey: filename)
@@ -120,28 +159,29 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Books Feed
+    // MARK: - Domain Specific Methods
     // ──────────────────────────────────────────────────────────────────────────
 
+    // MARK: Books Feed
     func cachedBooks(forKey key: String, ttl: TimeInterval = defaultTTL) async -> [Book]? {
         await load([Book].self, filename: "books_\(key.safeFilename).json", ttl: ttl)
     }
 
-    /// Memory-only read for instant display (no async needed).
     func cachedBooksInMemory(forKey key: String, ttl: TimeInterval = defaultTTL) -> [Book]? {
         loadFromMemory([Book].self, filename: "books_\(key.safeFilename).json", ttl: ttl)
     }
 
     func storeBooks(_ books: [Book], forKey key: String) {
         persist(books, filename: "books_\(key.safeFilename).json")
+        // If it's the main feed (default params), update the published property
+        if key.contains("feed|||||") || key.isEmpty {
+            Task { @MainActor in self.overallBooks = books }
+        }
     }
 
     func invalidateBooks() { deleteAllDisk(prefix: "books_") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Book Detail
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Book Detail
     func cachedBookDetail(id: String, ttl: TimeInterval = defaultTTL) async -> Book? {
         await load(Book.self, filename: "book_\(id).json", ttl: ttl)
     }
@@ -152,10 +192,7 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     func invalidateBookDetail(id: String) { deleteDisk(filename: "book_\(id).json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - My Groups
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: My Groups
     func cachedMyGroups(ttl: TimeInterval = defaultTTL) async -> [BookClub]? {
         await load([BookClub].self, filename: "my_groups.json", ttl: ttl)
     }
@@ -166,14 +203,12 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     func storeMyGroups(_ groups: [BookClub]) {
         persist(groups, filename: "my_groups.json")
+        Task { @MainActor in self.myGroups = groups }
     }
 
     func invalidateMyGroups() { deleteDisk(filename: "my_groups.json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Discovered Groups
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Discovered Groups
     func cachedDiscoveredGroups(forKey key: String, ttl: TimeInterval = defaultTTL) async -> [BookClub]? {
         await load([BookClub].self, filename: "discover_\(key.safeFilename).json", ttl: ttl)
     }
@@ -184,10 +219,7 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     func invalidateDiscoveredGroups() { deleteAllDisk(prefix: "discover_") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Group Detail
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Group Detail
     func cachedGroupDetail(id: String, ttl: TimeInterval = defaultTTL) async -> BookClub? {
         await load(BookClub.self, filename: "group_\(id).json", ttl: ttl)
     }
@@ -198,38 +230,39 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     func invalidateGroupDetail(id: String) { deleteDisk(filename: "group_\(id).json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Group Members
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Group Members
     func cachedGroupMembers(groupId: String, ttl: TimeInterval = defaultTTL) async -> [GroupMember]? {
-        await load([GroupMember].self, filename: "members_\(groupId).json", ttl: ttl)
+        let members = await load([GroupMember].self, filename: "members_\(groupId).json", ttl: ttl)
+        if let members = members {
+            Task { @MainActor in self.groupMembersByGroup[groupId] = members }
+        }
+        return members
     }
 
     func storeGroupMembers(_ members: [GroupMember], groupId: String) {
         persist(members, filename: "members_\(groupId).json")
+        Task { @MainActor in self.groupMembersByGroup[groupId] = members }
     }
 
     func invalidateGroupMembers(groupId: String) { deleteDisk(filename: "members_\(groupId).json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Group Books
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Group Books
     func cachedGroupBooks(groupId: String, ttl: TimeInterval = defaultTTL) async -> [Book]? {
-        await load([Book].self, filename: "group_books_\(groupId).json", ttl: ttl)
+        let books = await load([Book].self, filename: "group_books_\(groupId).json", ttl: ttl)
+        if let books = books {
+            Task { @MainActor in self.groupBooksByGroup[groupId] = books }
+        }
+        return books
     }
 
     func storeGroupBooks(_ books: [Book], groupId: String) {
         persist(books, filename: "group_books_\(groupId).json")
+        Task { @MainActor in self.groupBooksByGroup[groupId] = books }
     }
 
     func invalidateGroupBooks(groupId: String) { deleteDisk(filename: "group_books_\(groupId).json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - My Owned Books
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: My Owned Books
     func cachedMyBooks(ttl: TimeInterval = defaultTTL) async -> [Book]? {
         await load([Book].self, filename: "my_books.json", ttl: ttl)
     }
@@ -238,51 +271,74 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         loadFromMemory([Book].self, filename: "my_books.json", ttl: ttl)
     }
 
-    func storeMyBooks(_ books: [Book]) { persist(books, filename: "my_books.json") }
+    func storeMyBooks(_ books: [Book]) {
+        persist(books, filename: "my_books.json")
+        Task { @MainActor in self.myBooks = books }
+    }
 
     func invalidateMyBooks() { deleteDisk(filename: "my_books.json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Transactions — Borrower
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Transactions — Borrower
     func cachedBorrowerTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
         await load([Transaction].self, filename: "txn_borrower.json", ttl: ttl)
     }
 
     func storeBorrowerTransactions(_ txns: [Transaction]) {
         persist(txns, filename: "txn_borrower.json")
+        Task { @MainActor in self.borrowedTransactions = txns }
     }
 
     func invalidateBorrowerTransactions() { deleteDisk(filename: "txn_borrower.json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Transactions — Owner
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Transactions — Owner
     func cachedOwnerTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
         await load([Transaction].self, filename: "txn_owner.json", ttl: ttl)
     }
 
     func storeOwnerTransactions(_ txns: [Transaction]) {
         persist(txns, filename: "txn_owner.json")
+        Task { @MainActor in self.ownerTransactions = txns }
     }
 
     func invalidateOwnerTransactions() { deleteDisk(filename: "txn_owner.json") }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MARK: - Transactions — History
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // MARK: Transactions — History
     func cachedHistoryTransactions(ttl: TimeInterval = defaultTTL) async -> [Transaction]? {
         await load([Transaction].self, filename: "txn_history.json", ttl: ttl)
     }
 
     func storeHistoryTransactions(_ txns: [Transaction]) {
         persist(txns, filename: "txn_history.json")
+        Task { @MainActor in self.historyTransactions = txns }
     }
 
     func invalidateHistoryTransactions() { deleteDisk(filename: "txn_history.json") }
+
+    // MARK: Chat Messages
+    func cachedMessages(transactionId: String, ttl: TimeInterval = defaultTTL) async -> [Message]? {
+        await load([Message].self, filename: "chat_\(transactionId).json", ttl: ttl)
+    }
+
+    func storeMessages(_ messages: [Message], transactionId: String) {
+        persist(messages, filename: "chat_\(transactionId).json")
+        Task { @MainActor in self.messagesByTransaction[transactionId] = messages }
+    }
+
+    func invalidateMessages(transactionId: String) {
+        deleteDisk(filename: "chat_\(transactionId).json")
+    }
+
+    // MARK: Notifications
+    func cachedNotifications(ttl: TimeInterval = defaultTTL) async -> [BookNotification]? {
+        await load([BookNotification].self, filename: "notifications.json", ttl: ttl)
+    }
+
+    func storeNotifications(_ notifications: [BookNotification]) {
+        persist(notifications, filename: "notifications.json")
+        Task { @MainActor in self.notifications = notifications }
+    }
+
+    func invalidateNotifications() { deleteDisk(filename: "notifications.json") }
 
     // ──────────────────────────────────────────────────────────────────────────
     // MARK: - Global Invalidation
@@ -292,6 +348,20 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
         memoryCacheLock.lock()
         memoryCache.removeAll()
         memoryCacheLock.unlock()
+        
+        Task { @MainActor in
+            self.overallBooks = []
+            self.myGroups = []
+            self.myBooks = []
+            self.borrowedTransactions = []
+            self.ownerTransactions = []
+            self.historyTransactions = []
+            self.notifications = []
+            self.messagesByTransaction = [:]
+            self.groupMembersByGroup = [:]
+            self.groupBooksByGroup = [:]
+        }
+        
         deleteAllDisk()
     }
 
@@ -322,9 +392,7 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
     // MARK: - Private Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// Delete all files in cachesURL whose name begins with `prefix`.
     private func deleteAllDisk(prefix: String = "") {
-        // Clear matching memory cache entries first
         memoryCacheLock.lock()
         if prefix.isEmpty {
             memoryCache.removeAll()

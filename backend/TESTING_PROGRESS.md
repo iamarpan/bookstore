@@ -24,4 +24,4 @@ Comprehensive testing of the Groups API on the production Vercel environment has
 | Group Deletion | PASSED |
 
 ## Action Required
-Please provide the OTP sent to **+918299270729** to proceed with authentication.
+Please provide the OTP sent to **+918888888888** to proceed with authentication.

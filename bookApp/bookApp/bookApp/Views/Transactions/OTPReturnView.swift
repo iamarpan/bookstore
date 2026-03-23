@@ -238,6 +238,8 @@ class ReturnConfirmViewModel: ObservableObject {
 
         do {
             _ = try await transactionService.confirmReturn(id: transactionId, otp: enteredOTP)
+            AppDataStore.shared.invalidateOwnerTransactions()
+            AppDataStore.shared.invalidateBorrowerTransactions()
             showSuccess = true
         } catch {
             errorMessage = error.localizedDescription

@@ -238,6 +238,8 @@ class HandoverConfirmViewModel: ObservableObject {
 
         do {
             _ = try await transactionService.confirmHandover(id: transactionId, otp: enteredOTP)
+            AppDataStore.shared.invalidateOwnerTransactions()
+            AppDataStore.shared.invalidateBorrowerTransactions()
             showSuccess = true
         } catch {
             errorMessage = error.localizedDescription

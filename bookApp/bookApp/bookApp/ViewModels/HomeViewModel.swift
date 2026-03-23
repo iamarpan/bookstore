@@ -4,8 +4,7 @@ import Combine
 
 @MainActor
 class HomeViewModel: ObservableObject {
-    // MARK: - Published (source of truth)
-    @Published var books: [Book] = []
+    // MARK: - Published (derived or UI state)
     @Published var searchText: String = ""
     @Published var selectedGenre: String? = nil
     @Published var selectedAvailability: String? = nil
@@ -16,11 +15,13 @@ class HomeViewModel: ObservableObject {
     // MARK: - Derived (computed once via Combine, not on every render)
     @Published private(set) var filteredBooks: [Book] = []
     @Published private(set) var genres: [String] = []
+    @Published private(set) var books: [Book] = []
 
     let availabilityOptions = ["Available", "Not Available"]
 
+    private let store = AppDataStore.shared
     private let refresher: any AppDataRefresherProtocol
-    private var selectedGroupIds: [String] = []
+    @Published var selectedGroupIds: [String] = []
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Computed
@@ -39,8 +40,7 @@ class HomeViewModel: ObservableObject {
     // MARK: - Combine pipeline — derived filteredBooks & genres
 
     private func setupFiltering() {
-        // React only when books, searchText, selectedGenre, or selectedAvailability change.
-        // Debounce search input so we don't re-filter on every keystroke.
+        // Observe our own 'books' property as the source for filtering
         Publishers.CombineLatest4($books, $searchText, $selectedGenre, $selectedAvailability)
             .debounce(for: .milliseconds(120), scheduler: DispatchQueue.global(qos: .userInitiated))
             .map { books, search, genre, avail -> ([Book], [String]) in
@@ -70,7 +70,7 @@ class HomeViewModel: ObservableObject {
 
     // MARK: - Methods
 
-    /// Fetch books — shows cached data instantly, then refreshes only if stale.
+    /// Fetch books — triggering the refresher updates the store, which updates our UI.
     func fetchBooks(for groupIds: [String]) async {
         selectedGroupIds = groupIds
         errorMessage = nil
@@ -78,39 +78,22 @@ class HomeViewModel: ObservableObject {
         let availability = selectedAvailability == "Available" ? "AVAILABLE" : nil
         let genres       = selectedGenre != nil ? [selectedGenre!] : nil
         let search       = searchText.isEmpty ? nil : searchText
-        let key          = AppDataStore.booksFeedKey(
-            groupIds: groupIds.isEmpty ? nil : groupIds,
-            availability: availability, genres: genres, sortBy: "RECENT", search: search
-        )
+        
+        // Always show spinner if the store is currently empty
+        if store.overallBooks.isEmpty { isLoading = true }
 
-        // 1. Serve from memory immediately (zero I/O)
-        if let cached = AppDataStore.shared.cachedBooksInMemory(forKey: key, ttl: .infinity) {
-            books = cached
-        }
-
-        // 2. Only show a spinner if we have nothing to show yet
-        if books.isEmpty { isLoading = true }
-
-        // 3. Async disk read if memory was cold
-        if books.isEmpty, let cached = await AppDataStore.shared.cachedBooks(forKey: key, ttl: .infinity) {
-            books = cached
-            isLoading = false
-        }
-
-        // 4. Fetch from the API only if cache is stale (respects TTL)
         do {
-            let result = try await refresher.refreshBooksIfNeeded(
+            let fetchedBooks = try await refresher.refreshBooksIfNeeded(
                 groupIds: groupIds.isEmpty ? nil : groupIds,
                 availability: availability,
                 genres: genres,
                 sortBy: "RECENT",
                 search: search,
-                forceRefresh: false   // Let TTL decide — no redundant network calls
+                forceRefresh: false
             )
-            books = result
+            self.books = fetchedBooks
         } catch {
-            // Network failed — if we already showed cached data, stay silent
-            if books.isEmpty {
+            if store.overallBooks.isEmpty {
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -128,7 +111,7 @@ class HomeViewModel: ObservableObject {
         let search       = searchText.isEmpty ? nil : searchText
 
         do {
-            let result = try await refresher.refreshBooksIfNeeded(
+            let fetchedBooks = try await refresher.refreshBooksIfNeeded(
                 groupIds: selectedGroupIds.isEmpty ? nil : selectedGroupIds,
                 availability: availability,
                 genres: genres,
@@ -136,7 +119,7 @@ class HomeViewModel: ObservableObject {
                 search: search,
                 forceRefresh: true
             )
-            books = result
+            self.books = fetchedBooks
         } catch {
             errorMessage = error.localizedDescription
             showError = true

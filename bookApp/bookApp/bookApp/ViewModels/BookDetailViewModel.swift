@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 class BookDetailViewModel: ObservableObject {
@@ -9,12 +10,26 @@ class BookDetailViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var hasRequestedBook = false
     @Published var existingTransaction: Transaction?
+    @Published var navigateToTransaction: Transaction?
     
-    private let transactionService = TransactionService()
+    private let store = AppDataStore.shared
+    private let refresher: any AppDataRefresherProtocol
+    private var cancellables = Set<AnyCancellable>()
     
-    init(book: Book) {
+    init(book: Book, refresher: (any AppDataRefresherProtocol)? = nil) {
         self.book = book
+        self.refresher = refresher ?? AppDataRefresher.shared
+        setupTransactionObservation()
         checkExistingRequest()
+    }
+    
+    private func setupTransactionObservation() {
+        store.$borrowedTransactions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] transactions in
+                self?.updateStateWithTransactions(transactions)
+            }
+            .store(in: &cancellables)
     }
     
     func requestBook() async {
@@ -22,18 +37,15 @@ class BookDetailViewModel: ObservableObject {
         
         isLoading = true
         
-        // No need to load user here — transactionService uses the authenticated token
-        // Create a borrow request
         do {
-            let transaction = try await transactionService.createBorrowRequest(
+            let transaction = try await TransactionService().createBorrowRequest(
                 bookId: book.id,
                 duration: .twoWeeks,
                 message: "I'd like to borrow this book!"
             )
             
-            // Update state
-            existingTransaction = transaction
-            hasRequestedBook = true
+            // Trigger a refresh (it will update the store, and we'll react)
+            _ = try await refresher.refreshBorrowerTransactionsIfNeeded(forceRefresh: true)
             showSuccessAlert = true
             
         } catch {
@@ -50,11 +62,10 @@ class BookDetailViewModel: ObservableObject {
         isLoading = true
         
         do {
-            _ = try await transactionService.cancelTransaction(id: transaction.id)
+            _ = try await TransactionService().cancelTransaction(id: transaction.id)
             
-            // Update state
-            existingTransaction = nil
-            hasRequestedBook = false
+            // Trigger refresh
+            _ = try await refresher.refreshBorrowerTransactionsIfNeeded(forceRefresh: true)
             
         } catch {
             errorMessage = "Failed to cancel request: \(error.localizedDescription)"
@@ -65,27 +76,14 @@ class BookDetailViewModel: ObservableObject {
     }
     
     private func checkExistingRequest() {
-        // Kick off a background task — init() cannot be async
         Task {
             await fetchExistingRequest()
         }
     }
     
-    private func fetchExistingRequest() async {
-        // 1. Try to load from cache first for instant UI response
-        if let cached = await AppDataStore.shared.cachedBorrowerTransactions() {
-            updateStateWithTransactions(cached)
-        }
-
-        // 2. Fetch fresh from API
+    func fetchExistingRequest() async {
         do {
-            let allTransactions = try await transactionService.fetchTransactions(role: "BORROWER")
-            
-            // 3. Update cache
-            AppDataStore.shared.storeBorrowerTransactions(allTransactions)
-            
-            // 4. Update state with fresh data
-            updateStateWithTransactions(allTransactions)
+            _ = try await refresher.refreshBorrowerTransactionsIfNeeded(forceRefresh: false)
         } catch {
             print("⚠️ BookDetailViewModel: could not check existing request — \(error.localizedDescription)")
         }
@@ -98,12 +96,9 @@ class BookDetailViewModel: ObservableObject {
         }) {
             existingTransaction = match
             hasRequestedBook = true
-        } else {
-            // Only clear if we were previously showing a request (prevents flickering)
-            if hasRequestedBook {
-                existingTransaction = nil
-                hasRequestedBook = false
-            }
+        } else if hasRequestedBook {
+            existingTransaction = nil
+            hasRequestedBook = false
         }
     }
     
@@ -151,6 +146,12 @@ class BookDetailViewModel: ObservableObject {
         }
         
         return .canRequest
+    }
+    
+    func showTransactionDetail() {
+        if let transaction = existingTransaction {
+            navigateToTransaction = transaction
+        }
     }
 }
 

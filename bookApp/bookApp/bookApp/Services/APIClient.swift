@@ -271,8 +271,10 @@ class APIClient {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         
         // Add authorization header
+        var usedToken: String? = nil
         if requiresAuth {
             if let token = keychainManager.getAccessToken() {
+                usedToken = token
                 urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             } else {
                 throw APIError.unauthorized
@@ -326,6 +328,21 @@ class APIClient {
                 
             case 401:
                 // Unauthorized - try to refresh token
+                // Check if the token in Keychain has already changed since we sent this request.
+                // If it HAS changed, another request already refreshed it, so we just retry.
+                if requiresAuth, let currentToken = keychainManager.getAccessToken(), currentToken != usedToken {
+                    print("♻️ Token already refreshed by another request, retrying...")
+                    return try await request(
+                        endpoint: endpoint,
+                        method: method,
+                        queryParams: queryParams,
+                        body: body,
+                        requiresAuth: requiresAuth,
+                        retryCount: retryCount // Don't increment retryCount here as this wasn't a "real" refresh attempt
+                    )
+                }
+
+                // If it hasn't changed, we actually need to trigger a refresh.
                 // Uses TokenRefreshActor to ensure only ONE refresh fires even if
                 // multiple requests get 401 concurrently (race condition fix).
                 if retryCount < 1 {
@@ -416,10 +433,18 @@ class APIClient {
             }
 
             guard httpResponse.statusCode == 200 else {
-                // Non-200 means the refresh token is invalid/expired/wrong secret — force re-login
-                keychainManager.clearTokens()
-                notifySessionExpired()
-                throw APIError.tokenExpired
+                // Only force logout on explicit auth rejection (401/403).
+                // For other status codes (5xx, 429, etc.), we should just throw 
+                // and let the caller retry later without clearing the session.
+                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                    print("❌ Refresh token rejected (\(httpResponse.statusCode)) — forcing logout")
+                    keychainManager.clearTokens()
+                    notifySessionExpired()
+                    throw APIError.tokenExpired
+                } else {
+                    print("⚠️ Refresh failed with status \(httpResponse.statusCode), session preserved")
+                    throw APIError.serverError(httpResponse.statusCode)
+                }
             }
 
             let refreshResponse = try decoder.decode(RefreshResponse.self, from: data)
@@ -430,9 +455,10 @@ class APIClient {
         } catch let error as APIError {
             throw error
         } catch {
-            keychainManager.clearTokens()
-            notifySessionExpired()
-            throw APIError.tokenExpired
+            // For general network errors (timeout, connection lost), do NOT force logout.
+            // Just throw and let the UI handle the failure.
+            print("⚠️ Network error during token refresh: \(error.localizedDescription)")
+            throw APIError.networkError(error)
         }
     }
     

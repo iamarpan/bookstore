@@ -44,6 +44,7 @@ struct AddBookView: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                     .disabled(viewModel.isLoadingFromISBN)
                 }
                 
@@ -148,6 +149,7 @@ struct AddBookView: View {
                         .background(viewModel.isFormValid && !viewModel.isLoading ? AppTheme.primaryAccent : AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                         .cornerRadius(10)
                     }
+                    .buttonStyle(.plain)
                     .disabled(viewModel.isLoading || !viewModel.isFormValid)
                     .listRowBackground(Color.clear)
                 }

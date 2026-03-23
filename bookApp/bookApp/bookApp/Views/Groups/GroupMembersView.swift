@@ -114,6 +114,7 @@ struct GroupMembersView: View {
                         .stroke(AppTheme.primaryAccent, lineWidth: selectedRole == role ? 0 : 1)
                 )
         }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Members List
@@ -234,6 +235,7 @@ struct MemberDetailRow: View {
                             .background(AppTheme.primaryAccent.opacity(0.1))
                             .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
                     
                     Button(action: onRemove) {
                         Label("Remove", systemImage: "person.badge.minus")
@@ -244,6 +246,7 @@ struct MemberDetailRow: View {
                             .background(Color.red.opacity(0.1))
                             .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -327,6 +330,7 @@ struct RoleSelectionSheet: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                     .foregroundColor(.primary)
                 }
             }

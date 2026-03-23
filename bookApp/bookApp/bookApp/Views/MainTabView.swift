@@ -102,6 +102,7 @@ struct MainTabView: View {
         case .home:
             HomeView()
                 .environmentObject(homeViewModel)
+                .environmentObject(libraryViewModel)
         case .add:
             AddBookView()
         case .groups:

@@ -34,6 +34,7 @@ struct CreateGroupView: View {
                             .foregroundColor(AppTheme.colorTertiaryText(for: themeManager.isDarkMode))
                     }
                 }
+                .buttonStyle(.plain)
             }
 
             // MARK: - Group Details
@@ -92,6 +93,7 @@ struct CreateGroupView: View {
                     Button("Update") {
                         // Location update action
                     }
+                    .buttonStyle(.plain)
                     .font(.caption)
                     .foregroundColor(AppTheme.primaryAccent)
                 }
@@ -132,6 +134,7 @@ struct CreateGroupView: View {
                     )
                     .cornerRadius(10)
                 }
+                .buttonStyle(.plain)
                 .disabled(viewModel.isLoading || !viewModel.isValid)
                 .listRowBackground(Color.clear)
             }

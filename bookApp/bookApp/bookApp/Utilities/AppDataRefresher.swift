@@ -206,7 +206,7 @@ class AppDataRefresher: AppDataRefresherProtocol, ObservableObject {
     func refreshBorrowerTransactionsIfNeeded(forceRefresh: Bool = false) async throws -> [Transaction] {
         if !forceRefresh, let cached = await store.cachedBorrowerTransactions() { return cached }
 
-        let txns = try await transactionService.fetchTransactions(role: "BORROWER", status: .active)
+        let txns = try await transactionService.fetchTransactions(role: "BORROWER")
         store.storeBorrowerTransactions(txns)
         return txns
     }
@@ -230,6 +230,30 @@ class AppDataRefresher: AppDataRefresherProtocol, ObservableObject {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // MARK: - Notifications
+    // ──────────────────────────────────────────────────────────────────────────
+
+    func refreshNotificationsIfNeeded(forceRefresh: Bool = false) async throws -> [BookNotification] {
+        if !forceRefresh, let cached = await store.cachedNotifications() { return cached }
+
+        let notifications = try await NotificationService.shared.fetchNotifications()
+        store.storeNotifications(notifications)
+        return notifications
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // MARK: - Messages
+    // ──────────────────────────────────────────────────────────────────────────
+
+    func refreshMessagesIfNeeded(transactionId: String, forceRefresh: Bool = false) async throws -> [Message] {
+        if !forceRefresh, let cached = await store.cachedMessages(transactionId: transactionId) { return cached }
+
+        let messages = try await MessageService.shared.fetchMessages(transactionId: transactionId)
+        store.storeMessages(messages, transactionId: transactionId)
+        return messages
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // MARK: - Full Library Refresh
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -239,8 +263,9 @@ class AppDataRefresher: AppDataRefresherProtocol, ObservableObject {
         async let borrower = refreshBorrowerTransactionsIfNeeded(forceRefresh: forceRefresh)
         async let owner    = refreshOwnerTransactionsIfNeeded(forceRefresh: forceRefresh)
         async let history  = refreshHistoryTransactionsIfNeeded(forceRefresh: forceRefresh)
+        async let notifs   = refreshNotificationsIfNeeded(forceRefresh: forceRefresh)
 
-        _ = try? await (myBooks, borrower, owner, history)
+        _ = try? await (myBooks, borrower, owner, history, notifs)
     }
 
     // ──────────────────────────────────────────────────────────────────────────

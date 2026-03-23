@@ -27,7 +27,7 @@ struct MyLibraryView: View {
                     Spacer()
                 } else {
                     if selectedSegment == 0 {
-                        BorrowedBooksView(requests: viewModel.borrowedBooks, isDarkMode: themeManager.isDarkMode)
+                        BorrowedBooksView(requests: viewModel.borrowedBooks, viewModel: viewModel, isDarkMode: themeManager.isDarkMode)
                     } else if selectedSegment == 1 {
                         LentBooksView(requests: viewModel.lentBooks, viewModel: viewModel, isDarkMode: themeManager.isDarkMode)
                     } else {
@@ -53,6 +53,7 @@ struct MyLibraryView: View {
 
 struct BorrowedBooksView: View {
     let requests: [Transaction]
+    let viewModel: MyLibraryViewModel
     let isDarkMode: Bool
     
     var body: some View {
@@ -65,8 +66,15 @@ struct BorrowedBooksView: View {
             )
         } else {
             List(requests) { request in
-                RequestRowView(request: request, showActions: false, isDarkMode: isDarkMode)
-                    .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
+                NavigationLink(destination: TransactionDetailView(transaction: request)) {
+                    RequestRowView(
+                        request: request,
+                        showActions: false,
+                        isDarkMode: isDarkMode,
+                        unreadCount: viewModel.unreadCounts[request.id] ?? 0
+                    )
+                }
+                .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
             }
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
@@ -93,8 +101,15 @@ struct LentBooksView: View {
             )
         } else {
             List(requests) { request in
-                RequestRowView(request: request, showActions: true, isDarkMode: isDarkMode) { action in
-                    handleRequestAction(request: request, action: action)
+                NavigationLink(destination: TransactionDetailView(transaction: request)) {
+                    RequestRowView(
+                        request: request,
+                        showActions: true,
+                        isDarkMode: isDarkMode,
+                        unreadCount: viewModel.unreadCounts[request.id] ?? 0
+                    ) { action in
+                        handleRequestAction(request: request, action: action)
+                    }
                 }
                 .listRowBackground(AppTheme.colorCardBackground(for: isDarkMode))
             }
@@ -114,6 +129,9 @@ struct LentBooksView: View {
         case .reject:
             viewModel.updateRequestStatus(request, newStatus: .rejected)
         case .markReturned:
+            // This is a legacy button that will be removed or updated
+            // It bypasses the OTP returned flow, but we'll leave it for now
+            // or better yet, let the DetailView handle it.
             viewModel.updateRequestStatus(request, newStatus: .returned)
         }
     }
@@ -307,12 +325,14 @@ struct RequestRowView: View {
     let request: Transaction
     let showActions: Bool
     let isDarkMode: Bool
+    let unreadCount: Int
     let onAction: ((RequestAction) -> Void)?
     
-    init(request: Transaction, showActions: Bool, isDarkMode: Bool, onAction: ((RequestAction) -> Void)? = nil) {
+    init(request: Transaction, showActions: Bool, isDarkMode: Bool, unreadCount: Int = 0, onAction: ((RequestAction) -> Void)? = nil) {
         self.request = request
         self.showActions = showActions
         self.isDarkMode = isDarkMode
+        self.unreadCount = unreadCount
         self.onAction = onAction
     }
     
@@ -343,12 +363,28 @@ struct RequestRowView: View {
                 
                 Spacer()
                 
-                if !showActions {
-                    Button("View Details") {
-                        // Navigate to book details
+                // Chat Icon with Unread Badge
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .foregroundColor(AppTheme.primaryAccent)
+                        .font(.system(size: 20))
+                    
+                    if unreadCount > 0 {
+                        Text("\(unreadCount)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 16, height: 16)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                            .offset(x: 8, y: -8)
                     }
-                    .font(.caption)
-                    .foregroundColor(AppTheme.primaryAccent)
+                }
+                .padding(.trailing, 8)
+                
+                if !showActions {
+                    Text("View Details")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.primaryAccent)
                 }
             }
             
@@ -369,6 +405,9 @@ struct RequestRowView: View {
                 .padding(.top, 4)
             }
             
+            // We remove the "Mark as Returned" button from the list view 
+            // as it should be handled through the OTP flow in TransactionDetailView
+            /*
             if showActions && request.status == .approved {
                 Button("Mark as Returned") {
                     onAction?(.markReturned)
@@ -376,6 +415,7 @@ struct RequestRowView: View {
                 .buttonStyle(SecondaryButtonStyle())
                 .padding(.top, 4)
             }
+            */
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)

@@ -3,83 +3,119 @@ import Combine
 
 @MainActor
 class ChatViewModel: ObservableObject {
-    @Published var messages: [Message] = []
+    @Published private(set) var messages: [Message] = []
     @Published var isLoading = false
     @Published var error: String?
     @Published var newMessageText: String = ""
-    
+    @Published var transaction: Transaction?
+    @Published var otherPartyName: String = "Chat"
+    @Published var otherPartyImageUrl: String?
+    @Published var isSending = false
+    @Published var chatAvailable = true
+
     let transactionId: String
-    private let apiClient = APIClient.shared
+    private let store = AppDataStore.shared
+    private let messageService = MessageService.shared
+    private let transactionService = TransactionService()
     private var isPolling = false
     private var pollTimer: Timer?
+    private var cancellables = Set<AnyCancellable>()
     
     init(transactionId: String) {
         self.transactionId = transactionId
+        setupMessageObservation()
     }
     
-    func fetchMessages() async {
+    private func setupMessageObservation() {
+        store.$messagesByTransaction
+            .map { $0[self.transactionId] ?? [] }
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.messages, on: self)
+            .store(in: &cancellables)
+    }
+
+    func fetchInitialData(currentUserId: String) async {
         isLoading = true
         error = nil
         
         do {
-            let fetchedMessages: [Message] = try await apiClient.get("/transactions/\(transactionId)/messages")
-            self.messages = fetchedMessages
-            await markAsRead()
+            // Fetch transaction details first
+            let fetchedTransaction = try await transactionService.fetchTransactionById(id: transactionId)
+            self.transaction = fetchedTransaction
+            
+            // Determine other party info
+            if fetchedTransaction.ownerId == currentUserId {
+                self.otherPartyName = fetchedTransaction.borrowerName
+                self.otherPartyImageUrl = fetchedTransaction.borrowerProfileImageUrl
+            } else {
+                self.otherPartyName = fetchedTransaction.ownerName
+                self.otherPartyImageUrl = fetchedTransaction.ownerProfileImageUrl
+            }
+            
+            // Availability check (matching Android logic)
+            let status = fetchedTransaction.status
+            self.chatAvailable = (status == .pending || status == .approved || status == .active)
+
+            // Initial messages fetch
+            if chatAvailable {
+                // Fetch from network to sync (store will update and notify UI)
+                _ = try await messageService.fetchMessages(transactionId: transactionId)
+                await markAsRead()
+            }
         } catch {
             self.error = error.localizedDescription
         }
         
         isLoading = false
     }
-    
-    func sendMessage() async {
-        let text = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        
-        struct SendMessageRequest: Codable {
-            let content: String
-        }
-        
+
+    func fetchMessages() async {
+        guard chatAvailable else { return }
         do {
-            let request = SendMessageRequest(content: text)
-            let sentMessage: Message = try await apiClient.post("/transactions/\(transactionId)/messages", body: request)
-            
-            // Optimistically add to list
-            self.messages.append(sentMessage)
-            self.newMessageText = ""
+            _ = try await messageService.fetchMessages(transactionId: transactionId)
+            await markAsRead()
         } catch {
             self.error = error.localizedDescription
         }
     }
     
+    func sendMessage() async {
+        let text = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, chatAvailable, !isSending else { return }
+        
+        isSending = true
+        do {
+            let sentMessage = try await messageService.sendMessage(transactionId: transactionId, content: text)
+            
+            // Optimistically update store
+            var updatedMessages = self.messages
+            updatedMessages.append(sentMessage)
+            store.storeMessages(updatedMessages, transactionId: transactionId)
+            
+            self.newMessageText = ""
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isSending = false
+    }
+    
     func markAsRead() async {
         do {
-            struct EmptyBody: Codable {}
-            let _: EmptyBody = try await apiClient.post("/transactions/\(transactionId)/messages/read", body: EmptyBody())
-            // Update local state if needed (all read)
+            try await messageService.markAsRead(transactionId: transactionId)
         } catch {
-            // Ignore mark as read errors silently
             print("Failed to mark messages as read: \(error.localizedDescription)")
         }
     }
     
     // Polling mechanics
     func startPolling() {
-        guard !isPolling else { return }
+        guard !isPolling, chatAvailable else { return }
         isPolling = true
         pollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 // Silent fetch
-                do {
-                    let fetchedMessages: [Message] = try await self.apiClient.get("/transactions/\(self.transactionId)/messages")
-                    if fetchedMessages.count > self.messages.count {
-                        self.messages = fetchedMessages
-                        await self.markAsRead()
-                    }
-                } catch {
-                    print("Polling error: \(error.localizedDescription)")
-                }
+                await self.fetchMessages()
             }
         }
     }

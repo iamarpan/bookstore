@@ -31,6 +31,40 @@ struct MemberUser: Codable {
         case id, name, profileImageUrl, booksShared, averageRating
     }
     
+    // MARK: - Initializer
+    init(
+        id: String,
+        name: String,
+        profileImageUrl: String? = nil,
+        booksShared: Int,
+        averageRating: Double? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.profileImageUrl = profileImageUrl
+        self.booksShared = booksShared
+        self.averageRating = averageRating
+    }
+    
+    // MARK: - Custom Decoder
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        booksShared = try container.decode(Int.self, forKey: .booksShared)
+        
+        // Handle Decimal (returned as String by Prisma/JSON.stringify) vs Double
+        if let ratingString = try? container.decode(String.self, forKey: .averageRating) {
+            averageRating = Double(ratingString)
+        } else if let ratingDouble = try? container.decode(Double.self, forKey: .averageRating) {
+            averageRating = ratingDouble
+        } else {
+            averageRating = nil
+        }
+    }
+    
     /// Formatted rating string
     var formattedRating: String {
         guard let rating = averageRating else {

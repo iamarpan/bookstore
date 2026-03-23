@@ -124,7 +124,7 @@ struct PhoneSignInView: View {
                             await authViewModel.sendOTP()
                         }
                     }
-                    .buttonStyle(TertiaryButtonStyle())
+                    .buttonStyle(.plain)
                 }
                 
                 if authViewModel.isLoading || authViewModel.isGoogleLoading {

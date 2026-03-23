@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import UIKit
+import Combine
 
 /// Service for managing notifications and APNs integration
 @MainActor
@@ -22,7 +23,24 @@ class NotificationService: ObservableObject {
     
     nonisolated init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
+        
+        // Sync internal notifications with store on MainActor
+        Task { @MainActor in
+            setupStoreSubscription()
+        }
     }
+    
+    private func setupStoreSubscription() {
+        AppDataStore.shared.$notifications
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newNotifications in
+                self?.notifications = newNotifications
+                self?.updateUnreadCount()
+            }
+            .store(in: &storeCancellables)
+    }
+    
+    private var storeCancellables = Set<AnyCancellable>()
     
     // MARK: - Permission Management
     
@@ -87,7 +105,8 @@ class NotificationService: ObservableObject {
     }
     
     /// Fetch notifications from backend
-    func fetchNotifications(unreadOnly: Bool = false) async {
+    @discardableResult
+    func fetchNotifications(unreadOnly: Bool = false) async throws -> [BookNotification] {
         do {
             var queryParams: [String: Any] = [:]
             if unreadOnly {
@@ -99,12 +118,15 @@ class NotificationService: ObservableObject {
                 queryParams: queryParams
             )
             
-            self.notifications = response.notifications
+            // Unified Store update
+            AppDataStore.shared.storeNotifications(response.notifications)
+            
             self.unreadCount = response.unreadCount
             print("✅ Fetched \(response.notifications.count) notifications")
+            return response.notifications
         } catch {
             print("❌ Failed to fetch notifications: \(error.localizedDescription)")
-            // Fall back to local state, don't clear existing data
+            throw error
         }
     }
     
@@ -148,8 +170,8 @@ class NotificationService: ObservableObject {
             )
         } catch {
             print("❌ Failed to mark all as read: \(error.localizedDescription)")
-            // Refresh from server to restore correct state
-            await fetchNotifications()
+            // Re-fetch to restore correct state
+            try? await fetchNotifications()
         }
     }
     
@@ -164,7 +186,7 @@ class NotificationService: ObservableObject {
         } catch {
             print("❌ Failed to delete notification: \(error.localizedDescription)")
             // Re-fetch to restore correct state
-            await fetchNotifications()
+            try? await fetchNotifications()
         }
     }
     

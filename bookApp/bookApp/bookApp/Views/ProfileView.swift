@@ -167,6 +167,7 @@ struct ProfileView: View {
                                 .font(.caption)
                         }
                     }
+                    .buttonStyle(.plain)
                 }
                 .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
                 
@@ -190,6 +191,7 @@ struct ProfileView: View {
                             Spacer()
                         }
                     }
+                    .buttonStyle(.plain)
                     .disabled(authViewModel.isLoading)
                 }
                 .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))

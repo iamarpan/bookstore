@@ -51,6 +51,11 @@ struct TransactionDetailView: View {
                         transaction: viewModel.transaction,
                         isOwner: viewModel.isOwner(userId: authViewModel.currentUser?.id ?? "")
                     )
+                case .rating:
+                    RatingView(
+                        transaction: viewModel.transaction,
+                        isOwner: viewModel.isOwner(userId: authViewModel.currentUser?.id ?? "")
+                    )
                 }
             }
         }
@@ -172,8 +177,10 @@ struct TransactionDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 timelineItem(title: "Requested", date: viewModel.transaction.requestedAt, isCompleted: true)
                 timelineItem(title: "Approved", date: viewModel.transaction.approvedAt, isCompleted: viewModel.transaction.status != .pending)
-                timelineItem(title: "Handed Over", date: viewModel.transaction.handoverAt, isCompleted: viewModel.transaction.status == .active || viewModel.transaction.status == .returned)
-                timelineItem(title: "Returned", date: viewModel.transaction.returnedAt, isCompleted: viewModel.transaction.status == .returned, isLast: true)
+                timelineItem(title: "Handed Over", date: viewModel.transaction.handoverAt, isCompleted: viewModel.transaction.status == .active || viewModel.transaction.status == .returned || viewModel.transaction.status == .returned)
+                timelineItem(title: "Returned", date: viewModel.transaction.returnedAt, isCompleted: viewModel.transaction.status == .returned)
+                timelineItem(title: "Payment Received", date: nil, isCompleted: viewModel.transaction.paymentStatus.isComplete)
+                timelineItem(title: "Rating Given", date: nil, isCompleted: viewModel.isOwner(userId: authViewModel.currentUser?.id ?? "") ? viewModel.transaction.borrowerRating != nil : viewModel.transaction.ownerRating != nil, isLast: true)
             }
             .padding()
             .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
@@ -236,6 +243,24 @@ struct TransactionDetailView: View {
                     viewModel.activeSheet = .returnBook
                 }
             }
+            
+            if viewModel.canCancel(userId: authViewModel.currentUser?.id ?? "") {
+                actionButton(title: "Cancel Request", icon: "xmark.circle", color: .gray) {
+                    Task { await viewModel.cancelTransaction() }
+                }
+            }
+            
+            if viewModel.canMarkPayment(userId: authViewModel.currentUser?.id ?? "") {
+                actionButton(title: "Mark Payment Completed", icon: "dollarsign.circle.fill", color: .green) {
+                    Task { await viewModel.markPayment(userId: authViewModel.currentUser?.id ?? "") }
+                }
+            }
+            
+            if viewModel.canRate(userId: authViewModel.currentUser?.id ?? "") {
+                actionButton(title: "Rate Transaction", icon: "star.fill", color: .orange) {
+                    viewModel.activeSheet = .rating
+                }
+            }
         }
     }
     
@@ -252,6 +277,7 @@ struct TransactionDetailView: View {
             .foregroundColor(.white)
             .cornerRadius(12)
         }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Helpers
@@ -290,8 +316,14 @@ class TransactionDetailViewModel: ObservableObject {
     @Published var rejectReason = ""
     
     enum SheetType: Identifiable {
-        case handover, returnBook
-        var id: Int { hashValue }
+        case handover, returnBook, rating
+        var id: Int {
+            switch self {
+            case .handover: return 1
+            case .returnBook: return 2
+            case .rating: return 3
+            }
+        }
     }
     
     private let transactionService = TransactionService()
@@ -333,6 +365,28 @@ class TransactionDetailViewModel: ObservableObject {
         return transaction.status == .active
     }
     
+    func canCancel(userId: String) -> Bool {
+        // Both can cancel if pending. Borrower can cancel if approved but not active.
+        if transaction.status == .pending { return true }
+        if transaction.status == .approved && transaction.borrowerId == userId { return true }
+        return false
+    }
+    
+    func canMarkPayment(userId: String) -> Bool {
+        return transaction.status == .returned && 
+               !transaction.paymentStatus.isComplete && 
+               isOwner(userId: userId)
+    }
+    
+    func canRate(userId: String) -> Bool {
+        guard transaction.status == .returned else { return false }
+        if isOwner(userId: userId) {
+            return transaction.borrowerRating == nil
+        } else {
+            return transaction.ownerRating == nil
+        }
+    }
+    
     func approveRequest() async {
         isLoading = true
         do {
@@ -353,13 +407,42 @@ class TransactionDetailViewModel: ObservableObject {
             let finalReason = reason.isEmpty ? nil : reason
             let updated = try await transactionService.rejectRequest(id: transaction.id, reason: finalReason)
             transaction = updated
-            AppDataStore.shared.invalidateOwnerTransactions()
-            AppDataStore.shared.invalidateBorrowerTransactions()
+            refreshStores()
             rejectReason = ""
         } catch {
             print("❌ Failed to reject request: \(error.localizedDescription)")
         }
         isLoading = false
+    }
+    
+    func cancelTransaction() async {
+        isLoading = true
+        do {
+            let updated = try await transactionService.cancelTransaction(id: transaction.id)
+            transaction = updated
+            refreshStores()
+        } catch {
+            print("❌ Failed to cancel transaction: \(error.localizedDescription)")
+        }
+        isLoading = false
+    }
+    
+    func markPayment(userId: String) async {
+        isLoading = true
+        do {
+            let role = isOwner(userId: userId) ? "OWNER" : "BORROWER"
+            let updated = try await transactionService.markPaymentComplete(id: transaction.id, role: role)
+            transaction = updated
+            refreshStores()
+        } catch {
+            print("❌ Failed to mark payment: \(error.localizedDescription)")
+        }
+        isLoading = false
+    }
+    
+    private func refreshStores() {
+        AppDataStore.shared.invalidateOwnerTransactions()
+        AppDataStore.shared.invalidateBorrowerTransactions()
     }
 }
 

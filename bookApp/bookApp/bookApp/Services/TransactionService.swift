@@ -285,7 +285,7 @@ class TransactionService: TransactionServiceProtocol, ObservableObject {
     // MARK: - Payment Management
     
     /// Mark payment as complete (offline payment confirmation)
-    func markPaymentComplete(id: String, role: String) async throws {
+    func markPaymentComplete(id: String, role: String) async throws -> Transaction {
         isLoading = true
         error = nil
         
@@ -306,6 +306,7 @@ class TransactionService: TransactionServiceProtocol, ObservableObject {
             updateLocalTransaction(transaction)
             
             print("✅ Payment marked complete by \(role): \(id)")
+            return transaction
         } catch {
             self.error = error.localizedDescription
             throw error

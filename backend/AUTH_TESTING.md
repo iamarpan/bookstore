@@ -20,8 +20,8 @@ curl -X POST http://localhost:3000/api/v1/auth/send-otp \
 
 **Check console for OTP** - If Twilio is not configured, the OTP will be printed in the server console like:
 ```
-📞 Normalized phone: 8299270729 → +918299270729
-📲 WhatsApp to +918299270729: Your BookStore verification code is: 123456
+📞 Normalized phone: 8888888888 → +918888888888
+📲 WhatsApp to +918888888888: Your BookStore verification code is: 123456
 ⚠️  Twilio not configured - OTP logged to console only
 ```
 
@@ -29,7 +29,7 @@ curl -X POST http://localhost:3000/api/v1/auth/send-otp \
 
 **With Twilio configured** - The OTP will be sent via WhatsApp and you'll see:
 ```
-✅ WhatsApp OTP sent to +918299270729 (Message SID: SM...)
+✅ WhatsApp OTP sent to +918888888888 (Message SID: SM...)
 ```
 
 ### 2. Verify OTP (New User Registration)

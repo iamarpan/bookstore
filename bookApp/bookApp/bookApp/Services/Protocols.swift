@@ -42,6 +42,9 @@ protocol TransactionServiceProtocol: ObservableObject where ObjectWillChangePubl
     func rejectRequest(id: String, reason: String?) async throws -> Transaction
     func confirmHandover(id: String, otp: String) async throws -> Transaction
     func confirmReturn(id: String, otp: String) async throws -> Transaction
+    func markPaymentComplete(id: String, role: String) async throws -> Transaction
+    func cancelTransaction(id: String) async throws -> Transaction
+    func rateTransaction(id: String, rating: Int, comment: String?, bookConditionRating: Int?) async throws
 }
 
 /// Extension to provide default values for TransactionServiceProtocol methods
@@ -73,8 +76,16 @@ extension TransactionServiceProtocol {
 @MainActor
 protocol AppDataRefresherProtocol: ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
     func refreshBooksIfNeeded(groupIds: [String]?, availability: String?, genres: [String]?, sortBy: String?, search: String?, forceRefresh: Bool) async throws -> [Book]
+    func refreshBookDetailIfNeeded(id: String, forceRefresh: Bool) async throws -> Book
+    func refreshMyGroupsIfNeeded(forceRefresh: Bool) async throws -> [BookClub]
+    func refreshDiscoveredGroupsIfNeeded(category: String?, search: String?, forceRefresh: Bool) async throws -> [BookClub]
+    func refreshGroupDetailIfNeeded(id: String, forceRefresh: Bool) async throws -> BookClub
     func refreshMyBooksIfNeeded(userId: String, forceRefresh: Bool) async throws -> [Book]
     func refreshBorrowerTransactionsIfNeeded(forceRefresh: Bool) async throws -> [Transaction]
     func refreshOwnerTransactionsIfNeeded(forceRefresh: Bool) async throws -> [Transaction]
     func refreshHistoryTransactionsIfNeeded(forceRefresh: Bool) async throws -> [Transaction]
+    func refreshNotificationsIfNeeded(forceRefresh: Bool) async throws -> [BookNotification]
+    func refreshMessagesIfNeeded(transactionId: String, forceRefresh: Bool) async throws -> [Message]
+    func refreshGroupMembersIfNeeded(groupId: String, forceRefresh: Bool) async throws -> [GroupMember]
+    func refreshGroupBooksIfNeeded(groupId: String, forceRefresh: Bool) async throws -> [Book]
 }

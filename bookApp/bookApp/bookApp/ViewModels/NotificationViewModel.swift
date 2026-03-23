@@ -48,7 +48,12 @@ class NotificationViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        await notificationService.fetchNotifications(unreadOnly: unreadOnly)
+        do {
+            try await notificationService.fetchNotifications(unreadOnly: unreadOnly)
+        } catch {
+            self.errorMessage = error.localizedDescription
+            self.showError = true
+        }
         
         isLoading = false
     }

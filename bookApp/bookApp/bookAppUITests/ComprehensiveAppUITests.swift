@@ -6,7 +6,7 @@ import XCTest
 final class ComprehensiveAppUITests: XCTestCase {
 
     var app: XCUIApplication!
-    let testPhoneNumber = "8299270729"
+    let testPhoneNumber = "8888888888"
     let testOTP = "123456" // Common test OTP, adjust if necessary
 
     override func setUpWithError() throws {

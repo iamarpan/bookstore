@@ -4,37 +4,39 @@ import Combine
 
 @MainActor
 class MyLibraryViewModel: ObservableObject {
-    // MARK: - Published Properties
-    @Published var myBooks: [Book] = []
-    @Published var borrowedBooks: [Transaction] = []
-    @Published var lentBooks: [Transaction] = []
-    @Published var bookHistory: [Transaction] = []
+    // MARK: - Published Properties (UI state)
     @Published var isLoading: Bool = false
     @Published var showError: Bool = false
     @Published var errorMessage: String? = nil
+    @Published var unreadCounts: [String: Int] = [:]
+    @Published var borrowedBooks: [Transaction] = []
+    @Published var lentBooks: [Transaction] = []
+    @Published var myListedBooks: [Book] = []
 
-    // MARK: - Services
+    // MARK: - Store & Services
+    private let store = AppDataStore.shared
     private let bookService: any BookServiceProtocol
     private let transactionService: any TransactionServiceProtocol
+    private let messageService = MessageService.shared
     private let refresher: any AppDataRefresherProtocol
     private var currentUserId: String = ""
+    private var syncTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Computed Properties
 
     var activeLoans: [Transaction] {
-        borrowedBooks.filter { $0.status == .active }
+        store.borrowedTransactions.filter { $0.status == .active }
     }
 
     var overdueLoans: [Transaction] {
         activeLoans.filter { $0.isOverdue }
     }
 
-    var totalBooksShared: Int { myBooks.count }
+    var totalBooksShared: Int { store.myBooks.count }
 
     /// Reuse activeLoans instead of double-filtering borrowedBooks
     var totalActiveLends: Int { activeLoans.count }
-
-    var myListedBooks: [Book] { myBooks }
 
     // MARK: - Initialization
 
@@ -46,6 +48,48 @@ class MyLibraryViewModel: ObservableObject {
         self.bookService = bookService ?? BookService()
         self.transactionService = transactionService ?? TransactionService()
         self.refresher = refresher ?? AppDataRefresher.shared
+        setupObservations()
+    }
+
+    private func setupObservations() {
+        store.$borrowedTransactions
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$borrowedBooks)
+        
+        store.$ownerTransactions
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$lentBooks)
+            
+        store.$myBooks
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$myListedBooks)
+    }
+
+    deinit {
+        // syncTask?.cancel() // Cannot call @MainActor task cancellation in deinit easily
+    }
+
+    // MARK: - Background Sync
+
+    /// Starts a background polling task that refreshes library data every 30 seconds.
+    /// It respects the AppDataStore TTL (5m) to avoid redundant network hits.
+    func startSync() {
+        stopSync()
+        syncTask = Task {
+            while !Task.isCancelled {
+                // Fetch all data (respects TTL)
+                await refreshAll(force: false)
+                
+                // Wait 30 seconds before next poll
+                try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+            }
+        }
+    }
+
+    /// Cancels the ongoing background polling task.
+    func stopSync() {
+        syncTask?.cancel()
+        syncTask = nil
     }
 
     // MARK: - View Actions
@@ -105,29 +149,16 @@ class MyLibraryViewModel: ObservableObject {
 
     // MARK: - Fetch Methods
 
-    /// Fetch user's owned books — shows memory/disk-cached data instantly, refreshes in background.
+    /// Fetch user's owned books — triggering refresher updates the store.
     func fetchMyBooks() async {
         errorMessage = nil
 
-        // 1. Memory cache (instant, no I/O)
-        if let cached = AppDataStore.shared.cachedMyBooksInMemory(ttl: .infinity) {
-            myBooks = cached
-        }
+        if store.myBooks.isEmpty { isLoading = true }
 
-        if myBooks.isEmpty { isLoading = true }
-
-        // 2. Async disk read if memory cold
-        if myBooks.isEmpty, let cached = await AppDataStore.shared.cachedMyBooks(ttl: .infinity) {
-            myBooks = cached
-            isLoading = false
-        }
-
-        // 3. Network refresh
         do {
-            let books = try await refresher.refreshMyBooksIfNeeded(userId: currentUserId, forceRefresh: false)
-            myBooks = books
+            _ = try await refresher.refreshMyBooksIfNeeded(userId: currentUserId, forceRefresh: false)
         } catch {
-            if myBooks.isEmpty {
+            if store.myBooks.isEmpty {
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -135,64 +166,45 @@ class MyLibraryViewModel: ObservableObject {
         isLoading = false
     }
 
-    /// Fetch borrower transactions — shows cached data instantly, refreshes in background.
+    /// Fetch borrower transactions — triggering refresher updates the store.
     func fetchBorrowedBooks() async {
         errorMessage = nil
 
-        if let cached = await AppDataStore.shared.cachedBorrowerTransactions(ttl: .infinity) {
-            borrowedBooks = cached
-        }
-
         do {
-            let txns = try await refresher.refreshBorrowerTransactionsIfNeeded(forceRefresh: false)
-            borrowedBooks = txns
+            _ = try await refresher.refreshBorrowerTransactionsIfNeeded(forceRefresh: false)
         } catch {
-            if borrowedBooks.isEmpty {
+            if store.borrowedTransactions.isEmpty {
                 errorMessage = error.localizedDescription
                 showError = true
             }
         }
     }
 
-    /// Fetch owner transactions — shows cached data instantly, refreshes in background.
+    /// Fetch owner transactions — triggering refresher updates the store.
     func fetchLentBooks() async {
         errorMessage = nil
 
-        if let cached = await AppDataStore.shared.cachedOwnerTransactions(ttl: .infinity) {
-            lentBooks = cached
-        }
-
         do {
-            let txns = try await refresher.refreshOwnerTransactionsIfNeeded(forceRefresh: false)
-            lentBooks = txns
+            _ = try await refresher.refreshOwnerTransactionsIfNeeded(forceRefresh: false)
         } catch {
-            // If we have no cached data, surface the error so the user knows
-            if lentBooks.isEmpty {
+            if store.ownerTransactions.isEmpty {
                 errorMessage = "Failed to load lent books: \(error.localizedDescription)"
                 showError = true
             }
-            print("⚠️ fetchLentBooks error: \(error.localizedDescription)")
         }
     }
 
-    /// Fetch history — shows cached data instantly, refreshes in background.
+    /// Fetch history — triggering refresher updates the store.
     func fetchHistory() async {
         errorMessage = nil
 
-        if let cached = await AppDataStore.shared.cachedHistoryTransactions(ttl: .infinity) {
-            bookHistory = cached
-        }
-
         do {
-            let txns = try await refresher.refreshHistoryTransactionsIfNeeded(forceRefresh: false)
-            bookHistory = txns
+            _ = try await refresher.refreshHistoryTransactionsIfNeeded(forceRefresh: false)
         } catch {
-            // If we have no cached data, surface the error so the user knows
-            if bookHistory.isEmpty {
+            if store.historyTransactions.isEmpty {
                 errorMessage = "Failed to load history: \(error.localizedDescription)"
                 showError = true
             }
-            print("⚠️ fetchHistory error: \(error.localizedDescription)")
         }
     }
 
@@ -205,6 +217,40 @@ class MyLibraryViewModel: ObservableObject {
             group.addTask { await self.fetchBorrowedBooks() }
             group.addTask { await self.fetchLentBooks() }
             group.addTask { await self.fetchHistory() }
+        }
+        await fetchUnreadCounts()
+        
+        // Ensure background sync is running
+        if syncTask == nil {
+            startSync()
+        }
+    }
+
+    /// Fetch unread counts for all active/pending/approved transactions
+    func fetchUnreadCounts() async {
+        let allTransactions = store.borrowedTransactions + store.ownerTransactions
+        await withTaskGroup(of: (String, Int)?.self) { group in
+            for txn in allTransactions {
+                // Only for statuses that support chat
+                if txn.status == .pending || txn.status == .approved || txn.status == .active {
+                    group.addTask {
+                        do {
+                            let count = try await self.messageService.getUnreadCount(transactionId: txn.id)
+                            return (txn.id, count)
+                        } catch {
+                            return nil
+                        }
+                    }
+                }
+            }
+            
+            var counts: [String: Int] = [:]
+            for await result in group {
+                if let (id, count) = result {
+                    counts[id] = count
+                }
+            }
+            self.unreadCounts = counts
         }
     }
 
@@ -229,9 +275,11 @@ class MyLibraryViewModel: ObservableObject {
 
         do {
             try await bookService.deleteBook(id: book.id)
-            myBooks.removeAll { $0.id == book.id }
-            AppDataStore.shared.invalidateMyBooks()
-            AppDataStore.shared.invalidateBooks()
+            // UI will update automatically when store is refreshed or if we manually update store here
+            // For immediate UI feedback, we can manually prune it from the store if it's there
+            store.invalidateMyBooks()
+            store.invalidateBooks()
+            _ = try? await refresher.refreshMyBooksIfNeeded(userId: currentUserId, forceRefresh: true)
             isLoading = false
             print("✅ Book deleted successfully")
         } catch {

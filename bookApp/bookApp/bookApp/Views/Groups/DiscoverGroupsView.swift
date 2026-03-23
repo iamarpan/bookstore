@@ -36,6 +36,7 @@ struct DiscoverGroupsView: View {
                     Image(systemName: "ticket.fill")
                         .foregroundColor(AppTheme.primaryAccent)
                 }
+                .buttonStyle(.plain)
             }
         }
         .sheet(isPresented: $showingInviteCodeSheet) {
@@ -166,7 +167,6 @@ struct DiscoverGroupsView: View {
                             group: group,
                             isDarkMode: themeManager.isDarkMode,
                             showJoinButton: !group.isMember,
-                            onTap: { },
                             onJoin: {
                                 Task {
                                     await viewModel.joinGroup(group)
@@ -351,6 +351,7 @@ struct InviteCodeInputSheet: View {
                         .background(inviteCode.isEmpty ? Color.gray : AppTheme.primaryAccent)
                         .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
                 .disabled(inviteCode.isEmpty)
                 .padding(.horizontal)
                 

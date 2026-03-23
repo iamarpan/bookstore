@@ -30,6 +30,7 @@ struct HomeView: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var libraryViewModel: MyLibraryViewModel
     @State private var showingFilterSheet = false
     @State private var hasConfiguredNavBar = false
 
@@ -172,7 +173,7 @@ struct HomeView: View {
     }
     private var popularBooks: [Book] {
         Array(homeViewModel.books
-            .filter { !$0.visibleInGroups.isEmpty }
+            .filter { !$0.visibleInGroups.isEmpty || !homeViewModel.selectedGroupIds.isEmpty }
             .sorted { ($0.ownerRating ?? 0) > ($1.ownerRating ?? 0) }
             .prefix(10))
     }
@@ -289,12 +290,12 @@ struct CarouselBookCard: View {
                 .clipped()
                 .cornerRadius(12, corners: [.topLeft, .topRight])
 
-                Text(book.isAvailable ? "Available" : "Borrowed")
+                Text(bookStatusText)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 4)
-                    .background(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                    .background(bookStatusColor)
                     .cornerRadius(8)
                     .padding(6)
             }
@@ -324,6 +325,31 @@ struct CarouselBookCard: View {
         .cornerRadius(12)
         .shadow(color: AppTheme.shadowCard, radius: 6, x: 0, y: 3)
     }
+
+    // MARK: - Status Helpers
+    @EnvironmentObject var libraryViewModel: MyLibraryViewModel
+
+    private var bookStatusText: String {
+        if let txn = libraryViewModel.borrowedBooks.first(where: { $0.bookId == book.id }) {
+            if txn.status == .pending || txn.status == .approved {
+                return "Requested"
+            } else if txn.status == .active {
+                return "Borrowed"
+            }
+        }
+        return book.isAvailable ? "Available" : "Borrowed"
+    }
+
+    private var bookStatusColor: Color {
+        if let txn = libraryViewModel.borrowedBooks.first(where: { $0.bookId == book.id }) {
+            if txn.status == .pending || txn.status == .approved {
+                return AppTheme.warningColor // Orange/Yellow
+            } else if txn.status == .active {
+                return AppTheme.primaryAccent // Blue
+            }
+        }
+        return book.isAvailable ? AppTheme.successColor : AppTheme.warningColor
+    }
 }
 
 // MARK: - Book Tile View (flat grid)
@@ -349,12 +375,12 @@ struct BookTileView: View {
                 .frame(maxWidth: .infinity)
                 .cornerRadius(12)
 
-                Text(book.isAvailable ? "Available" : "Borrowed")
+                Text(bookStatusText)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                    .background(bookStatusColor)
                     .cornerRadius(8)
                     .padding(8)
             }
@@ -397,6 +423,31 @@ struct BookTileView: View {
         }
         .padding(12)
         .appCardStyle()
+    }
+
+    // MARK: - Status Helpers
+    @EnvironmentObject var libraryViewModel: MyLibraryViewModel
+
+    private var bookStatusText: String {
+        if let txn = libraryViewModel.borrowedBooks.first(where: { $0.bookId == book.id }) {
+            if txn.status == .pending || txn.status == .approved {
+                return "Requested"
+            } else if txn.status == .active {
+                return "Borrowed"
+            }
+        }
+        return book.isAvailable ? "Available" : "Borrowed"
+    }
+
+    private var bookStatusColor: Color {
+        if let txn = libraryViewModel.borrowedBooks.first(where: { $0.bookId == book.id }) {
+            if txn.status == .pending || txn.status == .approved {
+                return AppTheme.warningColor
+            } else if txn.status == .active {
+                return AppTheme.primaryAccent
+            }
+        }
+        return book.isAvailable ? AppTheme.successColor : AppTheme.warningColor
     }
 }
 
@@ -504,6 +555,7 @@ struct HomeView_Previews: PreviewProvider {
                 .environmentObject(HomeViewModel())
                 .environmentObject(ThemeManager())
                 .environmentObject(AuthViewModel())
+                .environmentObject(MyLibraryViewModel())
         }
     }
 }

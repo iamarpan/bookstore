@@ -72,9 +72,7 @@ struct BookDetailView: View {
                         if viewModel.canRequestBook {
                             showBorrowRequest = true
                         } else if viewModel.hasRequestedBook {
-                            Task {
-                                await viewModel.cancelRequest()
-                            }
+                            viewModel.showTransactionDetail()
                         }
                     }
                     .padding(.horizontal)
@@ -84,11 +82,30 @@ struct BookDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showBorrowRequest) {
+        .sheet(isPresented: $showBorrowRequest, onDismiss: {
+            Task {
+                await viewModel.fetchExistingRequest()
+            }
+        }) {
             NavigationView {
                 BorrowRequestView(book: viewModel.book)
             }
         }
+        .background(
+            Group {
+                if let transaction = viewModel.navigateToTransaction {
+                    NavigationLink(
+                        destination: TransactionDetailView(transaction: transaction),
+                        isActive: Binding(
+                            get: { viewModel.navigateToTransaction != nil },
+                            set: { if !$0 { viewModel.navigateToTransaction = nil } }
+                        )
+                    ) {
+                        EmptyView()
+                    }
+                }
+            }
+        )
         .alert("Request Sent!", isPresented: $viewModel.showSuccessAlert) {
             Button("OK") { }
         } message: {
@@ -477,7 +494,7 @@ struct RequestButtonView: View {
         if !canRequest && !hasRequested {
             return .gray
         } else if hasRequested {
-            return .red
+            return AppTheme.secondaryAccent
         } else {
             return .blue
         }

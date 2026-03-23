@@ -72,12 +72,14 @@ struct GroupSettingsView: View {
                             Image(systemName: "doc.on.doc")
                                 .foregroundColor(AppTheme.primaryAccent)
                         }
+                        .buttonStyle(.plain)
                     }
                     
                     Button(action: { showingRegenerateAlert = true }) {
                         Label("Regenerate Invite Code", systemImage: "arrow.clockwise")
                             .foregroundColor(AppTheme.primaryAccent)
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 // Save Button
@@ -102,6 +104,7 @@ struct GroupSettingsView: View {
                             Spacer()
                         }
                     }
+                    .buttonStyle(.plain)
                     .disabled(viewModel.isSaving || !viewModel.hasChanges)
                     .foregroundColor(viewModel.hasChanges ? AppTheme.primaryAccent : .gray)
                 }

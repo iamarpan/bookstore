@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Main screen for viewing user's groups (joined and created)
 struct MyGroupsView: View {
@@ -69,8 +70,7 @@ struct MyGroupsView: View {
                                 GroupCardView(
                                     group: group,
                                     isDarkMode: themeManager.isDarkMode,
-                                    showJoinButton: false,
-                                    onTap: { }
+                                    showJoinButton: false
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -103,8 +103,7 @@ struct MyGroupsView: View {
                                 GroupCardView(
                                     group: group,
                                     isDarkMode: themeManager.isDarkMode,
-                                    showJoinButton: false,
-                                    onTap: { }
+                                    showJoinButton: false
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -166,6 +165,7 @@ struct MyGroupsView: View {
                         .background(AppTheme.primaryAccent)
                         .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
             } else {
@@ -180,6 +180,7 @@ struct MyGroupsView: View {
                         .background(AppTheme.primaryAccent)
                         .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
             }
@@ -224,49 +225,49 @@ struct MyGroupsView: View {
 
 @MainActor
 class GroupViewModel: ObservableObject {
-    @Published var joinedGroups: [BookClub] = []
-    @Published var createdGroups: [BookClub] = []
+    @Published private(set) var joinedGroups: [BookClub] = []
+    @Published private(set) var createdGroups: [BookClub] = []
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage: String?
     
-    private let refresher: AppDataRefresher
+    private let store = AppDataStore.shared
+    private let refresher: any AppDataRefresherProtocol
+    private var currentUserId: String = ""
+    private var cancellables = Set<AnyCancellable>()
     
-    init(refresher: AppDataRefresher = .shared) {
-        self.refresher = refresher
+    init(refresher: (any AppDataRefresherProtocol)? = nil) {
+        self.refresher = refresher ?? AppDataRefresher.shared
+        setupObservations()
     }
     
-    /// Fetch user's groups — shows cached data instantly, refreshes only if stale.
+    private func setupObservations() {
+        store.$myGroups
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] groups in
+                guard let self = self else { return }
+                self.joinedGroups = groups
+                if !self.currentUserId.isEmpty {
+                    self.createdGroups = groups.filter { $0.isCreatedByUser(userId: self.currentUserId) }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// Fetch user's groups — triggering refresher updates the store.
     func fetchUserGroups(userId: String) async {
+        self.currentUserId = userId
         errorMessage = nil
 
-        // 1. Memory cache — instant display, zero I/O
-        if let cached = AppDataStore.shared.cachedMyGroupsInMemory(ttl: .infinity) {
-            joinedGroups  = cached
-            createdGroups = cached.filter { $0.isCreatedByUser(userId: userId) }
-        }
+        if store.myGroups.isEmpty { isLoading = true }
 
-        if joinedGroups.isEmpty { isLoading = true }
-
-        // 2. Async disk read if memory was cold
-        if joinedGroups.isEmpty,
-           let cached = await AppDataStore.shared.cachedMyGroups(ttl: .infinity) {
-            joinedGroups  = cached
-            createdGroups = cached.filter { $0.isCreatedByUser(userId: userId) }
-            isLoading = false
-        }
-
-        // 3. Network refresh (respects TTL — won't re-fetch if cache is fresh)
         do {
-            let groups = try await refresher.refreshMyGroupsIfNeeded(forceRefresh: false)
-            joinedGroups  = groups
-            createdGroups = groups.filter { $0.isCreatedByUser(userId: userId) }
+            _ = try await refresher.refreshMyGroupsIfNeeded(forceRefresh: false)
         } catch {
-            if joinedGroups.isEmpty {
+            if store.myGroups.isEmpty {
                 errorMessage = error.localizedDescription
                 showError = true
             }
-            print("❌ Error fetching groups: \(error)")
         }
 
         isLoading = false
@@ -274,13 +275,11 @@ class GroupViewModel: ObservableObject {
     
     /// Force-refresh (pull-to-refresh).
     func refreshGroups() async {
-        if let user = User.loadFromUserDefaults() {
-            // Invalidate so next fetch bypasses cache
-            AppDataStore.shared.invalidateMyGroups()
-            await fetchUserGroups(userId: user.id)
-        } else {
-            isLoading = false
+        if !currentUserId.isEmpty {
+            store.invalidateMyGroups()
+            _ = try? await refresher.refreshMyGroupsIfNeeded(forceRefresh: true)
         }
+        isLoading = false
     }
 }
 
