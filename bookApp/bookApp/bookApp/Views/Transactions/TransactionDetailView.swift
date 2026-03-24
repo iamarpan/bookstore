@@ -31,6 +31,7 @@ struct TransactionDetailView: View {
                 actionSection
             }
             .padding()
+            .padding(.bottom, 100)
         }
         .background(AppTheme.colorPrimaryBackground(for: themeManager.isDarkMode).ignoresSafeArea())
         .navigationTitle("Transaction Details")
