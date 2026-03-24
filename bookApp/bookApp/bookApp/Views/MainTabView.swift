@@ -56,7 +56,6 @@ struct MainTabView: View {
 
             if tabManager.isVisible {
                 FloatingDock(selectedTab: $selectedTab)
-                    .padding(.bottom, 8)
             }
         }
         .environmentObject(tabManager)
@@ -157,22 +156,22 @@ struct FloatingDock: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
         .background(dockBackground)
         .fixedSize(horizontal: false, vertical: true)
     }
 
     private var dockBackground: some View {
-        RoundedRectangle(cornerRadius: 26)
+        Rectangle()
             .fill(.ultraThinMaterial)
             .overlay(
-                RoundedRectangle(cornerRadius: 26)
-                    .stroke(
-                        Color.white.opacity(themeManager.isDarkMode ? 0.14 : 0.4),
-                        lineWidth: 1
-                    )
+                VStack {
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color.black.opacity(0.1))
+                    Spacer()
+                }
             )
-            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 6)
+            .ignoresSafeArea(edges: .bottom)
     }
 }
 
