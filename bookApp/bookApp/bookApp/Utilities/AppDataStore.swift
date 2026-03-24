@@ -316,7 +316,11 @@ final class AppDataStore: ObservableObject, @unchecked Sendable {
 
     // MARK: Chat Messages
     func cachedMessages(transactionId: String, ttl: TimeInterval = defaultTTL) async -> [Message]? {
-        await load([Message].self, filename: "chat_\(transactionId).json", ttl: ttl)
+        let messages = await load([Message].self, filename: "chat_\(transactionId).json", ttl: ttl)
+        if let messages = messages {
+            Task { @MainActor in self.messagesByTransaction[transactionId] = messages }
+        }
+        return messages
     }
 
     func storeMessages(_ messages: [Message], transactionId: String) {

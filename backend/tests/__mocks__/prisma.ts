@@ -44,6 +44,7 @@ const prismaMock = {
     },
     refreshToken: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
@@ -61,7 +62,7 @@ const prismaMock = {
         create: jest.fn(),
         update: jest.fn(),
     },
-    $transaction: jest.fn(),
+    $transaction: jest.fn((cb) => cb(prismaMock)),
 };
 
 export default prismaMock;

@@ -118,7 +118,7 @@ export async function verifyOTPService(
  */
 export async function refreshTokenService(refreshToken: string) {
     // 1. Verify JWT signature and expiry first
-    let payload;
+    let payload: any;
     try {
         payload = verifyRefreshToken(refreshToken);
     } catch (error) {
@@ -126,24 +126,28 @@ export async function refreshTokenService(refreshToken: string) {
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            // 2. Find the token record within the transaction to prevent race conditions
+        return await prisma.$transaction(async (tx) => {
+            // 2. Find the token record within the transaction
             const tokenRecord = await tx.refreshToken.findUnique({
                 where: { token: refreshToken },
                 include: { user: true },
             });
 
-            if (!tokenRecord) {
-                // If not found in DB, it might have been rotated by a concurrent request 
-                // in the last few seconds. We'll check if the user has a valid 
-                // token created very recently (within 10 seconds)
-                const recentToken = await tx.refreshToken.findFirst({
+            // Helper to find a recently issued token for this user (grace period)
+            const findRecentToken = async () => {
+                return await tx.refreshToken.findFirst({
                     where: { 
                         userId: payload.userId,
-                        createdAt: { gte: new Date(Date.now() - 10000) } // 10s grace
+                        createdAt: { gte: new Date(Date.now() - 15000) } // Increased to 15s grace
                     },
                     orderBy: { createdAt: 'desc' }
                 });
+            };
+
+            if (!tokenRecord) {
+                // If not found in DB, it might have been rotated by a concurrent request 
+                // in the last few seconds.
+                const recentToken = await findRecentToken();
 
                 if (recentToken) {
                     console.log('♻️ Re-using recently rotated token for concurrent request');
@@ -158,7 +162,7 @@ export async function refreshTokenService(refreshToken: string) {
 
             // 3. Check database-level expiry
             if (tokenRecord.expiresAt < new Date()) {
-                await tx.refreshToken.delete({ where: { id: tokenRecord.id } });
+                await tx.refreshToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
                 throw new Error('Refresh token expired');
             }
 
@@ -172,43 +176,33 @@ export async function refreshTokenService(refreshToken: string) {
             expiresAt.setDate(expiresAt.getDate() + 7);
 
             // 5. Rotate: Delete old, create new
-            await tx.refreshToken.delete({ where: { id: tokenRecord.id } });
-            await tx.refreshToken.create({
-                data: { 
-                    userId: tokenRecord.user.id, 
-                    token: newRefreshToken, 
-                    expiresAt 
-                },
-            });
-
-            return { accessToken, refreshToken: newRefreshToken };
-        });
-
-        return result;
-    } catch (error: any) {
-        // Handle P2002 (Unique constraint failed) - happens if two requests
-        // generate the exact same token string in the same second.
-        if (error?.code === 'P2002') {
-            console.warn('⚠️ Concurrent refresh token rotation (P2002) — attempting recovery');
-            // Try to find the token that caused the collision to return it
-            const existingToken = await prisma.refreshToken.findUnique({
-                where: { token: refreshToken } // This is unlikely to be the collision token
-            });
-            // Actually, if P2002 happened on the NEW token, we should just return what's in the DB
-            // for this user.
-            const latestToken = await prisma.refreshToken.findFirst({
-                where: { userId: payload.userId },
-                orderBy: { createdAt: 'desc' }
-            });
-            
-            if (latestToken) {
-                return {
-                    accessToken: generateAccessToken({ userId: payload.userId, phoneNumber: payload.phoneNumber }),
-                    refreshToken: latestToken.token
-                };
+            try {
+                await tx.refreshToken.delete({ where: { id: tokenRecord.id } });
+                await tx.refreshToken.create({
+                    data: { 
+                        userId: tokenRecord.user.id, 
+                        token: newRefreshToken, 
+                        expiresAt 
+                    },
+                });
+                return { accessToken, refreshToken: newRefreshToken };
+            } catch (err: any) {
+                // If deletion fails (P2025), someone else rotated it already after our findUnique
+                if (err.code === 'P2025' || err.code === 'P2002') {
+                    console.warn(`⚠️ Race condition during rotation (${err.code}) — recovering`);
+                    const latest = await findRecentToken();
+                    if (latest) {
+                        return {
+                            accessToken: generateAccessToken({ userId: payload.userId, phoneNumber: payload.phoneNumber }),
+                            refreshToken: latest.token
+                        };
+                    }
+                }
+                throw err;
             }
-        }
-        
+        });
+    } catch (error: any) {
+        console.error('Refresh token service error:', error.message);
         throw error;
     }
 }

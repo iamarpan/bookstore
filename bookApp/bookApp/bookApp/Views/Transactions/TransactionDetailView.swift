@@ -162,6 +162,7 @@ struct TransactionDetailView: View {
                         .font(.title)
                         .foregroundColor(AppTheme.primaryAccent)
                 }
+                .buttonStyle(.plain)
             }
             .padding()
             .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))

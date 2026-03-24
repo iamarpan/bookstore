@@ -183,6 +183,7 @@ struct OTPHandoverView: View {
             .cornerRadius(AppTheme.buttonRadius)
             .shadow(color: AppTheme.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
         }
+        .buttonStyle(.plain)
         .disabled(viewModel.isLoading || viewModel.enteredOTP.count != 6)
         .padding(.horizontal, 24)
         .padding(.bottom, 32)

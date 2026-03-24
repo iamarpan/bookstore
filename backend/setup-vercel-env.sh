@@ -11,7 +11,7 @@ read -p "Enter your Supabase password: " SUPABASE_PASSWORD
 
 # Set DATABASE_URL with password
 echo "Setting DATABASE_URL..."
-echo "postgresql://postgres:${SUPABASE_PASSWORD}@db.iyffnwujmbwdeqvqkgqe.supabase.co:5432/postgres?pgbouncer=true" | vercel env add DATABASE_URL production
+echo "postgresql://postgres:${SUPABASE_PASSWORD}@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10" | vercel env add DATABASE_URL production
 
 # Set JWT secrets
 echo "Setting JWT_ACCESS_SECRET..."

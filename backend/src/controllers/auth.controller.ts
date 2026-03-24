@@ -79,13 +79,28 @@ export async function refreshToken(req: Request, res: Response) {
         }
 
         const result = await refreshTokenService(refreshToken);
-
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Refresh token error:', error);
-        res.status(401).json({
-            error: 'Unauthorized',
-            message: error instanceof Error ? error.message : 'Token refresh failed',
+        
+        // Distinguish between auth failures and system failures
+        const message = error instanceof Error ? error.message : 'Token refresh failed';
+        const isAuthError = message.includes('Invalid') || 
+                           message.includes('expired') || 
+                           message.includes('not found');
+
+        if (isAuthError) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message,
+            });
+        }
+
+        // For everything else (DB timeout, connection issues), return 500 
+        // to prevent client from forcing a logout.
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: 'A transient error occurred during token refresh. Please try again.',
         });
     }
 }

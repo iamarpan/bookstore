@@ -166,7 +166,15 @@ struct HomeView: View {
 
     // MARK: - Carousel Data Sources
     private var availableBooks: [Book] {
-        homeViewModel.books.filter { $0.isAvailable }
+        homeViewModel.books.filter { book in
+            guard book.isAvailable else { return false }
+            
+            // Redundant check: Filter out if the current user has an active involvement with this book
+            let isInvolved = libraryViewModel.borrowedBooks.contains { txn in
+                txn.bookId == book.id && (txn.status == .pending || txn.status == .approved || txn.status == .active)
+            }
+            return !isInvolved
+        }
     }
     private var recentBooks: [Book] {
         Array(homeViewModel.books.sorted { $0.createdAt > $1.createdAt }.prefix(10))

@@ -39,26 +39,34 @@ class ChatViewModel: ObservableObject {
         error = nil
         
         do {
-            // Fetch transaction details first
+            // Check cache first for immediate UI (Manage button)
+            if let cached = store.borrowedTransactions.first(where: { $0.id == transactionId }) {
+                self.transaction = cached
+            } else if let cached = store.ownerTransactions.first(where: { $0.id == transactionId }) {
+                self.transaction = cached
+            }
+            
+            // If we have a transaction from cache, set up other party info immediately
+            if let t = self.transaction {
+                updateOtherPartyInfo(t, currentUserId: currentUserId)
+            }
+
+            // Fetch transaction details from network to sync
             let fetchedTransaction = try await transactionService.fetchTransactionById(id: transactionId)
             self.transaction = fetchedTransaction
             
-            // Determine other party info
-            if fetchedTransaction.ownerId == currentUserId {
-                self.otherPartyName = fetchedTransaction.borrowerName
-                self.otherPartyImageUrl = fetchedTransaction.borrowerProfileImageUrl
-            } else {
-                self.otherPartyName = fetchedTransaction.ownerName
-                self.otherPartyImageUrl = fetchedTransaction.ownerProfileImageUrl
-            }
+            // Re-confirm other party info and chat availability
+            updateOtherPartyInfo(fetchedTransaction, currentUserId: currentUserId)
             
-            // Availability check (matching Android logic)
             let status = fetchedTransaction.status
             self.chatAvailable = (status == .pending || status == .approved || status == .active)
 
             // Initial messages fetch
             if chatAvailable {
-                // Fetch from network to sync (store will update and notify UI)
+                // Load from cache first for offline access / immediate UI
+                _ = await messageService.fetchCachedMessages(transactionId: transactionId)
+                
+                // Then fetch from network to sync (store will update and notify UI)
                 _ = try await messageService.fetchMessages(transactionId: transactionId)
                 await markAsRead()
             }
@@ -124,5 +132,15 @@ class ChatViewModel: ObservableObject {
         isPolling = false
         pollTimer?.invalidate()
         pollTimer = nil
+    }
+
+    private func updateOtherPartyInfo(_ t: Transaction, currentUserId: String) {
+        if t.ownerId == currentUserId {
+            self.otherPartyName = t.borrowerName
+            self.otherPartyImageUrl = t.borrowerProfileImageUrl
+        } else {
+            self.otherPartyName = t.ownerName
+            self.otherPartyImageUrl = t.ownerProfileImageUrl
+        }
     }
 }

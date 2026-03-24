@@ -109,6 +109,7 @@ class TransactionService: TransactionServiceProtocol, ObservableObject {
             // Invalidate global caches
             AppDataStore.shared.invalidateBorrowerTransactions()
             AppDataStore.shared.invalidateOwnerTransactions()
+            AppDataStore.shared.invalidateBooks()
             
             print("✅ Borrow request created: \(transaction.id)")
             return transaction
@@ -364,6 +365,7 @@ class TransactionService: TransactionServiceProtocol, ObservableObject {
         AppDataStore.shared.invalidateOwnerTransactions()
         AppDataStore.shared.invalidateBorrowerTransactions()
         AppDataStore.shared.invalidateHistoryTransactions()
+        AppDataStore.shared.invalidateBooks()
     }
     
     /// Get transactions by role and status

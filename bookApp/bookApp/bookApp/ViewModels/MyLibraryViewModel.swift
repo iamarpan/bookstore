@@ -139,6 +139,7 @@ class MyLibraryViewModel: ObservableObject {
                 
                 // Refresh specific cache or all data
                 await fetchMyBooks()
+                store.invalidateBooks()
             } catch {
                 errorMessage = "Failed to update book availability: \(error.localizedDescription)"
                 showError = true
