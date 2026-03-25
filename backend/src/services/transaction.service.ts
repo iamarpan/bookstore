@@ -267,8 +267,37 @@ export class TransactionService {
 
         if (status === 'APPROVED') {
             updateData.approvedAt = new Date();
+
+            // Mark book as unavailable and link this transaction
+            // This ensures "Available Now" reflects the reserved status
+            await prisma.book.update({
+                where: { id: transaction.bookId },
+                data: { isAvailable: false, currentTransactionId: id }
+            });
+
+            // Automatically reject all other pending requests for this book
+            await prisma.transaction.updateMany({
+                where: {
+                    bookId: transaction.bookId,
+                    status: 'PENDING' as TransactionStatus,
+                    id: { not: id }
+                },
+                data: {
+                    status: 'REJECTED' as TransactionStatus,
+                    rejectionReason: 'The owner has approved another borrow request for this book.'
+                }
+            });
         } else if (status === 'REJECTED') {
             updateData.rejectionReason = data?.reason;
+            
+            // If we are rejecting a previously APPROVED transaction (rare but possible),
+            // we should set the book back to available.
+            if (transaction.status === 'APPROVED') {
+                await prisma.book.update({
+                    where: { id: transaction.bookId },
+                    data: { isAvailable: true, currentTransactionId: null }
+                });
+            }
         } else if (status === 'ACTIVE') {
             updateData.handoverAt = new Date();
             // Clear the used OTP
