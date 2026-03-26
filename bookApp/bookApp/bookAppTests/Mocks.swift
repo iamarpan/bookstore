@@ -71,12 +71,15 @@ class MockTransactionService: TransactionServiceProtocol {
     
     func confirmHandover(id: String, otp: String) async throws -> Transaction { return Transaction.makeStub(status: .active) }
     func confirmReturn(id: String, otp: String) async throws -> Transaction { return Transaction.makeStub(status: .returned) }
+    func markPaymentComplete(id: String, role: String) async throws -> Transaction { return Transaction.makeStub(status: .active) }
+    func cancelTransaction(id: String) async throws -> Transaction { return Transaction.makeStub(status: .cancelled) }
+    func rateTransaction(id: String, rating: Int, comment: String?, bookConditionRating: Int?) async throws {}
 }
 
 /// Mock AppDataRefresher for unit testing
 @MainActor
 class MockAppDataRefresher: AppDataRefresherProtocol {
-    var myBooksToReturn: [Book] = []
+    var myListedBooksToReturn: [Book] = []
     var borrowerTransactionsToReturn: [Transaction] = []
     var ownerTransactionsToReturn: [Transaction] = []
     var historyTransactionsToReturn: [Transaction] = []
@@ -88,7 +91,7 @@ class MockAppDataRefresher: AppDataRefresherProtocol {
 
     func refreshMyBooksIfNeeded(userId: String, forceRefresh: Bool) async throws -> [Book] {
         if shouldFail { throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock Error"]) }
-        return myBooksToReturn
+        return myListedBooksToReturn
     }
 
     func refreshBorrowerTransactionsIfNeeded(forceRefresh: Bool) async throws -> [Transaction] {
@@ -105,6 +108,19 @@ class MockAppDataRefresher: AppDataRefresherProtocol {
         if shouldFail { throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock Error"]) }
         return historyTransactionsToReturn
     }
+
+    func refreshBookDetailIfNeeded(id: String, forceRefresh: Bool) async throws -> Book {
+        return Book(id: id, title: "Mock", author: "Mock", genre: "Mock", description: "", ownerId: "m", ownerName: "m", visibleInGroups: [])
+    }
+    func refreshMyGroupsIfNeeded(forceRefresh: Bool) async throws -> [BookClub] { return [] }
+    func refreshDiscoveredGroupsIfNeeded(category: String?, search: String?, forceRefresh: Bool) async throws -> [BookClub] { return [] }
+    func refreshGroupDetailIfNeeded(id: String, forceRefresh: Bool) async throws -> BookClub {
+        return BookClub(id: id, name: "Mock", description: "", creatorId: "m", booksCount: 0, memberCount: 0)
+    }
+    func refreshNotificationsIfNeeded(forceRefresh: Bool) async throws -> [BookNotification] { return [] }
+    func refreshMessagesIfNeeded(transactionId: String, forceRefresh: Bool) async throws -> [Message] { return [] }
+    func refreshGroupMembersIfNeeded(groupId: String, forceRefresh: Bool) async throws -> [GroupMember] { return [] }
+    func refreshGroupBooksIfNeeded(groupId: String, forceRefresh: Bool) async throws -> [Book] { return [] }
 }
 
 /// Mock AuthService for unit testing

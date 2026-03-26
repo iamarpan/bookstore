@@ -26,7 +26,12 @@ struct BookDetailView: View {
                     
                     // Content
                     VStack(alignment: .leading, spacing: 24) {
-                        BookInfoSection(book: viewModel.book, isDarkMode: themeManager.isDarkMode)
+                        BookInfoSection(
+                            book: viewModel.book,
+                            statusText: viewModel.availabilityText,
+                            statusColor: availabilityColor,
+                            isDarkMode: themeManager.isDarkMode
+                        )
                         
                         BookDescriptionView(book: viewModel.book)
                         
@@ -123,6 +128,20 @@ struct BookDetailView: View {
             tabManager.show()
         }
     }
+    
+    private var availabilityColor: Color {
+        if let transaction = viewModel.existingTransaction {
+            switch transaction.status {
+            case .pending, .approved:
+                return AppTheme.warningColor
+            case .active:
+                return AppTheme.primaryAccent
+            default:
+                break
+            }
+        }
+        return viewModel.book.isAvailable ? AppTheme.successColor : AppTheme.warningColor
+    }
 }
 
 struct ParallaxHeader: View {
@@ -153,12 +172,15 @@ struct ParallaxHeader: View {
                     endPoint: .center
                 )
             }
+            .tilt()
         }
     }
 }
 
 struct BookInfoSection: View {
     let book: Book
+    let statusText: String
+    let statusColor: Color
     let isDarkMode: Bool
 
     var body: some View {
@@ -184,11 +206,11 @@ struct BookInfoSection: View {
 
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                        .fill(statusColor)
                         .frame(width: 8, height: 8)
-                    Text(book.isAvailable ? "Available" : "Borrowed")
+                    Text(statusText)
                         .font(AppTheme.bodyFont(size: 14, weight: .medium))
-                        .foregroundColor(book.isAvailable ? AppTheme.successColor : AppTheme.warningColor)
+                        .foregroundColor(statusColor)
                 }
             }
 
@@ -503,8 +525,12 @@ struct RequestButtonView: View {
 
 struct BookDetailView_Previews: PreviewProvider {
     static var previews: some View {
+        let book = Book.mockBooks[0]
         NavigationView {
-            BookDetailView(book: Book.mockBooks[0])
+            BookDetailView(book: book)
+                .environmentObject(AuthViewModel())
+                .environmentObject(ThemeManager())
+                .environmentObject(TabManager())
         }
     }
 }

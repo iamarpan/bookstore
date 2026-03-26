@@ -112,12 +112,21 @@ class BookDetailViewModel: ObservableObject {
     var requestButtonTitle: String {
         let currentUserId = User.loadFromUserDefaults()?.id ?? ""
         
-        if !book.isAvailable {
-            return "Not Available"
-        } else if book.ownerId == currentUserId {
+        if let transaction = existingTransaction {
+            switch transaction.status {
+            case .pending, .approved:
+                return "Request Sent"
+            case .active:
+                return "Manage Borrow"
+            case .returned, .rejected, .cancelled:
+                break // Fall through to standard availability check
+            }
+        }
+        
+        if book.ownerId == currentUserId {
             return "Your Book"
-        } else if hasRequestedBook {
-            return "Request Sent"
+        } else if !book.isAvailable {
+            return "Not Available"
         } else {
             return "Request This Book"
         }
@@ -137,7 +146,7 @@ class BookDetailViewModel: ObservableObject {
             case .active:
                 return .borrowed
             case .returned, .rejected, .cancelled:
-                return book.isAvailable ? .canRequest : .unavailable
+                break // Fall through to standard availability check
             }
         }
         
@@ -146,6 +155,20 @@ class BookDetailViewModel: ObservableObject {
         }
         
         return .canRequest
+    }
+
+    var availabilityText: String {
+        if let transaction = existingTransaction {
+            switch transaction.status {
+            case .pending, .approved:
+                return "Requested by you"
+            case .active:
+                return "Borrowed by you"
+            default:
+                break
+            }
+        }
+        return book.isAvailable ? "Available" : "Borrowed"
     }
     
     func showTransactionDetail() {

@@ -16,6 +16,7 @@ class HomeViewModel: ObservableObject {
     @Published private(set) var filteredBooks: [Book] = []
     @Published private(set) var genres: [String] = []
     @Published private(set) var books: [Book] = []
+    @Published private(set) var activeTransactions: [Transaction] = []
 
     let availabilityOptions = ["Available", "Not Available"]
 
@@ -66,6 +67,12 @@ class HomeViewModel: ObservableObject {
                 self?.genres = genres
             }
             .store(in: &cancellables)
+            
+        // Observe active borrows for "Continue Reading"
+        store.$borrowedTransactions
+            .map { $0.filter { $0.status == .active } }
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$activeTransactions)
     }
 
     // MARK: - Methods

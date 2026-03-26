@@ -11,6 +11,7 @@ class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showError = false
+    @Published var recentActions: [String] = []
     
     private let bookService = BookService()
     private let transactionService = TransactionService()
@@ -38,6 +39,19 @@ class ProfileViewModel: ObservableObject {
             
             // Use real rating from user model
             reputationScore = user?.stats.averageRating ?? 0.0
+            
+            // Generate recent actions summary (local logic for now)
+            var actions: [String] = []
+            if booksLentCount > 0 {
+                actions.append("Lent out \(booksLentCount) book\(booksLentCount == 1 ? "" : "s") in total")
+            }
+            if let lastBorrowed = borrowedTransactions.sorted(by: { $0.requestedAt > $1.requestedAt }).first {
+                actions.append("Recently borrowed \"\(lastBorrowed.book.title)\"")
+            }
+            if booksAddedCount > 0 {
+                actions.append("Added \(booksAddedCount) book\(booksAddedCount == 1 ? "" : "s") to your library")
+            }
+            recentActions = actions
             
         } catch {
             print("Error fetching stats: \(error)")

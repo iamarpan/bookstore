@@ -78,25 +78,24 @@ struct ProfileView: View {
                 .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
 
                 // MARK: - Activity Summary
-                if viewModel.booksLentCount > 0 || viewModel.booksBorrowedCount > 0 {
-                    Section(header: Text("Activity").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
-                        if viewModel.booksLentCount > 0 {
-                            HStack {
-                                Image(systemName: "arrow.up.forward.circle.fill")
-                                    .foregroundColor(AppTheme.warningColor)
-                                    .frame(width: 24)
-                                Text("Currently lending \(viewModel.booksLentCount) book\(viewModel.booksLentCount == 1 ? "" : "s")")
+                if !viewModel.recentActions.isEmpty {
+                    Section(header: Text("Recent Activity").foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))) {
+                        ForEach(viewModel.recentActions, id: \.self) { action in
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(AppTheme.primaryAccent.opacity(0.1))
+                                    .frame(width: 28, height: 28)
+                                    .overlay(
+                                        Image(systemName: "bolt.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(AppTheme.primaryAccent)
+                                    )
+                                
+                                Text(action)
+                                    .font(AppTheme.bodyFont(size: 14))
                                     .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                             }
-                        }
-                        if viewModel.booksBorrowedCount > 0 {
-                            HStack {
-                                Image(systemName: "book.fill")
-                                    .foregroundColor(AppTheme.successColor)
-                                    .frame(width: 24)
-                                Text("Borrowed \(viewModel.booksBorrowedCount) book\(viewModel.booksBorrowedCount == 1 ? "" : "s")")
-                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
-                            }
+                            .padding(.vertical, 4)
                         }
                     }
                     .listRowBackground(AppTheme.colorCardBackground(for: themeManager.isDarkMode))
@@ -256,21 +255,35 @@ struct ImpactCard: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundColor(color)
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
-            Text(label)
-                .font(AppTheme.bodyFont(size: 11))
-                .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
-                .multilineTextAlignment(.center)
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.colorPrimaryText(for: isDarkMode))
+                
+                Text(label)
+                    .font(AppTheme.bodyFont(size: 10, weight: .medium))
+                    .foregroundColor(AppTheme.colorSecondaryText(for: isDarkMode))
+                    .multilineTextAlignment(.center)
+            }
         }
-        .frame(width: 90, height: 100)
-        .padding(12)
-        .background(color.opacity(0.08))
+        .frame(width: 100, height: 120)
+        .background(AppTheme.colorCardBackground(for: isDarkMode))
         .cornerRadius(16)
+        .shadow(color: color.opacity(0.1), radius: 8, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(color.opacity(0.1), lineWidth: 1)
+        )
     }
 }
 

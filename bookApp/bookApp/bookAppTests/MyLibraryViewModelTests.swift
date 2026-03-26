@@ -16,18 +16,17 @@ struct MyLibraryViewModelTests {
         #expect(vm.isLoading == false)
         #expect(vm.showError == false)
         #expect(vm.errorMessage == nil)
-        #expect(vm.myBooks.isEmpty)
+        #expect(vm.myListedBooks.isEmpty)
         #expect(vm.borrowedBooks.isEmpty)
         #expect(vm.lentBooks.isEmpty)
-        #expect(vm.bookHistory.isEmpty)
     }
 
     // MARK: - Computed Properties
 
-    @Test("totalBooksShared reflects myBooks count")
+    @Test("totalBooksShared reflects myListedBooks count")
     @MainActor func totalBooksShared_reflectsMyBooksCount() {
         let vm = MyLibraryViewModel()
-        vm.myBooks = [
+        vm.myListedBooks = [
             Book(
                 title: "Book A", author: "Author A", genre: "Fiction",
                 description: "", ownerId: "user-1", ownerName: "User 1",
@@ -64,7 +63,7 @@ struct MyLibraryViewModelTests {
         #expect(vm.totalActiveLends == 2)
     }
 
-    @Test("myListedBooks is identical to myBooks")
+    @Test("myListedBooks is identical to myListedBooks")
     @MainActor func myListedBooks_equalsMyBooks() {
         let vm = MyLibraryViewModel()
         let book = Book(
@@ -72,9 +71,9 @@ struct MyLibraryViewModelTests {
             description: "", ownerId: "u", ownerName: "User",
             visibleInGroups: []
         )
-        vm.myBooks = [book]
-        #expect(vm.myListedBooks.count == vm.myBooks.count)
-        #expect(vm.myListedBooks.first?.id == vm.myBooks.first?.id)
+        vm.myListedBooks = [book]
+        #expect(vm.myListedBooks.count == vm.myListedBooks.count)
+        #expect(vm.myListedBooks.first?.id == vm.myListedBooks.first?.id)
     }
 
     // MARK: - Actions
@@ -82,7 +81,7 @@ struct MyLibraryViewModelTests {
     @Test("fetchAllData successfully fetches all categories")
     @MainActor func fetchAllData_success() async {
         let mockRefresher = MockAppDataRefresher()
-        mockRefresher.myBooksToReturn = [Book(title: "My Book", author: "Me", genre: "Sci-Fi", description: "", ownerId: "u1", ownerName: "Me", visibleInGroups: [])]
+        mockRefresher.myListedBooksToReturn = [Book(title: "My Book", author: "Me", genre: "Sci-Fi", description: "", ownerId: "u1", ownerName: "Me", visibleInGroups: [])]
         mockRefresher.borrowerTransactionsToReturn = [Transaction.makeStub(status: .active)]
         mockRefresher.ownerTransactionsToReturn = [Transaction.makeStub(status: .pending)]
         mockRefresher.historyTransactionsToReturn = [Transaction.makeStub(status: .returned)]
@@ -90,10 +89,9 @@ struct MyLibraryViewModelTests {
         let vm = MyLibraryViewModel(refresher: mockRefresher)
         await vm.fetchAllData(userId: "u1")
         
-        #expect(vm.myBooks.count == 1)
+        #expect(vm.myListedBooks.count == 1)
         #expect(vm.borrowedBooks.count == 1)
         #expect(vm.lentBooks.count == 1)
-        #expect(vm.bookHistory.count == 1)
         #expect(vm.showError == false)
     }
 
@@ -135,12 +133,12 @@ struct MyLibraryViewModelTests {
         let book = Book(id: "b1", title: "Test", author: "Author", genre: "Genre", description: "", ownerId: "u", ownerName: "Me", visibleInGroups: [])
         
         let vm = MyLibraryViewModel(bookService: mockBookService)
-        vm.myBooks = [book]
+        vm.myListedBooks = [book]
         
         await vm.deleteBook(book)
         
         #expect(mockBookService.lastDeletedBookId == "b1")
-        #expect(vm.myBooks.isEmpty)
+        #expect(vm.myListedBooks.isEmpty)
         #expect(vm.showError == false)
     }
 

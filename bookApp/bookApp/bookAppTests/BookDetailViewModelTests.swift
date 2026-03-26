@@ -72,15 +72,44 @@ struct BookDetailViewModelTests {
     @MainActor func requestButtonTitle_unavailable() {
         let book = makeBook(isAvailable: false)
         let vm = BookDetailViewModel(book: book)
-        vm.hasRequestedBook = false
         #expect(vm.requestButtonTitle == "Not Available")
+    }
+
+    @Test("requestButtonTitle shows 'Manage Borrow' when book is borrowed by user")
+    @MainActor func requestButtonTitle_borrowedByUser() {
+        let book = makeBook(isAvailable: false)
+        let vm = BookDetailViewModel(book: book)
+        vm.existingTransaction = Transaction(
+            bookId: book.id,
+            bookTitle: book.title,
+            borrowerId: "me",
+            borrowerName: "Me",
+            ownerId: "owner",
+            ownerName: "Owner",
+            groupId: "g1",
+            status: .active,
+            duration: .oneWeek,
+            lendingFee: 0
+        )
+        #expect(vm.requestButtonTitle == "Manage Borrow")
     }
 
     @Test("requestButtonTitle shows 'Request Sent' when already requested")
     @MainActor func requestButtonTitle_alreadyRequested() {
         let book = makeBook(isAvailable: true)
         let vm = BookDetailViewModel(book: book)
-        vm.hasRequestedBook = true
+        vm.existingTransaction = Transaction(
+            bookId: book.id,
+            bookTitle: book.title,
+            borrowerId: "me",
+            borrowerName: "Me",
+            ownerId: "owner",
+            ownerName: "Owner",
+            groupId: "g1",
+            status: .pending,
+            duration: .oneWeek,
+            lendingFee: 0
+        )
         #expect(vm.requestButtonTitle == "Request Sent")
     }
 

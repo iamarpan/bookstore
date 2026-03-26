@@ -220,6 +220,26 @@ struct Transaction: Identifiable, Codable {
 
 // MARK: - Helper Properties
 extension Transaction {
+    /// Convenience property to get a Book representation (denormalized)
+    var book: Book {
+        Book(
+            id: bookId,
+            title: bookTitle,
+            author: "", // Not available in basic transaction denormalization
+            genre: "Borrowed",
+            description: "Active transaction",
+            imageUrl: bookImageUrl ?? "",
+            condition: .good,
+            lendingPricePerWeek: lendingFee,
+            isAvailable: false,
+            ownerId: ownerId,
+            ownerName: ownerName,
+            visibleInGroups: [groupId],
+            currentTransactionId: id,
+            createdAt: requestedAt
+        )
+    }
+    
     /// Check if transaction is overdue
     var isOverdue: Bool {
         guard let dueDate = dueDate, status == .active else {

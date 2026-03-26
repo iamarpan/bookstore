@@ -216,4 +216,21 @@ extension View {
     func glassmorphic() -> some View {
         modifier(GlassmorphicStyle())
     }
+    
+    func tilt(_ degrees: Double = -10) -> some View {
+        modifier(TiltModifier(rotation: degrees))
+    }
+}
+
+struct TiltModifier: ViewModifier {
+    let rotation: Double
+    
+    func body(content: Content) -> some View {
+        content
+            .rotation3DEffect(
+                .degrees(rotation),
+                axis: (x: 0, y: 1, z: 0)
+            )
+            .shadow(color: .black.opacity(0.2), radius: 15, x: 10, y: 10)
+    }
 }

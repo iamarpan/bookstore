@@ -1,29 +1,5 @@
 import SwiftUI
 
-// MARK: - Condition Dots (shared component)
-struct ConditionDotsView: View {
-    let condition: BookCondition
-
-    private var filledCount: Int {
-        switch condition {
-        case .new: return 5
-        case .likeNew: return 4
-        case .good: return 3
-        case .fair: return 2
-        case .poor: return 1
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<5, id: \.self) { index in
-                Circle()
-                    .fill(index < filledCount ? AppTheme.primaryAccent : Color.gray.opacity(0.3))
-                    .frame(width: 6, height: 6)
-            }
-        }
-    }
-}
 
 // MARK: - Home View
 struct HomeView: View {
@@ -125,8 +101,34 @@ struct HomeView: View {
                 }
                 .padding(.vertical, 8)
             } else {
-                // Default: curated carousels
                 VStack(alignment: .leading, spacing: 28) {
+                    // 1. Continue Reading (Active Borrows)
+                    if !libraryViewModel.activeLoans.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Continue Reading")
+                                    .font(AppTheme.headerFont(size: 20))
+                                    .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(libraryViewModel.activeLoans, id: \.id) { txn in
+                                        NavigationLink(destination: BookDetailView(book: txn.book)) {
+                                            CarouselBookCard(book: txn.book, isDarkMode: themeManager.isDarkMode)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+
+                    // 2. Discover / Search Section (Default: curated carousels)
                     if !availableBooks.isEmpty {
                         BookCarouselSection(
                             title: "Available Now",
@@ -298,14 +300,17 @@ struct CarouselBookCard: View {
                 .clipped()
                 .cornerRadius(12, corners: [.topLeft, .topRight])
 
+                .cornerRadius(12, corners: [.topLeft, .topRight])
+
                 Text(bookStatusText)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(bookStatusColor)
+                    .background(bookStatusColor.opacity(0.85))
+                    .background(.ultraThinMaterial)
                     .cornerRadius(8)
-                    .padding(6)
+                    .padding(8)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -383,12 +388,16 @@ struct BookTileView: View {
                 .frame(maxWidth: .infinity)
                 .cornerRadius(12)
 
+                .frame(maxWidth: .infinity)
+                .cornerRadius(12)
+
                 Text(bookStatusText)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(bookStatusColor)
+                    .background(bookStatusColor.opacity(0.85))
+                    .background(.ultraThinMaterial)
                     .cornerRadius(8)
                     .padding(8)
             }
