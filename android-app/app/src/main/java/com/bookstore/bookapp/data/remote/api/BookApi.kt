@@ -11,6 +11,16 @@ import retrofit2.http.Query
 
 data class BooksResponse(val books: List<Book>)
 data class ISBNScanRequest(val isbn: String)
+data class IsbnLookupResponse(
+    val title: String?,
+    val author: String?,
+    val publisher: String?,
+    val year: Int?,
+    val pages: Int?,
+    val description: String?,
+    val imageUrl: String?,
+    val isbn: String?
+)
 
 interface BookApi {
     @GET("books/feed")
@@ -42,5 +52,5 @@ interface BookApi {
     suspend fun deleteBook(@Path("id") id: String)
 
     @POST("books/scan-isbn")
-    suspend fun lookupISBN(@Body request: ISBNScanRequest): Book
+    suspend fun lookupISBN(@Body request: ISBNScanRequest): IsbnLookupResponse
 }

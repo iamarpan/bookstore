@@ -28,6 +28,7 @@ object NetworkModule {
 
     private const val BASE_URL = "https://api-book-club.zenith-techsphere.com/api/v1/"
     private const val GOOGLE_BOOKS_BASE_URL = "https://www.googleapis.com/"
+    const val SOCKET_URL = "https://socket.api-book-club.zenith-techsphere.com"
 
     @Provides
     @Singleton

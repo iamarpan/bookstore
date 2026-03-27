@@ -99,6 +99,9 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
+    
+    // Socket.IO for real-time chat
+    implementation(libs.socketio.client)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

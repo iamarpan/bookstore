@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { NotificationType, TransactionStatus } from '@prisma/client';
 import * as notificationService from './notification.service';
+import { emitNewMessage, emitToChat } from '../socket';
 
 export const messageService = {
     async getMessages(transactionId: string, userId: string) {
@@ -98,6 +99,12 @@ export const messageService = {
             relatedUserId: senderId,
         });
 
+        try {
+            emitNewMessage(transactionId, recipientId, message);
+        } catch (socketError) {
+            console.warn('[Socket] Failed to emit new message:', socketError);
+        }
+
         return message;
     },
 
@@ -121,5 +128,15 @@ export const messageService = {
             },
             data: { isRead: true },
         });
+
+        try {
+            emitToChat(transactionId, 'messages_read', {
+                transactionId,
+                userId,
+                readAt: new Date().toISOString(),
+            });
+        } catch (socketError) {
+            console.warn('[Socket] Failed to emit messages_read:', socketError);
+        }
     },
 };

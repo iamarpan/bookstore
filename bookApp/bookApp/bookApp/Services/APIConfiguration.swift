@@ -17,6 +17,17 @@ enum APIEnvironment: String {
         }
     }
     
+    var socketURL: String {
+        switch self {
+        case .development:
+            return "ws://localhost:3001"
+        case .staging:
+            return "wss://socket.api-book-club.zenith-techsphere.com"
+        case .production:
+            return "wss://socket.api-book-club.zenith-techsphere.com"
+        }
+    }
+    
     var displayName: String {
         switch self {
         case .development: return "Development"
@@ -43,6 +54,10 @@ class APIConfiguration {
     
     var baseURL: String {
         currentEnvironment.baseURL
+    }
+    
+    var socketURL: String {
+        currentEnvironment.socketURL
     }
     
     // Timeouts

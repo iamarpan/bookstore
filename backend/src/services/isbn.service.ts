@@ -75,7 +75,7 @@ async function lookupGoogleBooks(isbn: string): Promise<ISBNBookData | null> {
             year: book.publishedDate ? parseInt(book.publishedDate.split('-')[0]) : undefined,
             pages: book.pageCount,
             description: book.description,
-            imageUrl: book.imageLinks?.thumbnail || book.imageLinks?.smallThumbnail,
+            imageUrl: (book.imageLinks?.thumbnail || book.imageLinks?.smallThumbnail)?.replace('http:', 'https:'),
             isbn,
         };
     } catch (error) {

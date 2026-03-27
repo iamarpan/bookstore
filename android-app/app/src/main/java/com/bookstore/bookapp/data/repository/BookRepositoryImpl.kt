@@ -81,7 +81,33 @@ class BookRepositoryImpl(
 
     override suspend fun lookupISBN(isbn: String): Book? {
         return try {
-            bookApi.lookupISBN(ISBNScanRequest(isbn))
+            val response = bookApi.lookupISBN(ISBNScanRequest(isbn))
+            Book(
+                id = "",
+                title = response.title ?: "Unknown Title",
+                author = response.author ?: "Unknown Author",
+                genre = "General",
+                description = response.description ?: "No description",
+                personalNotes = null,
+                imageUrl = response.imageUrl?.replace("http:", "https:") ?: "", // enforce https for coil
+                isbn = response.isbn ?: isbn,
+                publisher = response.publisher,
+                year = response.year,
+                pages = response.pages,
+                language = null,
+                condition = BookCondition.GOOD,
+                lendingPricePerWeek = 0.0,
+                isAvailable = true,
+                ownerId = "",
+                ownerName = "",
+                ownerRating = null,
+                ownerBooksCount = 0,
+                ownerProfileImageUrl = null,
+                visibleInGroups = emptyList(),
+                currentTransactionId = null,
+                createdAt = Date(),
+                updatedAt = null
+            )
         } catch (e: Exception) {
             null
         }

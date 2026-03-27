@@ -77,6 +77,9 @@ struct ChatView: View {
                         .padding(12)
                         .background(AppTheme.colorSecondaryBackground(for: themeManager.isDarkMode))
                         .cornerRadius(20)
+                        .onChange(of: viewModel.newMessageText) { newValue in
+                            viewModel.onTypingStateChanged(!newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
                     
                     Button(action: {
                         Task {
@@ -125,7 +128,11 @@ struct ChatView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(AppTheme.colorPrimaryText(for: themeManager.isDarkMode))
                         
-                        if let transaction = viewModel.transaction {
+                        if viewModel.otherUserTyping {
+                            Text("typing...")
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.primaryAccent)
+                        } else if let transaction = viewModel.transaction {
                             Text(transaction.bookTitle)
                                 .font(.caption2)
                                 .foregroundColor(AppTheme.colorSecondaryText(for: themeManager.isDarkMode))

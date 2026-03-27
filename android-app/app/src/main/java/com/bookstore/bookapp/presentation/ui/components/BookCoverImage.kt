@@ -58,8 +58,10 @@ fun BookCoverImage(
         return
     }
 
+    val safeImageUrl = imageUrl?.replace("http:", "https:")
+
     val imageRequest = ImageRequest.Builder(context)
-        .data(imageUrl)
+        .data(safeImageUrl)
         .crossfade(true)
         .scale(Scale.FILL)
         .size(width = 400, height = 600)

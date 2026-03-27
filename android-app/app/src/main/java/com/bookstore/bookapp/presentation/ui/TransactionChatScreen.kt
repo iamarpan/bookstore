@@ -100,12 +100,21 @@ fun TransactionChatScreen(
                                 text = uiState.otherPartyName,
                                 style = MaterialTheme.typography.titleMedium
                             )
-                            uiState.transaction?.let {
-                                Text(
-                                    text = it.bookTitle,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            when {
+                                uiState.otherUserTyping -> {
+                                    Text(
+                                        text = "typing...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                uiState.transaction != null -> {
+                                    Text(
+                                        text = uiState.transaction!!.bookTitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -219,7 +228,16 @@ fun TransactionChatScreen(
                         ) {
                             OutlinedTextField(
                                 value = messageText,
-                                onValueChange = { messageText = it },
+                                onValueChange = { newValue ->
+                                    val wasEmpty = messageText.isEmpty()
+                                    val isNowEmpty = newValue.isEmpty()
+                                    messageText = newValue
+                                    if (wasEmpty && !isNowEmpty) {
+                                        viewModel.onTypingStateChanged(true)
+                                    } else if (!wasEmpty && isNowEmpty) {
+                                        viewModel.onTypingStateChanged(false)
+                                    }
+                                },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("Type a message...") },
                                 shape = RoundedCornerShape(24.dp),

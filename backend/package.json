@@ -5,8 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:socket": "ts-node-dev --respawn --transpile-only src/socket-server.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
+    "start:socket": "node dist/socket-server.js",
     "vercel-build": "prisma generate",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -42,6 +44,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "prisma": "^5.22.0",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^5.12.1"
